@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Secrets
+.env
+
+# Databases (made by running the app, never uploaded)
+*.db
+*.sqlite
+
+# Testing
+.pytest_cache/
+.coverage
+
+# Editor and system files
+.vscode/
+.DS_Store
+Thumbs.db

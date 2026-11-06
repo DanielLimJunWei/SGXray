@@ -1,4 +1,4 @@
-# SGLens
+# SGXray
 
 A portfolio tracker for beginner investors in Singapore.
 
@@ -22,4 +22,5 @@ Python, SQLite (SQL), pandas, yfinance, Flask
 
 ## Disclaimer
 
-SGLens is an educational tool, not financial advice.
+SGXray is an educational tool, not financial advice.
+Not affiliated with or endorsed by Singapore Exchange Limited.
