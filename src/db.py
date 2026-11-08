@@ -252,6 +252,24 @@ def get_close(conn, ticker, day):
     return row["close"] if row else None
 
 
+def get_latest_close(conn, ticker, as_of=None):
+    """The newest saved close on or before as_of ('YYYY-MM-DD'; default: newest of all).
+
+    Returns (price_date, close), or None if we have no price yet.
+    """
+    row = conn.execute(
+        """
+        SELECT price_date, close
+        FROM prices
+        WHERE ticker = ? AND price_date <= COALESCE(?, '9999-12-31')
+        ORDER BY price_date DESC
+        LIMIT 1
+        """,
+        (ticker, as_of),
+    ).fetchone()
+    return (row["price_date"], row["close"]) if row else None
+
+
 def get_prices(conn, ticker, start=None):
     """Saved closing prices for one ticker, oldest first, optionally from a start date."""
     return conn.execute(

@@ -12,6 +12,16 @@ Important things to remember about how SGXray works and the data it uses. Newest
 - A dividend entered manually is never overwritten by yfinance data.
 - Column names avoid SQL keywords like `date`: use `trade_date`, `price_date`, `ex_date`.
 
+## Analysis (src/portfolio.py)
+
+- Uses the **average cost** method, like Singapore brokers. Fees are added to the cost of a buy and taken off the money from a sale.
+- A SELL removes cost at the average cost per share at that moment. So it's a loop over trades, not one pandas formula: each sale depends on everything before it.
+- **Realised** = profit locked in by selling. **Unrealised** = value now − cost of what's still held; it changes daily.
+- Selling everything resets the cost to exactly 0, so no rounding leftovers carry into a later buy.
+- No saved price means value shows as blank (NaN), never as 0: a wrong number is worse than no number.
+- Demo portfolio by hand: DBS avg cost $37.96 (7,592 / 200); C38U realised $278 on the 800-unit sale. The tests check these.
+- The DBS cost is on Yahoo's bonus-adjusted basis (31.47 instead of the real 34.60), so its profit looks bigger than DBS's real one would. Corporate actions (Week 2) fix this.
+
 ## Price data (yfinance)
 
 - yfinance is **unofficial**: it can break or rate-limit. SGXray saves prices in SQLite and only fetches new days.
