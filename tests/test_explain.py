@@ -122,6 +122,33 @@ def test_vs_sti_explained_with_skill_or_luck(conn, user_id):
     assert "Skill or luck? Most of your lead comes from one stock, D05.SI" in " ".join(e.watch_out)
 
 
+def test_two_returns_section_reads_the_users_own_gap():
+    from explain import _two_returns_section
+
+    close = " ".join(_two_returns_section(0.3208, 0.3417))
+    helped = " ".join(_two_returns_section(0.40, 0.00))
+    hurt = " ".join(_two_returns_section(-0.10, 0.05))
+
+    assert "Why SGXray shows two returns" in close
+    assert "are close, so your timing didn't help or hurt much" in close
+    assert "so your timing helped" in helped
+    assert "so your timing cost you" in hurt
+
+
+def test_bad_timing_gets_a_watch_out(conn, user_id):
+    # Price 100 -> 150 -> 75. A small buy at the start, a big buy at the top: picks fell 25%,
+    # but most of the money went in at the top, so you lost much more.
+    db.add_trade(conn, user_id, "D05.SI", "2024-01-02", "BUY", 10, 100.0, 0)
+    db.add_trade(conn, user_id, "D05.SI", "2024-07-01", "BUY", 100, 150.0, 0)
+    db.save_prices(conn, "D05.SI", [("2024-01-02", 100.0), ("2024-07-01", 150.0), ("2025-01-02", 75.0)])
+    db.save_prices(conn, "ES3.SI", [("2024-01-02", 3.0), ("2024-07-01", 3.0), ("2025-01-02", 3.0)])
+
+    e = explain_performance(conn, user_id)
+
+    assert "so your timing cost you" in e.text
+    assert "Adding money bit by bit on a regular schedule" in " ".join(e.watch_out)
+
+
 def test_short_history_warns_about_extreme_yearly_rates(conn, user_id):
     db.add_trade(conn, user_id, "D05.SI", "2024-01-02", "BUY", 10, 100.0, 0)
     db.save_prices(conn, "ES3.SI", [("2024-01-02", 2.00), ("2024-03-01", 2.20)])

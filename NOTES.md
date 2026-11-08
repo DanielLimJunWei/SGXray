@@ -91,6 +91,9 @@ Important things to remember about how SGXray works and the data it uses. Newest
 | Weeks of results say almost nothing | vs-sti | under 30 days (no yearly rate at all) |
 | STI comparison is rough after a big withdrawal | vs-sti | shortfall |
 | STI price out of date | vs-sti | stale benchmark |
+| Bad timing: added money before falls (add bit by bit instead) | vs-sti | XIRR well below TWR |
+
+- The vs-sti explainer has a **"Why SGXray shows two returns"** section (TWR = your picks, XIRR = your money, a big gap = timing), ending with what the user's own gap means. "Timing mattered" = XIRR and TWR are more than the larger of 2 points or 10% of the return apart (2 points is a lot at 5% a year, but little at 35%).
 | Skill or luck? One stock did the work | vs-sti | one stock gives over 75% of the lead |
 | Past results don't predict the future | vs-sti | always |
 | An ETF gives you the average | vs-sti | when you're ahead |

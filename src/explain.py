@@ -301,6 +301,38 @@ def explain_holdings(conn, user_id, as_of=None):
     return Explanation(out, watch)
 
 
+TIMING_GAP = 0.02           # XIRR and TWR more than 2 points apart a year...
+TIMING_SHARE = 0.10         # ...and more than 10% of the return apart = timing mattered
+
+
+def _timing_mattered(xirr_year, twr_year):
+    """How far apart counts as 'timing mattered'. 2 points means a lot at 5% a year, but little at
+    35% a year, so it's the larger of 2 points and 10% of the return."""
+    return abs(xirr_year - twr_year) > max(TIMING_GAP, TIMING_SHARE * abs(twr_year))
+
+
+def _two_returns_section(xirr_year, twr_year):
+    """'Why SGXray shows two returns', ending with what the gap between them means for THIS user."""
+    lines = [
+        "Why SGXray shows two returns:",
+        "  - TWR is fair for judging your picks. It's how funds and the STI report their returns, so it's the like-for-like comparison.",
+        "  - XIRR is what actually happened to your money. It's the number that matters for your bank account.",
+        "  - If they're very different, timing played a big part: good timing (adding money before prices rose) "
+        "or bad timing (adding a lot just before a fall).",
+    ]
+    gap = xirr_year - twr_year
+    if not _timing_mattered(xirr_year, twr_year):
+        lines.append(f"  - Yours: XIRR {xirr_year:+.2%} and TWR {twr_year:+.2%} are close, so your timing didn't "
+                     f"help or hurt much. Your result came mostly from what you picked.")
+    elif gap > 0:
+        lines.append(f"  - Yours: XIRR {xirr_year:+.2%} is higher than TWR {twr_year:+.2%}, so your timing helped: "
+                     f"you tended to add money before prices rose.")
+    else:
+        lines.append(f"  - Yours: XIRR {xirr_year:+.2%} is lower than TWR {twr_year:+.2%}, so your timing cost you: "
+                     f"you tended to add money before prices fell.")
+    return lines
+
+
 def explain_performance(conn, user_id, as_of=None):
     """Explains 'you vs the STI ETF', for the whole portfolio and per stock."""
     from performance import compare, per_stock
@@ -331,13 +363,17 @@ def explain_performance(conn, user_id, as_of=None):
         f"amounts are the same on both sides, the difference comes only from what you chose to buy.",
     ]
     t = time_weighted(conn, user_id, as_of)
+    timing_watch = None
     if t["you_year"] == t["you_year"]:
         out.append(
-            f"A second way to measure it, the time-weighted return, ignores WHEN you added money and "
-            f"just asks how your picks did: {t['you_year']:+.2%} a year for you, {t['sti_year']:+.2%} for "
-            f"the STI ETF. Fund managers and indexes report this one. If the two measures disagree a lot, "
-            f"your timing (when you added or took out money) made a big difference."
+            f"A second measure, the time-weighted return (TWR), ignores WHEN you added money and just asks "
+            f"how your picks did: {t['you_year']:+.2%} a year for you, {t['sti_year']:+.2%} for the STI ETF."
         )
+        out += _two_returns_section(c["you"], t["you_year"])
+        if c["you"] < t["you_year"] and _timing_mattered(c["you"], t["you_year"]):
+            timing_watch = ("Your timing cost you: you earned less than your picks did, which usually means you "
+                            "put more money in just before prices fell. Adding money bit by bit on a regular "
+                            "schedule, instead of in big lumps, makes timing matter less.")
     stocks = per_stock(conn, user_id, as_of)
     for r in stocks.itertuples():
         if r.verdict == "about level":
@@ -348,7 +384,7 @@ def explain_performance(conn, user_id, as_of=None):
                        f"the STI ETF would have made {up_down(r.sti_profit)}, a difference of "
                        f"{'+' if r.difference >= 0 else '-'}{money(r.difference)}.")
 
-    watch = []
+    watch = [timing_watch] if timing_watch else []
     if c["shortfall"]:
         watch.append("At one point you took out more money than the STI ETF version was worth (your picks "
                      "did far better than the index), so the STI comparison is rough from then on.")
@@ -414,7 +450,7 @@ def main(argv):
         conn.close()
     print("What does this mean?")
     for line in e.lines:
-        print(" -", line)
+        print("   " + line.lstrip() if line.startswith("  -") else " - " + line)   # sub-points indent
     if e.watch_out:
         print()
         print("Watch out")
