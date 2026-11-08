@@ -146,6 +146,42 @@ def add_trade(conn, user_id, ticker, trade_date, side, quantity, price, fees=0.0
     return cur.lastrowid
 
 
+def add_trades(conn, user_id, trades):
+    """Saves many trades in one transaction: either all of them are saved or none are.
+
+    Each trade is a dict with ticker, trade_date, side, quantity, price and fees.
+    Returns how many were saved.
+    """
+    with conn:
+        conn.executemany(
+            """
+            INSERT INTO trades (user_id, ticker, trade_date, side, quantity, price, fees)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (user_id, t["ticker"], t["trade_date"], t["side"], t["quantity"], t["price"], t["fees"])
+                for t in trades
+            ],
+        )
+    return len(trades)
+
+
+def get_holdings(conn, user_id):
+    """How many shares the user holds now in each ticker: buys minus sells."""
+    return conn.execute(
+        """
+        SELECT ticker,
+               SUM(CASE WHEN side = 'BUY' THEN quantity ELSE -quantity END) AS shares
+        FROM trades
+        WHERE user_id = ?
+        GROUP BY ticker
+        HAVING SUM(CASE WHEN side = 'BUY' THEN quantity ELSE -quantity END) > 0
+        ORDER BY ticker
+        """,
+        (user_id,),
+    ).fetchall()
+
+
 def get_trades(conn, user_id):
     """All of one user's trades, oldest first."""
     return conn.execute(

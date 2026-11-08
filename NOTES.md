@@ -31,4 +31,10 @@ Important things to remember about how SGXray works and the data it uses. Newest
 - Rows in date order, oldest first. A SELL must come after enough BUYs of that ticker.
 - SGX shares usually trade in lots of **100**.
 - No spaces around commas, no blank line at the end.
+- The importer (`src/importer.py`) reads every value as text (`dtype=str`) and checks it itself. It's **all or nothing**: one bad row means nothing is saved, and every problem is listed by row number (row 2 = first trade, like Excel).
+- Importing the same file twice is safe: a trade with the same ticker, date, side, quantity and price as a saved one is skipped.
+- Editing a trade in the CSV and importing again **adds a second trade**, because it no longer matches the saved one. The web app needs edit and delete buttons for trades.
+- SELL checks use all of the user's trades in date order, saved and new together.
+- Only weekends are rejected so far. SGX public holidays (e.g. Chinese New Year) aren't checked yet; the price data can catch those later.
+- A ticker must be in `src/instruments.py` (the starter list) before trades in it can be saved.
 - `pd.read_csv` does **not** check the data: a word in the price column or a weekend date loads without any error. The CSV importer must validate every row (numbers are numbers, dates are trading days, SELLs don't exceed holdings) and reject bad rows with a clear message.
