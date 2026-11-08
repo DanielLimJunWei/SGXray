@@ -38,6 +38,10 @@ Important things to remember about how SGXray works and the data it uses. Newest
 - Dividends count from their ex-date, a few weeks before the cash arrives. That's a tiny bias in the yearly rate.
 - Under a year of history, the yearly rate can look extreme (a 10% gain in 2 months ≈ +77% a year), so the output warns.
 - Demo portfolio, up to 2026-11-06: you +32.08% a year vs the STI ETF +25.86% a year.
+- **Per stock** (`per_stock`): each stock's own money is replayed into ES3. The yearly rates show how good each pick was; the **dollar difference** shows how much it moved your result (a big holding matters more than a tiny one that doubled). The per-stock differences add up exactly to the whole-portfolio difference (tested).
+- Demo: DBS helped (+$3,415.34), C38U held back (−$1,057.02), ES3 about level (−$4.99). Together +$2,353.33.
+- Even ES3 vs itself is a few dollars apart: the STI version buys at the day's close, you paid a price during the day. Gaps under 0.5% of the money put in are shown as "about level".
+- On the same date, the benchmark replay handles the dividend, then any split, then trades in their saved order. It used to sort same-day events alphabetically, which put a bonus before a dividend (fixed with a test).
 
 ## Database changes (migrations)
 

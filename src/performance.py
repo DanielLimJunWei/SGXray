@@ -19,6 +19,8 @@ import sys
 from dataclasses import dataclass
 from datetime import date
 
+import pandas as pd
+
 import db
 from market import BENCHMARK
 from portfolio import dividends_received, positions, summary, trades_frame
@@ -64,8 +66,9 @@ def xirr(flows, low=-0.9999, high=100.0, tolerance=1e-10):
 
 # ---------- Your cash flows ----------
 
-def portfolio_flows(conn, user_id, as_of=None):
+def portfolio_flows(conn, user_id, as_of=None, only=None):
     """Your money in and out as (date, amount) pairs, plus your holdings' value at the end.
+    With only='D05.SI', just that one stock's money.
 
     BUY = money in (negative), SELL = money out (positive), dividend = money out on its
     ex-date (the cash really arrives a few weeks later; close enough for a yearly rate).
@@ -74,6 +77,9 @@ def portfolio_flows(conn, user_id, as_of=None):
     trades = trades_frame(conn, user_id, as_of)
     if trades.empty:
         return [], None, 0.0
+    end = _end_date(conn, user_id, as_of, trades)
+    if only:
+        trades = trades[trades["ticker"] == only]
     flows = []
     for t in trades.itertuples():
         day = date.fromisoformat(t.trade_date)
@@ -82,11 +88,21 @@ def portfolio_flows(conn, user_id, as_of=None):
         else:
             flows.append((day, t.quantity * t.price - t.fees))
     for d in dividends_received(conn, user_id, as_of).itertuples():
-        flows.append((date.fromisoformat(d.ex_date), d.total))
+        if not only or d.ticker == only:
+            flows.append((date.fromisoformat(d.ex_date), d.total))
 
-    s = summary(positions(conn, user_id, as_of))
-    end = date.fromisoformat(as_of or s["prices_as_of"] or max(t for t in trades["trade_date"]))
-    return flows, end, s["value"]
+    pos = positions(conn, user_id, as_of)
+    if only:
+        pos = pos[pos["ticker"] == only]
+    return flows, end, summary(pos)["value"]
+
+
+def _end_date(conn, user_id, as_of, trades):
+    """The valuation date: as_of, else the newest price date, else the last trade."""
+    if as_of:
+        return date.fromisoformat(as_of)
+    newest = summary(positions(conn, user_id))["prices_as_of"]
+    return date.fromisoformat(newest or trades["trade_date"].max())
 
 
 # ---------- The same money in the STI ETF ----------
@@ -100,26 +116,31 @@ class BenchmarkResult:
     shortfall: bool = False  # True if a sale took out more than the ES3 holding was worth
 
 
-def benchmark(conn, user_id, as_of=None, ticker=BENCHMARK):
+def benchmark(conn, user_id, as_of=None, ticker=BENCHMARK, only=None):
     """Replays your buys and sells, in dollars, into the benchmark ETF.
+    With only='D05.SI', just the dollars that went into and out of that one stock.
 
     Units can be fractions here: it's a what-if, and whole lots would make the comparison
     depend on rounding rather than on what you picked.
     """
     trades = trades_frame(conn, user_id, as_of)
+    if only and not trades.empty:
+        trades = trades[trades["ticker"] == only]
     if trades.empty:
         return BenchmarkResult([], 0.0, 0.0, 0.0)
 
-    # Every dated event, in order: our trades' dollars, plus the ETF's dividends and splits.
+    # Every dated event. On the same day: the dividend first (bonus shares don't get a
+    # dividend with the same ex-date), then the split or bonus, then the trades in their own order.
     events = []
-    for t in trades.itertuples():
-        events.append((t.trade_date, 1, t.side, (t.quantity * t.price, t.fees)))
-    for a in db.get_actions(conn, ticker):
-        events.append((a["ex_date"], 0, "ACTION", a["factor"]))
     for d in db.get_dividends(conn, ticker, include_ignored=False):
         events.append((d["ex_date"], 0, "DIVIDEND", d["amount"]))
+    for a in db.get_actions(conn, ticker):
+        events.append((a["ex_date"], 1, "ACTION", a["factor"]))
+    for t in trades.itertuples():
+        events.append((t.trade_date, 2, t.side, (t.quantity * t.price, t.fees)))
     first = trades["trade_date"].min()
-    events = sorted(e for e in events if e[0] >= first and (not as_of or e[0] <= as_of))
+    events = [e for e in events if e[0] >= first and (not as_of or e[0] <= as_of)]
+    events.sort(key=lambda e: (e[0], e[1]))     # by date and kind only; stable, so trade order is kept
 
     units, paid, flows, shortfall = 0.0, 0.0, [], False
     for day, _, kind, x in events:
@@ -179,6 +200,50 @@ def compare(conn, user_id, as_of=None):
     }
 
 
+def per_stock(conn, user_id, as_of=None):
+    """Which stock helped or held back your result: each one against the STI ETF.
+
+    For each stock, its own money in and out is replayed into the STI ETF, exactly like the
+    whole-portfolio comparison. Two ways to read it:
+    - the yearly rates (XIRR) say how good each pick was, whatever its size;
+    - the DOLLAR difference says how much it actually moved your result, because a big
+      holding that's slightly better matters more than a tiny one that doubled.
+    Profit = everything that came out + what's still held - everything that went in.
+    """
+    trades = trades_frame(conn, user_id, as_of)
+    rows = []
+    for ticker in sorted(trades["ticker"].unique()) if not trades.empty else []:
+        flows, end, value = portfolio_flows(conn, user_id, as_of, only=ticker)
+        mine = flows + [(end, value)]
+        bench = benchmark(conn, user_id, as_of, only=ticker)
+        your_profit = sum(a for _, a in mine)
+        sti_profit = sum(a for _, a in bench.flows)
+        put_in = -sum(a for _, a in mine if a < 0)
+        difference = your_profit - sti_profit
+        rows.append({
+            "ticker": ticker,
+            "you": xirr(mine) if value == value else float("nan"),
+            "sti": xirr(bench.flows),
+            "your_profit": your_profit,
+            "sti_profit": sti_profit,
+            "difference": difference,
+            "verdict": _verdict(difference, put_in),
+        })
+    df = pd.DataFrame(rows, columns=["ticker", "you", "sti", "your_profit", "sti_profit", "difference", "verdict"])
+    return df.sort_values("difference", ascending=False, ignore_index=True)
+
+
+LEVEL_SHARE = 0.005     # within 0.5% of the money put in counts as "about level"
+
+
+def _verdict(difference, put_in):
+    """The STI version buys at each day's closing price, while you paid a price during the day,
+    so even buying the STI ETF itself can be a few dollars apart. Tiny gaps aren't a lesson."""
+    if put_in and abs(difference) < LEVEL_SHARE * put_in:
+        return "about level"
+    return "helped" if difference > 0 else "held back"
+
+
 # ---------- Run directly ----------
 
 def main():
@@ -191,6 +256,7 @@ def main():
         print("No demo portfolio yet. Run: python src/importer.py data/demo_trades.csv")
         return 1
     c = compare(conn, user["id"])
+    stocks = per_stock(conn, user["id"])
     conn.close()
 
     print(f"Up to {c['end']}")
@@ -206,6 +272,15 @@ def main():
           f"  (plus ${c['benchmark_dividends']:,.2f} of its dividends paid out)")
     if c["shortfall"]:
         print("  ! A sale took out more than the STI ETF version held, so the comparison is rough.")
+
+    print()
+    print("Which stocks helped or held you back (each against the same money in the STI ETF)")
+    print(f"  {'Ticker':<8} {'You':>9} {'STI ETF':>9} {'Your profit':>12} {'STI profit':>11} {'Difference':>11}")
+    for r in stocks.itertuples():
+        print(f"  {r.ticker:<8} {r.you:>+9.1%} {r.sti:>+9.1%} {r.your_profit:>12,.2f} {r.sti_profit:>11,.2f} "
+              f"{r.difference:>+11,.2f}  {r.verdict}")
+    total = stocks["difference"].sum()
+    print(f"  Together: {'+' if total >= 0 else '-'}${abs(total):,.2f} versus putting the same money in the STI ETF")
     return 0
 
 
