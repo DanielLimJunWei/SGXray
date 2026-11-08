@@ -4,16 +4,40 @@ These are written by code from the numbers themselves, not by AI, so they're fre
 and can never disagree with the table. (The AI box is only for "why did the price move?",
 which needs news.)
 
+Each explanation has two parts:
+- lines: what the numbers mean, using a real row as a worked example;
+- watch_out: common beginner traps and warning signs, shown only when YOUR numbers make
+  them relevant (plus the odd general one). The web app shows these under a "Watch out" heading.
+
     python src/explain.py 2024-03        explain the March 2024 row of the monthly table
+    python src/explain.py holdings       explain the holdings table
+    python src/explain.py vs-sti         explain you vs the STI ETF, and per stock
+    python src/explain.py yields         explain the dividend yields table
+    python src/explain.py forecast       explain the 12-month dividend forecast
 """
 
 import sys
+from dataclasses import dataclass, field
 
 import pandas as pd
 
 import db
 from history import value_history
-from portfolio import dividends_received, trades_frame
+from portfolio import dividends_received, positions, summary, trades_frame
+
+HIGH_YIELD = 0.07           # a yield above 7% gets a "could be a yield trap" warning
+BIG_MONTH_MOVE = 0.05       # a monthly profit swing above 5% of the value gets a "one month is noisy" note
+ONE_STOCK_SHARE = 0.5       # one stock giving over half the expected income gets a concentration warning
+
+
+@dataclass
+class Explanation:
+    lines: list = field(default_factory=list)       # what it means
+    watch_out: list = field(default_factory=list)   # traps and warning signs
+
+    @property
+    def text(self):
+        return " ".join(self.lines + self.watch_out)
 
 
 def money(x):
@@ -61,14 +85,11 @@ def _trade_sentences(trades, month):
 
 
 def explain_month(conn, user_id, month, history=None):
-    """Sentences explaining one row of the monthly table. month is 'YYYY-MM'.
-
-    Returns a list of short paragraphs, or a one-line message if there's no such row.
-    """
+    """Explains one row of the monthly table. month is 'YYYY-MM'."""
     h = history if history is not None else value_history(conn, user_id)
     rows = h[h.index.to_period("M") == pd.Period(month)]
     if rows.empty:
-        return [f"There's no snapshot for {month}: it's before your first trade or after the newest price."]
+        return Explanation([f"There's no snapshot for {month}: it's before your first trade or after the newest price."])
     day, r = rows.index[-1], rows.iloc[-1]
     earlier = h[h.index < rows.index[0]]
     before = earlier.iloc[-1] if not earlier.empty else None
@@ -91,7 +112,7 @@ def explain_month(conn, user_id, month, history=None):
     # 2. The snapshot.
     if r.value != r.value:                                 # NaN: a held stock has no price yet
         out.append(f"The value on {_day(day)} can't be worked out yet: a stock you hold has no saved price.")
-        return out
+        return Explanation(out)
     out.append(f"Money in: you had put {money(r.net_invested)} of your own money into the portfolio by then "
                f"(what you paid for buys, minus what you got back from sales).")
     out.append(f"Value: at the close on {_day(day)}, your shares were worth {money(r.value)}.")
@@ -117,12 +138,226 @@ def explain_month(conn, user_id, month, history=None):
     gap = r.profit - r.sti_profit
     out.append(f"STI profit: the same money put into the STI ETF on the same days would have been "
                f"{up_down(r.sti_profit)}. So you were {money(gap)} {'ahead of' if gap >= 0 else 'behind'} the market.")
-    return out
+
+    # 5. Watch out: only what these numbers make relevant.
+    watch = []
+    month_buys = trades[(trades["trade_date"].str[:7] == month) & (trades["side"] == "BUY")]
+    if not month_buys.empty:
+        spent = (month_buys["quantity"] * month_buys["price"]).sum()
+        fees = month_buys["fees"].sum()
+        if spent and fees / spent >= 0.002:
+            watch.append(f"Fees: you paid {money(fees)} in fees on {money(spent)} of buys ({fees / spent:.2%}). "
+                         f"Every buy starts slightly in the red because of fees, and many small buys "
+                         f"cost more in fees than one bigger buy.")
+    s = summary(positions(conn, user_id, as_of=day.strftime("%Y-%m-%d")))
+    if r.profit > 0 and s["unrealised"] > 0.5 * r.profit:
+        part = "All" if s["unrealised"] >= r.profit - 0.005 else f"{money(s['unrealised'])}"
+        watch.append(f"{part} of your {money(r.profit)} profit is unrealised: it's only on paper "
+                     f"until you sell, and a market drop can shrink it.")
+    if before is not None and r.value and abs(r.profit - before.profit) > BIG_MONTH_MOVE * r.value:
+        watch.append("One month's move tells you very little. Prices swing month to month; "
+                     "judge your investments over years, not weeks.")
+    if gap < 0:
+        watch.append("You're behind the STI ETF here. If that keeps happening over years, simply "
+                     "buying the STI ETF may suit you better than picking stocks.")
+    return Explanation(out, watch)
+
+
+def explain_yields(conn, user_id, as_of=None):
+    """Explains the dividend yields table, one stock at a time, using its own numbers."""
+    from income import portfolio_yield, yields
+
+    y = yields(conn, user_id, as_of)
+    if y.empty:
+        return Explanation(["You don't hold any stocks right now, so there are no yields to show."])
+
+    out = ["This table shows how much each stock paid in dividends over the last 12 months, "
+           "compared with two prices: today's price, and what you paid."]
+    watch, bought_cheap = [], []
+    for r in y.itertuples():
+        if r.per_share_12m == 0:
+            out.append(f"{r.ticker} paid no dividends in the last 12 months, so both yields are 0%.")
+            continue
+        # "divided by" in words: plain for beginners, and a Windows terminal can't show the ÷ sign.
+        out.append(
+            f"{r.ticker}: each share paid ${r.per_share_12m:g} in dividends over the last 12 months. "
+            f"Yield: ${r.per_share_12m:g} divided by today's price ${r.price:.2f} = {r.div_yield:.2%}, which is what "
+            f"someone buying today would earn a year in dividends if payouts stay the same. "
+            f"On cost: ${r.per_share_12m:g} divided by your average cost ${r.avg_cost:.2f} = {r.yield_on_cost:.2%}, "
+            f"which is what the dividends pay on the money you put in."
+        )
+        if r.yield_on_cost > r.div_yield * 1.05:
+            bought_cheap.append(f"{r.ticker} ({r.yield_on_cost:.2%} on cost, {r.div_yield:.2%} for a new buyer)")
+        elif r.yield_on_cost < r.div_yield * 0.95:
+            out.append(f"  Your 'On cost' is lower because you paid more than today's price for {r.ticker}.")
+        if r.div_yield > HIGH_YIELD:
+            watch.append(f"{r.ticker}'s {r.div_yield:.2%} yield is unusually high. That can be a warning sign "
+                         f"(a 'yield trap'): sometimes the price has fallen because investors expect the "
+                         f"dividend to be cut. Check why before buying for the yield.")
+
+    if bought_cheap:
+        watch.insert(0, f"'On cost' is higher than 'Yield' for {', '.join(bought_cheap)}, because you bought "
+                        f"for less than they cost now. That shows you bought well, not that they're good buys "
+                        f"today: a new buyer only gets the 'Yield'. Compare stocks using 'Yield', not 'On cost'.")
+    total = portfolio_yield(y, positions(conn, user_id, as_of))
+    out.append(f"Whole portfolio: a year's dividends on everything you hold, ${y['income_12m'].sum():,.2f}, "
+               f"divided by what it's all worth today = {total:.2%} a year.")
+    watch.append("Yields look back at the last 12 months. A company can raise, cut or stop its dividend, "
+                 "so they're a guide, not a promise.")
+    reits = {i["ticker"] for i in db.get_instruments(conn) if i["type"] == "reit"} & set(y["ticker"])
+    if reits:
+        watch.append(f"REITs ({', '.join(sorted(reits))}) sometimes pay extra one-off distributions, for example "
+                     f"before raising money, which can make one year's yield look higher than usual.")
+    return Explanation(out, watch)
+
+
+def explain_forecast(conn, user_id, as_of=None):
+    """Sentences explaining the 12-month dividend forecast, with its biggest months and its limits."""
+    from income import forecast
+
+    f = forecast(conn, user_id, as_of)
+    if f.empty:
+        return Explanation(["No dividends are expected: either you hold nothing, or nothing you hold "
+                            "paid a dividend in the last 12 months."])
+
+    by_month = f.groupby(f["expected"].dt.to_period("M"))["total"].sum()
+    best = by_month.idxmax()
+    out = [
+        "This is an estimate of the dividends you'll receive over the next 12 months. "
+        "It takes every dividend each stock paid in the last 12 months and assumes it comes again "
+        "about a year later, on the number of shares you hold now.",
+        f"For example: {f.iloc[0].ticker} paid ${f.iloc[0].amount:g} a share on "
+        f"{_day(pd.Timestamp(f.iloc[0].based_on))}. You hold {f.iloc[0].shares:,} shares, so around "
+        f"{_day(f.iloc[0].expected)} you can expect about {f.iloc[0].shares:,} x ${f.iloc[0].amount:g} = {money(f.iloc[0].total)}.",
+        f"In total, about {money(f['total'].sum())} over {len(by_month)} months with payouts. "
+        f"The biggest month is {best:%B %Y}, at about {money(by_month[best])}.",
+        "You get a dividend only if you own the shares before the ex-date. The cash usually reaches "
+        "your bank a few weeks after that.",
+    ]
+    watch = [
+        "It's only an estimate: companies can raise, cut or skip a dividend; one-off payouts (like a "
+        "REIT's advanced distribution before it raises money) may not happen again; and the dates are "
+        "guesses until the company announces the real ex-date. Don't count on this money before it arrives.",
+    ]
+    by_stock = f.groupby("ticker")["total"].sum()
+    top = by_stock.idxmax()
+    share = by_stock[top] / by_stock.sum()
+    if len(by_stock) > 1 and share > ONE_STOCK_SHARE:
+        watch.append(f"{share:.0%} of your expected dividends ({money(by_stock[top])}) come from one stock, {top}. "
+                     f"If it cuts its dividend, your income drops a lot. Spreading across more stocks "
+                     f"makes your income steadier.")
+    watch.append("Buying just before an ex-date to 'catch' a dividend doesn't make free money: "
+                 "the price usually drops by about the dividend on the ex-date.")
+    return Explanation(out, watch)
+
+
+def explain_holdings(conn, user_id, as_of=None):
+    """Explains the holdings table from portfolio.py: what you own, what it cost, what it's worth."""
+    df = positions(conn, user_id, as_of)
+    held = df[df["shares"] > 0]
+    if held.empty:
+        return Explanation(["You don't hold any stocks right now."])
+    s = summary(df)
+
+    out = ["Each row is one stock you own."]
+    r = held.sort_values("value", ascending=False).iloc[0]
+    if r["value"] == r["value"]:
+        out.append(
+            f"For example, {r['ticker']}: you own {int(r['shares']):,} shares. They cost you {money(r['cost'])} in "
+            f"total, fees included, which is {money(r['avg_cost'])} a share on average ('Avg cost'). At today's "
+            f"price of ${r['price']:.2f} they're worth {money(r['value'])}, so you're {up_down(r['unrealised'])} on "
+            f"them ({r['unrealised_pct']:+.1%}). That's 'Unrealised': profit you'd make if you sold today."
+        )
+    if s["value"] == s["value"]:
+        out.append(f"Altogether: {money(s['unrealised'])} unrealised {'profit' if s['unrealised'] >= 0 else 'loss'} "
+                   f"on what you still hold, {money(s['realised'])} realised from shares you've sold, and "
+                   f"{money(s['dividends'])} of dividends. Total profit: {up_down(s['total_profit'])}.")
+
+    watch = []
+    if s["value"] == s["value"] and s["total_profit"] > 0 and s["unrealised"] > 0.5 * s["total_profit"]:
+        watch.append(f"{money(s['unrealised'])} of your {money(s['total_profit'])} total profit is unrealised. "
+                     f"It isn't money in your bank until you sell, and a market drop can shrink it or "
+                     f"turn it into a loss. Only realised profit and dividends are locked in.")
+    total_value = held["value"].sum()
+    if len(held) > 1 and total_value == total_value and total_value:
+        top = held.loc[held["value"].idxmax()]
+        share = top["value"] / total_value
+        if share > ONE_STOCK_SHARE:
+            watch.append(f"{share:.0%} of your portfolio's value is in one stock, {top['ticker']}. If that one "
+                         f"company has a bad year, your whole portfolio feels it. Spreading across more "
+                         f"stocks, or an ETF, lowers that risk.")
+    for ticker in held["ticker"]:
+        actions = db.get_actions(conn, ticker)
+        if actions:
+            a = actions[-1]
+            watch.append(f"{ticker} had a {'bonus issue' if a['factor'] > 1 else 'consolidation'} on "
+                         f"{_day(pd.Timestamp(a['ex_date']))} (x{a['factor']:g}). Bonus shares aren't free money: "
+                         f"the price drops to match, so your holding is worth about the same on the day. "
+                         f"Your average cost per share goes down because the same cost is spread over more shares.")
+    if s["missing_prices"]:
+        watch.append(f"No price yet for {', '.join(s['missing_prices'])}, so the totals can't be worked out.")
+    if s["stale_prices"]:
+        watch.append(f"The prices for {', '.join(s['stale_prices'])} are older than the rest, so their value may be out of date.")
+    return Explanation(out, watch)
+
+
+def explain_performance(conn, user_id, as_of=None):
+    """Explains 'you vs the STI ETF', for the whole portfolio and per stock."""
+    from performance import compare, per_stock
+
+    c = compare(conn, user_id, as_of)
+    if c["you"] != c["you"]:
+        return Explanation(["There isn't enough history to work out a yearly return yet."])
+    gap = c["you"] - c["benchmark"]
+    out = [
+        f"Your portfolio grew at {c['you']:+.2%} a year. That's the money-weighted return (XIRR): it counts "
+        f"when each dollar went in or came out, so money you added recently isn't treated as if it had "
+        f"been invested from the start.",
+        f"SGXray then replayed exactly the same dollars, on the same days, with the same fees, into the STI "
+        f"ETF. That would have grown at {c['benchmark']:+.2%} a year.",
+        f"So you {'beat' if gap > 0 else 'trailed'} the market by {abs(gap):.2%} a year. Because the timing and "
+        f"amounts are the same on both sides, the difference comes only from what you chose to buy.",
+    ]
+    stocks = per_stock(conn, user_id, as_of)
+    for r in stocks.itertuples():
+        if r.verdict == "about level":
+            out.append(f"{r.ticker}: about the same as the STI ETF ({money(r.difference)} apart).")
+        else:
+            verb = "helped you" if r.verdict == "helped" else "held you back"
+            out.append(f"{r.ticker} {verb}: it made {up_down(r.your_profit)}, while the same money in "
+                       f"the STI ETF would have made {up_down(r.sti_profit)}, a difference of "
+                       f"{'+' if r.difference >= 0 else '-'}{money(r.difference)}.")
+
+    watch = []
+    if c["days"] < 365:
+        watch.append(f"Only {c['days']} days of history. Turning a short period into a yearly rate assumes the "
+                     f"same luck repeats all year: +10% in 2 months works out to about +77% a year (1.10 x 1.10 "
+                     f"x ... six times), which rarely happens.")
+    helped = stocks[stocks["difference"] > 0]
+    total_gain = helped["difference"].sum()
+    if gap > 0 and not helped.empty and total_gain and helped["difference"].max() / total_gain > 0.75:
+        star = helped.loc[helped["difference"].idxmax(), "ticker"]
+        watch.append(f"Skill or luck? Most of your lead comes from one stock, {star}. One great pick can make "
+                     f"anyone look like a genius; beating the market across many stocks over many years is "
+                     f"much harder.")
+    watch.append("Past results don't predict the future. A stock that beat the market for two years can trail it for the next two.")
+    if gap < 0:
+        watch.append("You're behind the STI ETF. If that holds over several years, simply buying the STI ETF "
+                     "would have been easier and cheaper than picking stocks.")
+    else:
+        watch.append("The STI ETF gives you the market's average: you can't beat the market with it, but you "
+                     "won't badly trail it either. Picking stocks is only worth it if you beat it over years.")
+    return Explanation(out, watch)
 
 
 def main(argv):
-    if len(argv) != 2 or len(argv[1]) != 7:
-        print("Usage: python src/explain.py YYYY-MM     e.g. python src/explain.py 2024-03")
+    usage = ("Usage:\n  python src/explain.py YYYY-MM     the monthly table, e.g. 2024-03\n"
+             "  python src/explain.py holdings    the holdings table\n"
+             "  python src/explain.py vs-sti      you vs the STI ETF, and per stock\n"
+             "  python src/explain.py yields      the dividend yields table\n"
+             "  python src/explain.py forecast    the 12-month dividend forecast")
+    if len(argv) != 2:
+        print(usage)
         return 1
     from importer import DEMO_EMAIL
 
@@ -133,15 +368,32 @@ def main(argv):
         print("No demo portfolio yet. Run: python src/importer.py data/demo_trades.csv")
         return 1
     try:
-        lines = explain_month(conn, user["id"], argv[1])
+        if argv[1] == "holdings":
+            e = explain_holdings(conn, user["id"])
+        elif argv[1] == "vs-sti":
+            e = explain_performance(conn, user["id"])
+        elif argv[1] == "yields":
+            e = explain_yields(conn, user["id"])
+        elif argv[1] == "forecast":
+            e = explain_forecast(conn, user["id"])
+        elif len(argv[1]) == 7:
+            e = explain_month(conn, user["id"], argv[1])
+        else:
+            print(usage)
+            return 1
     except ValueError:
         print(f"'{argv[1]}' isn't a month. Use YYYY-MM, e.g. 2024-03")
         return 1
     finally:
         conn.close()
     print("What does this mean?")
-    for line in lines:
+    for line in e.lines:
         print(" -", line)
+    if e.watch_out:
+        print()
+        print("Watch out")
+        for line in e.watch_out:
+            print(" !", line)
     return 0
 
 

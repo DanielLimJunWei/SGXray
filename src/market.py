@@ -24,6 +24,7 @@ MARKET_CLOSE = clock_time(17, 30)       # SGX closes at 5pm; the closing price i
 BENCHMARK = "ES3.SI"                    # STI ETF, to compare portfolios against the market
 DEFAULT_HISTORY_DAYS = 365              # how far back to start when nobody has traded yet
 PAUSE_SECONDS = 0.5                     # wait between downloads, to be polite to Yahoo
+DIVIDEND_LOOKBACK_DAYS = 400            # dividends are saved from this long before the first trade
 
 # yfinance logs noisy messages for normal things like "no data on a holiday". We report problems ourselves.
 logging.getLogger("yfinance").setLevel(logging.CRITICAL)
@@ -156,7 +157,9 @@ def update_dividends(conn, tickers, now=None, download=download_dividends, pause
 
     for i, ticker in enumerate(tickers):
         update = DividendUpdate(ticker)
-        start = _history_start(conn, ticker, now.date()).isoformat()
+        # A year before the history starts, so even a stock bought last week has a year of
+        # payouts to forecast from. Dividends before you held a stock still aren't counted as yours.
+        start = (_history_start(conn, ticker, now.date()) - timedelta(days=DIVIDEND_LOOKBACK_DAYS)).isoformat()
         if i and pause:
             time.sleep(pause)
         try:

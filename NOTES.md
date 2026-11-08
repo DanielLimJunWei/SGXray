@@ -54,12 +54,49 @@ Important things to remember about how SGXray works and the data it uses. Newest
 - The monthly table uses `groupby(month).tail(1)` rather than `resample`, so each row keeps the real date of its last trading day (e.g. 28 Mar 2024, because 29 Mar was Good Friday).
 - Demo: 666 trading days. Profit peaked at $14,032.78 on 2026-09-04 and is $11,517.48 now, so it fell about $2,500 from the peak. That's the idea behind drawdown (Week 3 risk view).
 
+## Dividend income (src/income.py)
+
+- **Forecast** = each dividend from the last 12 months, repeated one year later, on the shares held now. It's an estimate: dividends can be cut or raised, one-off payouts (REIT advanced distributions) may not repeat, and the real ex-date is announced shortly before.
+- It's cautious when a company has just raised its dividend: DBS's Nov 2026 estimate uses Nov 2025's $0.75, though DBS now pays $0.81.
+- **Dividend yield** (trailing 12 months) = last 12 months' dividends per share ÷ today's price. **Yield on cost** = the same ÷ your average cost. A high yield on cost means you bought cheaply, not that it's a good buy today.
+- Dividends are now saved from 400 days BEFORE the first trade, so a stock bought last week still has a year of payouts to forecast from. Dividends received still only count ones you held (unchanged: $2,183.28).
+- Python gotcha: `yield` is a reserved word, so a pandas column called "yield" can't be read as `row.yield`. It's called `div_yield`.
+- Demo: portfolio yield 4.29%; DBS 4.56% on price, 8.45% on cost; about $973 expected in the next 12 months.
+
 ## Plain-English explanations (src/explain.py)
 
 - "What does this mean?" boxes are written by **code from the numbers**, not by AI: free, instant, and they can never disagree with the table. AI is only for "why did the price move?", which needs news.
 - Each month says: what you did, the snapshot (money in, value, profit as an equation), why profit changed since last month (prices vs dividends, and how they combined), and how you compare with the STI.
 - It reminds users that buying or selling doesn't change profit by itself (it moves Money in and Value equally), but only in months with a trade.
 - Tests check the exact sentences, so the wording can't drift away from the numbers.
+- **Every table gets one**, and every new feature must come with its own: `explain.py 2024-03` (monthly table), `holdings`, `vs-sti`, `yields`, `forecast`. Each walks through one real row as a worked example. In the web app, each becomes an ⓘ button.
+- Each explanation has two parts: **What does this mean?** (`lines`) and **⚠️ Watch out** (`watch_out`): beginner traps and warning signs, shown only when the user's own numbers make them relevant, plus a few general ones.
+
+- Write maths in words ("divided by"), not symbols like ÷: the Windows terminal showed ÷ as "�". The web app can use symbols.
+- One warning that applies to several stocks is merged into one line listing them, not repeated per stock.
+
+- **Web design (Week 3):** each table gets two buttons. **ⓘ "What does this mean?"** opens the explanation; **⚠️ with a count** opens the Watch out popup and only appears when there are warnings. A warning about one stock also puts a small ⚠️ on that row. Use amber, not red: these are "think twice" notes, not errors. The terminal keeps printing both sections, since it can't do popups.
+
+### Watch out catalogue (what triggers each)
+| Trap | Shown in | When |
+|---|---|---|
+| Unrealised profit is only on paper | monthly, holdings | over half the profit is unrealised |
+| Too much in one stock | holdings | one stock is over 50% of the value |
+| Bonus shares aren't free money | holdings | the stock had a bonus issue or split |
+| Missing or stale prices | holdings | a held stock has no price, or an old one |
+| Fees eat returns | monthly | buys that month cost 0.2%+ in fees |
+| One month's move tells you little | monthly | profit swung by over 5% of the value |
+| Behind the STI: an ETF may suit you | monthly, vs-sti | you're behind |
+| Short history makes yearly rates extreme (+10% in 2 months ≈ +77% a year) | vs-sti | under a year of history |
+| Skill or luck? One stock did the work | vs-sti | one stock gives over 75% of the lead |
+| Past results don't predict the future | vs-sti | always |
+| An ETF gives you the average | vs-sti | when you're ahead |
+| "On cost" isn't today's yield | yields | your cost is below today's price |
+| Very high yield can be a yield trap | yields | yield over 7% |
+| REIT one-off distributions inflate a year | yields | you hold a REIT |
+| Yields and forecasts aren't promises | yields, forecast | always |
+| Most income from one stock | forecast | one stock gives over 50% of expected income |
+| Buying before the ex-date isn't free money | forecast | always |
 
 ## Database changes (migrations)
 

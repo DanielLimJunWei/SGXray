@@ -1,0 +1,140 @@
+"""Dividend income: yields, and a forecast of the next 12 months.
+
+THE FORECAST is an estimate, not a promise. It assumes each stock pays again what it paid
+over the last 12 months, around the same dates, on the shares you hold now. That's how most
+trackers do it, and it's a fair guess for steady payers like the banks, but:
+- dividends can be cut or raised (DBS raised its dividend every year from 2024 to 2026);
+- one-off payouts, like a REIT's "advanced distribution" before raising money, may not repeat;
+- dates are estimates: the company announces the real ex-date shortly before.
+
+DIVIDEND YIELD = a year's dividends per share / today's price. "Trailing" means it uses the
+LAST 12 months of actual payouts, not a guess about the future.
+YIELD ON COST = the same dividends / what YOU paid per share (your average cost).
+
+    python src/income.py
+"""
+
+import sys
+
+import pandas as pd
+
+import db
+from portfolio import positions, summary
+
+FORECAST_COLUMNS = ["expected", "ticker", "shares", "amount", "total", "based_on"]
+
+
+def _window(as_of):
+    """The 12 months up to and including as_of."""
+    end = pd.Timestamp(as_of)
+    return end - pd.DateOffset(years=1), end
+
+
+def trailing_dividends(conn, ticker, as_of):
+    """The dividends one share of `ticker` paid in the 12 months up to as_of (ignored ones left out)."""
+    start, end = _window(as_of)
+    return [
+        d for d in db.get_dividends(conn, ticker, include_ignored=False)
+        if start < pd.Timestamp(d["ex_date"]) <= end
+    ]
+
+
+def _as_of(conn, user_id, as_of):
+    return as_of or summary(positions(conn, user_id))["prices_as_of"]
+
+
+def forecast(conn, user_id, as_of=None):
+    """Expected dividends over the 12 months after as_of, one row per expected payout.
+
+    Each of the last 12 months' dividends is assumed to come again one year later, on the
+    shares held now. A stock you've sold out of isn't in the forecast.
+    """
+    as_of = _as_of(conn, user_id, as_of)
+    if not as_of:
+        return pd.DataFrame(columns=FORECAST_COLUMNS)
+    held = positions(conn, user_id, as_of)
+    held = held[held["shares"] > 0]
+
+    rows = []
+    for p in held.itertuples():
+        for d in trailing_dividends(conn, p.ticker, as_of):
+            last_time = pd.Timestamp(d["ex_date"])
+            rows.append({
+                "expected": last_time + pd.DateOffset(years=1),   # same date next year (29 Feb -> 28 Feb)
+                "ticker": p.ticker,
+                "shares": p.shares,
+                "amount": d["amount"],
+                "total": p.shares * d["amount"],
+                "based_on": d["ex_date"],
+            })
+    df = pd.DataFrame(rows, columns=FORECAST_COLUMNS)
+    return df.sort_values(["expected", "ticker"], ignore_index=True)
+
+
+def yields(conn, user_id, as_of=None):
+    """Trailing 12-month dividend yield per stock held: on today's price, and on your cost."""
+    as_of = _as_of(conn, user_id, as_of)
+    held = positions(conn, user_id, as_of)
+    held = held[held["shares"] > 0]
+    rows = []
+    for p in held.itertuples():
+        per_share = sum(d["amount"] for d in trailing_dividends(conn, p.ticker, as_of)) if as_of else 0.0
+        rows.append({
+            "ticker": p.ticker,
+            "per_share_12m": per_share,
+            "price": p.price,
+            "div_yield": per_share / p.price if p.price == p.price and p.price else float("nan"),
+            "avg_cost": p.avg_cost,
+            "yield_on_cost": per_share / p.avg_cost if p.avg_cost else float("nan"),
+            "income_12m": per_share * p.shares,
+        })
+    return pd.DataFrame(rows, columns=["ticker", "per_share_12m", "price", "div_yield", "avg_cost", "yield_on_cost", "income_12m"])
+
+
+def portfolio_yield(df_yields, df_positions):
+    """The whole portfolio's yield: a year's dividends on what you hold / what it's worth now."""
+    held = df_positions[df_positions["shares"] > 0]
+    value = held["value"].sum()
+    return df_yields["income_12m"].sum() / value if value else float("nan")
+
+
+# ---------- Run directly ----------
+
+def main():
+    from importer import DEMO_EMAIL
+
+    conn = db.get_connection()
+    db.init_db(conn)
+    user = db.get_user_by_email(conn, DEMO_EMAIL)
+    if not user:
+        print("No demo portfolio yet. Run: python src/importer.py data/demo_trades.csv")
+        return 1
+    uid = user["id"]
+    as_of = _as_of(conn, uid, None)
+    y = yields(conn, uid)
+    f = forecast(conn, uid)
+    pos = positions(conn, uid)
+    conn.close()
+
+    print(f"Dividend yields (last 12 months of payouts, prices as of {as_of})")
+    print(f"  {'Ticker':<8} {'Paid/share':>10} {'Price':>7} {'Yield':>7} {'Your cost':>9} {'On cost':>8}")
+    for r in y.itertuples():
+        print(f"  {r.ticker:<8} {r.per_share_12m:>10.4f} {r.price:>7.2f} {r.div_yield:>7.2%} "
+              f"{r.avg_cost:>9.4f} {r.yield_on_cost:>8.2%}")
+    print(f"  Whole portfolio: {portfolio_yield(y, pos):.2%} a year on today's value")
+
+    print()
+    print("Expected dividends, next 12 months (an ESTIMATE: last year's payouts on what you hold now)")
+    for r in f.itertuples():
+        print(f"  ~{r.expected:%d %b %Y}  {r.ticker:<8} {r.shares:>5,} x ${r.amount:<8g} = ${r.total:>8,.2f}"
+              f"   (like {pd.Timestamp(r.based_on):%d %b %Y})")
+    by_month = f.groupby(f["expected"].dt.to_period("M"))["total"].sum()
+    print()
+    print("  By month: " + ", ".join(f"{m:%b %Y} ${t:,.2f}" for m, t in by_month.items()))
+    print(f"  Total: about ${f['total'].sum():,.2f} over the next 12 months")
+    print("  Dividends can be cut, raised or skipped, and one-off payouts may not repeat.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

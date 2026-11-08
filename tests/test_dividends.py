@@ -12,7 +12,8 @@ TODAY = date(2026, 11, 6)
 
 def fake_download(ticker):
     return [
-        ("2023-11-10", 0.50),       # before the first trade: not needed
+        ("2022-11-10", 0.45),       # more than 400 days before the first trade: not needed
+        ("2023-11-10", 0.50),       # within a year before it: kept, for the forecast
         ("2024-04-10", 0.54),
         ("2024-08-12", 0.54),
         ("2026-12-01", 0.60),       # in the future: ignored
@@ -23,13 +24,13 @@ def buy_dbs(conn, user_id):
     db.add_trade(conn, user_id, "D05.SI", "2024-03-15", "BUY", 100, 31.47)
 
 
-def test_dividends_from_first_trade_to_today_are_saved(conn, user_id):
+def test_dividends_from_a_year_before_the_first_trade_to_today_are_saved(conn, user_id):
     buy_dbs(conn, user_id)
 
     [result] = update_dividends(conn, ["D05.SI"], now=NOW, download=fake_download, pause=0)
 
-    assert (result.saved, result.total, result.error) == (2, 2, None)
-    assert [r["ex_date"] for r in db.get_dividends(conn, "D05.SI")] == ["2024-04-10", "2024-08-12"]
+    assert (result.saved, result.total, result.error) == (3, 3, None)
+    assert [r["ex_date"] for r in db.get_dividends(conn, "D05.SI")] == ["2023-11-10", "2024-04-10", "2024-08-12"]
 
 
 def test_running_again_changes_nothing(conn, user_id):
@@ -38,7 +39,7 @@ def test_running_again_changes_nothing(conn, user_id):
 
     [result] = update_dividends(conn, ["D05.SI"], now=NOW, download=fake_download, pause=0)
 
-    assert (result.saved, result.total) == (0, 2)
+    assert (result.saved, result.total) == (0, 3)
 
 
 def test_yahoo_corrections_are_saved_but_manual_entries_win(conn, user_id):
