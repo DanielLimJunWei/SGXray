@@ -182,6 +182,21 @@ def get_holdings(conn, user_id):
     ).fetchall()
 
 
+def get_traded_tickers(conn):
+    """Every ticker anyone has traded. These are the ones that need prices."""
+    rows = conn.execute("SELECT DISTINCT ticker FROM trades ORDER BY ticker").fetchall()
+    return [r["ticker"] for r in rows]
+
+
+def get_first_trade_date(conn, ticker=None):
+    """The earliest trade date for one ticker, or for all tickers if none is given. None if no trades."""
+    row = conn.execute(
+        "SELECT MIN(trade_date) AS first FROM trades WHERE ? IS NULL OR ticker = ?",
+        (ticker, ticker),
+    ).fetchone()
+    return row["first"]
+
+
 def get_trades(conn, user_id):
     """All of one user's trades, oldest first."""
     return conn.execute(

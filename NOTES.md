@@ -15,6 +15,9 @@ Important things to remember about how SGXray works and the data it uses. Newest
 ## Price data (yfinance)
 
 - yfinance is **unofficial**: it can break or rate-limit. SGXray saves prices in SQLite and only fetches new days.
+- `src/market.py` only saves a day's close after **5:30pm Singapore time**. Before that, Yahoo's price for today is still moving, and saving it would store a wrong close forever.
+- First download for a ticker starts at its first trade. The STI ETF benchmark starts at the first trade in *anything*, so the comparison covers the whole portfolio.
+- A close on the trade day differs slightly from the trade price (e.g. DBS 2024-03-15: close 31.52, bought at 31.47). That's normal: the trade happened during the day.
 - Prices come back with tiny rounding errors (`71.709999`). Round when displaying.
 - `auto_adjust=True` (the default) adjusts old prices for **dividends**. Use `auto_adjust=False` for the price actually traded that day.
 - Even with `auto_adjust=False`, yfinance still adjusts for **splits and bonus issues**. Example: DBS's 1-for-10 bonus issue in April 2024 makes March 2024's ~$34.60 show as ~$31.47 (÷ 1.1). Trade prices and price history must use the same basis, or values will be ~10% off.
