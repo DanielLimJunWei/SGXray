@@ -43,6 +43,24 @@ Important things to remember about how SGXray works and the data it uses. Newest
 - Even ES3 vs itself is a few dollars apart: the STI version buys at the day's close, you paid a price during the day. Gaps under 0.5% of the money put in are shown as "about level".
 - On the same date, the benchmark replay handles the dividend, then any split, then trades in their saved order. It used to sort same-day events alphabetically, which put a bonus before a dividend (fixed with a test).
 
+## Value over time (src/history.py)
+
+- Three tables that line up by date: **prices** (days × tickers), **holdings** (days × tickers), and **value** = holdings × prices, cell by cell, added across each row.
+- `ffill` carries the last known price or holding over a gap (holidays, suspended days). `cumsum` gives running totals (money in, dividends). `resample("ME").last()` picks each month's last trading day.
+- Holdings on a day: that day's bonus issue first (start of day), then that day's trades (by the close).
+- `net_invested` = buys (with fees) − sales (after fees), as a running total. Profit on any day = value − net_invested + dividends so far. On the last day it equals `summary()["total_profit"]` exactly (tested), and the STI line equals `benchmark()` (tested).
+- A day where a held stock has no price is NaN, not lower: `(holdings × prices).where(holdings > 0, 0)` then `sum(skipna=False)`.
+- Running totals are summed over their OWN dates first, then read off on the trading days. Doing it the other way round dropped a dividend whose ex-date had no saved price (caught by the explainer's test).
+- The monthly table uses `groupby(month).tail(1)` rather than `resample`, so each row keeps the real date of its last trading day (e.g. 28 Mar 2024, because 29 Mar was Good Friday).
+- Demo: 666 trading days. Profit peaked at $14,032.78 on 2026-09-04 and is $11,517.48 now, so it fell about $2,500 from the peak. That's the idea behind drawdown (Week 3 risk view).
+
+## Plain-English explanations (src/explain.py)
+
+- "What does this mean?" boxes are written by **code from the numbers**, not by AI: free, instant, and they can never disagree with the table. AI is only for "why did the price move?", which needs news.
+- Each month says: what you did, the snapshot (money in, value, profit as an equation), why profit changed since last month (prices vs dividends, and how they combined), and how you compare with the STI.
+- It reminds users that buying or selling doesn't change profit by itself (it moves Money in and Value equally), but only in months with a trade.
+- Tests check the exact sentences, so the wording can't drift away from the numbers.
+
 ## Database changes (migrations)
 
 - `CREATE TABLE IF NOT EXISTS` won't add a new column to a table that already exists. New columns go in `MIGRATIONS` in `db.py`, which runs `ALTER TABLE ... ADD COLUMN` only if the column is missing.

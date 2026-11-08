@@ -114,6 +114,8 @@ class BenchmarkResult:
     value: float             # their value at the end
     dividends: float         # ES3 dividends paid out along the way
     shortfall: bool = False  # True if a sale took out more than the ES3 holding was worth
+    units_history: list = None   # (date, units held after that day's events), for charts
+    dividend_history: list = None  # (date, ES3 dividend cash paid), for charts
 
 
 def benchmark(conn, user_id, as_of=None, ticker=BENCHMARK, only=None):
@@ -143,6 +145,7 @@ def benchmark(conn, user_id, as_of=None, ticker=BENCHMARK, only=None):
     events.sort(key=lambda e: (e[0], e[1]))     # by date and kind only; stable, so trade order is kept
 
     units, paid, flows, shortfall = 0.0, 0.0, [], False
+    units_history, dividend_history = [], []
     for day, _, kind, x in events:
         when = date.fromisoformat(day)
         if kind == "ACTION":
@@ -152,6 +155,7 @@ def benchmark(conn, user_id, as_of=None, ticker=BENCHMARK, only=None):
             if cash:
                 paid += cash
                 flows.append((when, cash))
+                dividend_history.append((when, cash))
         else:
             # The ETF version pays the same fees you did, so fees don't tilt the comparison.
             gross, fees = x
@@ -165,12 +169,13 @@ def benchmark(conn, user_id, as_of=None, ticker=BENCHMARK, only=None):
                     shortfall, wanted = True, units    # can't take out more than the ETF is worth
                 units -= wanted
                 flows.append((when, wanted * price - fees))
+        units_history.append((when, units))
 
     end_price = _price_on(conn, ticker, as_of)
     value = units * end_price
     end_day = date.fromisoformat(as_of) if as_of else date.fromisoformat(db.get_latest_close(conn, ticker)[0])
     flows.append((end_day, value))
-    return BenchmarkResult(flows, units, value, paid, shortfall)
+    return BenchmarkResult(flows, units, value, paid, shortfall, units_history, dividend_history)
 
 
 def _price_on(conn, ticker, day):
