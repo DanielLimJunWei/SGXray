@@ -14,6 +14,7 @@ import sys
 from datetime import date
 
 import db
+from checks import check_manual_dividends, print_warnings
 from instruments import seed_instruments
 
 
@@ -74,6 +75,9 @@ def main(argv):
             conn.close()
             return 1
         print(f"Saved: {args.ticker.upper()} ex-date {args.ex_date}, ${float(args.amount)} per share (manual)")
+        mine = [w for w in check_manual_dividends(conn) if w.startswith(f"{args.ticker.upper()} dividend on {args.ex_date}")]
+        if mine:
+            print_warnings(mine)
 
     ticker = args.ticker.strip().upper()
     rows = db.get_dividends(conn, ticker)

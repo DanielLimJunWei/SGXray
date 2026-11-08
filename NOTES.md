@@ -44,4 +44,6 @@ Important things to remember about how SGXray works and the data it uses. Newest
 - SELL checks use all of the user's trades in date order, saved and new together.
 - Only weekends are rejected so far. SGX public holidays (e.g. Chinese New Year) aren't checked yet; the price data can catch those later.
 - A ticker must be in `src/instruments.py` (the starter list) before trades in it can be saved.
+- `src/checks.py` compares saved trades and manual dividends with market data and gives **warnings, not errors**: a trade on a day SGX didn't trade (public holiday), a price more than 10% from that day's close, a manual dividend at a time of year the company doesn't usually pay. They only work once prices are saved, so the order is: import, then `market.py`, then `checks.py`.
+- A real trade before a split or bonus issue can be flagged by the 10% check, because Yahoo's older prices are adjusted. That's expected until corporate actions are handled.
 - `pd.read_csv` does **not** check the data: a word in the price column or a weekend date loads without any error. The CSV importer must validate every row (numbers are numbers, dates are trading days, SELLs don't exceed holdings) and reject bad rows with a clear message.

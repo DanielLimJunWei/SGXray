@@ -238,6 +238,20 @@ def get_latest_price_date(conn, ticker):
     return row["latest"]
 
 
+def get_trading_days(conn):
+    """Every day SGX traded, as far as our saved prices know: any day with a price for any ticker."""
+    rows = conn.execute("SELECT DISTINCT price_date FROM prices ORDER BY price_date").fetchall()
+    return [r["price_date"] for r in rows]
+
+
+def get_close(conn, ticker, day):
+    """The closing price of one ticker on one day, or None if we don't have it."""
+    row = conn.execute(
+        "SELECT close FROM prices WHERE ticker = ? AND price_date = ?", (ticker, day)
+    ).fetchone()
+    return row["close"] if row else None
+
+
 def get_prices(conn, ticker, start=None):
     """Saved closing prices for one ticker, oldest first, optionally from a start date."""
     return conn.execute(
@@ -290,6 +304,13 @@ def set_manual_dividend(conn, ticker, ex_date, amount):
             """,
             (ticker, ex_date, amount),
         )
+
+
+def get_manual_dividends(conn):
+    """Every dividend typed in by hand, for any ticker."""
+    return conn.execute(
+        "SELECT ticker, ex_date, amount FROM dividends WHERE source = 'manual' ORDER BY ticker, ex_date"
+    ).fetchall()
 
 
 def get_dividends(conn, ticker):

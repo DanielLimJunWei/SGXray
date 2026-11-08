@@ -17,6 +17,7 @@ from datetime import date
 import pandas as pd
 
 import db
+from checks import check_trades, print_warnings
 from instruments import seed_instruments
 
 REQUIRED_COLUMNS = ["ticker", "date", "side", "quantity", "price"]
@@ -237,6 +238,7 @@ def main(argv):
     print("Holdings now:")
     for h in db.get_holdings(conn, user_id):
         print(f"  {h['ticker']:<8} {h['shares']:>6} shares")
+    print_warnings(check_trades(conn, user_id))   # only finds things once prices are saved
     conn.close()
     return 0
 
