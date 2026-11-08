@@ -1,4 +1,4 @@
-"""Manual dividend entry, for when Yahoo's dividend data is missing or wrong.
+"""Manual dividend entry and ignoring, for when Yahoo's dividend data is missing or wrong.
 
 Check the amount against the company's own announcement (on the SGX website or the
 company's investor relations page) before entering it. A manual entry always wins:
@@ -6,6 +6,8 @@ later yfinance downloads never overwrite it.
 
     python src/dividends.py list D05.SI
     python src/dividends.py add D05.SI 2024-04-10 0.54
+    python src/dividends.py ignore D05.SI 2024-04-10      (a dividend Yahoo has wrong)
+    python src/dividends.py unignore D05.SI 2024-04-10
 """
 
 import argparse
@@ -61,6 +63,12 @@ def main(argv):
     add.add_argument("ex_date", help="ex-dividend date, YYYY-MM-DD")
     add.add_argument("amount", help="dollars per share, e.g. 0.54")
 
+    for name, text in (("ignore", "mark a wrong dividend so it isn't counted"),
+                       ("unignore", "count an ignored dividend again")):
+        cmd = commands.add_parser(name, help=text)
+        cmd.add_argument("ticker")
+        cmd.add_argument("ex_date")
+
     args = parser.parse_args(argv)
     conn = db.get_connection()
     db.init_db(conn)
@@ -79,11 +87,21 @@ def main(argv):
         if mine:
             print_warnings(mine)
 
+    if args.command in ("ignore", "unignore"):
+        ignore = args.command == "ignore"
+        if not db.set_dividend_ignored(conn, args.ticker.strip().upper(), args.ex_date.strip(), ignore):
+            print(f"No dividend saved for {args.ticker.upper()} on {args.ex_date}. Check with: list")
+            conn.close()
+            return 1
+        print("Ignored: it won't be counted, and later downloads won't bring it back."
+              if ignore else "Counted again.")
+
     ticker = args.ticker.strip().upper()
     rows = db.get_dividends(conn, ticker)
     print(f"Dividends saved for {ticker}: {len(rows)}")
     for r in rows:
-        print(f"  {r['ex_date']}   ${r['amount']:<9g} {r['source']}")
+        note = "   IGNORED" if r["ignored"] else ""
+        print(f"  {r['ex_date']}   ${r['amount']:<9g} {r['source']}{note}")
     conn.close()
     return 0
 

@@ -94,9 +94,25 @@ def get_connection(db_path=None):
 
 
 def init_db(conn):
-    """Creates any missing tables. Safe to run every time the app starts."""
+    """Creates any missing tables and columns. Safe to run every time the app starts."""
     conn.executescript(SCHEMA)
+    _migrate(conn)
     conn.commit()
+
+
+# Columns added after a table was first created. CREATE TABLE IF NOT EXISTS skips a table that
+# already exists, so it can't add new columns to an existing database: these ALTER TABLEs do.
+# Add to the end of this list only; never edit or remove a line once it's been released.
+MIGRATIONS = [
+    ("dividends", "ignored", "ALTER TABLE dividends ADD COLUMN ignored INTEGER NOT NULL DEFAULT 0"),
+]
+
+
+def _migrate(conn):
+    for table, column, sql in MIGRATIONS:
+        existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+        if column not in existing:
+            conn.execute(sql)
 
 
 # ---------- Users ----------
@@ -329,10 +345,23 @@ def set_manual_dividend(conn, ticker, ex_date, amount):
             VALUES (?, ?, ?, 'manual')
             ON CONFLICT (ticker, ex_date) DO UPDATE SET
                 amount = excluded.amount,
-                source = 'manual'
+                source = 'manual',
+                ignored = 0                         -- typing it in means it's real
             """,
             (ticker, ex_date, amount),
         )
+
+
+def set_dividend_ignored(conn, ticker, ex_date, ignored=True):
+    """Marks a dividend as wrong (ignored) or brings it back. It stays in the table, so the
+    next yfinance download sees it's already there and doesn't add it again.
+    Returns False if there's no such dividend."""
+    with conn:
+        cur = conn.execute(
+            "UPDATE dividends SET ignored = ? WHERE ticker = ? AND ex_date = ?",
+            (1 if ignored else 0, ticker, ex_date),
+        )
+    return cur.rowcount == 1
 
 
 def get_manual_dividends(conn):
@@ -342,10 +371,16 @@ def get_manual_dividends(conn):
     ).fetchall()
 
 
-def get_dividends(conn, ticker):
+def get_dividends(conn, ticker, include_ignored=True):
+    """One ticker's dividends, oldest first. Each row has ex_date, amount, source and ignored."""
     return conn.execute(
-        "SELECT ex_date, amount, source FROM dividends WHERE ticker = ? ORDER BY ex_date",
-        (ticker,),
+        """
+        SELECT ex_date, amount, source, ignored
+        FROM dividends
+        WHERE ticker = ? AND (? OR ignored = 0)
+        ORDER BY ex_date
+        """,
+        (ticker, include_ignored),
     ).fetchall()
 
 

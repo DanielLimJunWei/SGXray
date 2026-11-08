@@ -22,6 +22,18 @@ Important things to remember about how SGXray works and the data it uses. Newest
 - Demo portfolio by hand: DBS avg cost $37.96 (7,592 / 200); C38U realised $278 on the 800-unit sale. The tests check these.
 - Fixed with corporate actions: the demo DBS trade is now the real price (34.62), and SGXray shows the real 210 shares, $14,641.20 value, +85.2%.
 
+- **Dividends received** = shares held at the start of each ex-date × amount. Bought on the ex-date = too late. Splits and bonus issues up to that day count. Ignored dividends don't.
+- SGXray counts a dividend from its ex-date; the cash really arrives a few weeks later (the payment date). Singapore dividends and REIT distributions are tax-free for individuals.
+- Total profit = unrealised + realised + dividends. Fees are already inside the costs, so they're not taken off again.
+- A sold-out position is worth $0 even with no saved price; otherwise one missing price made the whole total NaN (a test caught it).
+- Yahoo's dividend list can be odd: check unusual amounts against the company's announcements, then fix with `dividends.py add` or `dividends.py ignore`.
+
+## Database changes (migrations)
+
+- `CREATE TABLE IF NOT EXISTS` won't add a new column to a table that already exists. New columns go in `MIGRATIONS` in `db.py`, which runs `ALTER TABLE ... ADD COLUMN` only if the column is missing.
+- Only ever add to the end of that list. A released migration has already run on someone's database.
+- First one: `dividends.ignored` (0 or 1). Ignored rows stay in the table, so the next download sees them and doesn't add them back.
+
 ## Splits and bonus issues (src/adjust.py)
 
 - **Rule: everything is stored as it really was.** Trades as on the broker statement; prices and dividends as really traded and paid.
@@ -51,7 +63,7 @@ Important things to remember about how SGXray works and the data it uses. Newest
 - Yahoo adjusts old dividends for bonus issues, like prices: DBS's 54-cent dividend (ex-date 2024-04-05) comes back as $0.490909. `market.py` turns it back into the real $0.54 before saving (see Splits and bonus issues).
 - `market.py` fetches the whole dividend list each run (one small request), so Yahoo's corrections get saved. A change only counts when the amount is actually different.
 - Fix a wrong or missing dividend by hand: `python src/dividends.py add D05.SI 2024-04-10 0.54`. Manual entries are marked `manual` and never overwritten by yfinance.
-- Not handled yet: deleting a dividend that Yahoo has wrong (it would come back on the next fetch). It needs an "ignore" flag later.
+- A dividend Yahoo has wrong: `python src/dividends.py ignore D05.SI 2024-04-10`. It stays ignored after later downloads; `unignore` brings it back.
 
 ## Trade data (demo_trades.csv)
 

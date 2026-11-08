@@ -77,7 +77,7 @@ def check_manual_dividends(conn, days_limit=DIVIDEND_DAYS_LIMIT):
 
         yahoo_dates = [
             r["ex_date"] for r in db.get_dividends(conn, ticker)
-            if r["source"] == "yfinance" and r["ex_date"] != ex_date
+            if r["source"] == "yfinance" and not r["ignored"] and r["ex_date"] != ex_date
         ]
         if len(yahoo_dates) < 2:
             continue                                # not enough history to know the pattern
