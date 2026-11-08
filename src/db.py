@@ -268,11 +268,28 @@ def save_dividends(conn, ticker, rows, source="yfinance"):
             ON CONFLICT (ticker, ex_date) DO UPDATE SET
                 amount = excluded.amount,
                 source = excluded.source
-            WHERE dividends.source <> 'manual'
+            WHERE dividends.source <> 'manual'           -- hand-entered amounts always win
+              AND dividends.amount <> excluded.amount    -- only count real changes
             """,
             [(ticker, ex_date, amount, source) for ex_date, amount in rows],
         )
     return conn.total_changes - before
+
+
+def set_manual_dividend(conn, ticker, ex_date, amount):
+    """Saves a dividend typed in by hand. Unlike save_dividends, it always wins: it replaces
+    whatever was there (from yfinance or an earlier manual entry) and marks it 'manual'."""
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO dividends (ticker, ex_date, amount, source)
+            VALUES (?, ?, ?, 'manual')
+            ON CONFLICT (ticker, ex_date) DO UPDATE SET
+                amount = excluded.amount,
+                source = 'manual'
+            """,
+            (ticker, ex_date, amount),
+        )
 
 
 def get_dividends(conn, ticker):

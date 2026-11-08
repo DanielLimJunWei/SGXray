@@ -26,6 +26,10 @@ Important things to remember about how SGXray works and the data it uses. Newest
 
 - Dividend data is **irregular** (different amounts, extra payouts) and Yahoo can have gaps. Keep manual dividend entry and check against the company's own announcements.
 - Dividend dates from yfinance are **ex-dividend dates** in Singapore time (`+08:00`).
+- Old dividends are adjusted for bonus issues, like prices: DBS's 54-cent dividend (ex-date 2024-04-05) shows as **$0.490909** (0.54 ÷ 1.1). That's correct on the same basis as the prices, but it won't match DBS's announcement.
+- `market.py` fetches the whole dividend list each run (one small request), so Yahoo's corrections get saved. A change only counts when the amount is actually different.
+- Fix a wrong or missing dividend by hand: `python src/dividends.py add D05.SI 2024-04-10 0.54`. Manual entries are marked `manual` and never overwritten by yfinance.
+- Not handled yet: deleting a dividend that Yahoo has wrong (it would come back on the next fetch). It needs an "ignore" flag later.
 
 ## Trade data (demo_trades.csv)
 
