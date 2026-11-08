@@ -46,6 +46,26 @@ Important things to remember about how SGXray works and the data it uses. Newest
 - Saved prices never need rewriting, even if a split happens later, because they're stored as real.
 - Changing the price basis meant rebuilding the database (delete it, import, run market.py).
 
+## Audit (8 Nov 2026)
+
+Checked against official sources: DBS bonus issue (1-for-10, ex-date 22 Apr 2024, on SGX), DBS dividends 2024–26 (54c quarterly in 2024; 60c in Apr 2025; 60c + 15c capital return from May 2025; 66c + 15c from Apr 2026), CICT distributions (2.16c advanced Sep 2024, 3.29c Feb 2025, 5.62c + 1.35c on one Aug 2025 ex-date, 4.61c Feb 2026), SGX close (closing auction 5:00–5:06pm, trade-at-close until 5:16pm, so 5:30pm is safe), IRAS (one-tier dividends and S-REIT distributions are tax-free for individuals). Demo totals re-added by hand: cost 13,639, value 22,695.20, dividends 2,183.28.
+
+Fixed in the audit:
+- Two identical fills (same ticker, day, side, quantity, price) in separate files: the second was wrongly skipped as a duplicate. Duplicates are now counted, not just spotted.
+- Spreadsheet-style numbers ("1,000", "$34.62", "S$10") are accepted; digits from other scripts ("١٠٠") are rejected; "D05" suggests "D05.SI".
+- A held stock with no price made totals quietly too low. Totals are now unknown, and the stock is named.
+- Stale prices (5+ days older than the newest) are flagged; "Prices as of" shows the newest date.
+- An impossible sale saved without the importer crashed with a divide-by-zero; it's now a clear error.
+- A dividend on the same ex-date as a bonus issue was paid on the bonus shares too. Bonus shares arrive after the record date, so they don't get it.
+- New check: a saved price that moves more than 30% in a day (not on a split day), a common bad-tick problem in free data.
+
+Known gaps (not bugs, but limits):
+- Yahoo also adjusts for rights issues and preferential offerings without listing them as splits. CICT's 1H 2024 DPU was 5.43c, but Yahoo shows 5.4159c after its Sep 2024 preferential offering. The effect is under 1%; fix it by hand with `dividends.py add`. Older prices for that counter are a little low for the same reason.
+- Mergers, ticker changes, delistings and privatisations aren't handled yet.
+- Scrip dividends (e.g. DBS's scrip scheme): record the new shares as a BUY at the scrip price. The dividend is still counted as income, which is correct, because it paid for those shares.
+- Money is stored as floats, so tiny leftovers like 0.5999999 appear inside calculations. Everything is rounded for display; integer cents or Decimal before launch.
+- Fees should be the broker's total charge: commission, clearing fee, SGX fee and GST.
+
 ## Price data (yfinance)
 
 - yfinance is **unofficial**: it can break or rate-limit. SGXray saves prices in SQLite and only fetches new days.

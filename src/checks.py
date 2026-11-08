@@ -17,6 +17,7 @@ import db
 
 PRICE_GAP_LIMIT = 0.10          # warn if a trade price is more than 10% from that day's close
 DIVIDEND_DAYS_LIMIT = 45        # how far from the usual time of year a dividend can be
+SPIKE_LIMIT = 0.30              # warn if a saved price moves more than 30% in one day
 
 
 def _days_apart(a, b):
@@ -98,6 +99,27 @@ def check_manual_dividends(conn, days_limit=DIVIDEND_DAYS_LIMIT):
     return warnings
 
 
+def check_price_spikes(conn, tickers, jump_limit=SPIKE_LIMIT):
+    """Warnings about saved prices that jump too far in one day.
+
+    Free price feeds sometimes have a bad tick (a price off by 10x, or a missing decimal).
+    A real move this big in one day is rare for SGX blue chips, so it's worth a look.
+    A split or bonus issue on that day explains a jump, so those days are skipped.
+    """
+    warnings = []
+    for ticker in tickers:
+        action_days = {a["ex_date"] for a in db.get_actions(conn, ticker)}
+        prices = db.get_prices(conn, ticker)
+        for before, after in zip(prices, prices[1:]):
+            change = after["close"] / before["close"] - 1
+            if abs(change) > jump_limit and after["price_date"] not in action_days:
+                warnings.append(
+                    f"{ticker} price on {after['price_date']}: {before['close']:g} -> {after['close']:g} "
+                    f"({change:+.0%} in a day). Possibly a bad price from Yahoo; check it."
+                )
+    return warnings
+
+
 def _valid(day):
     """False for dates that don't exist, like 29 Feb moved to a non-leap year."""
     try:
@@ -125,6 +147,7 @@ def main():
     db.init_db(conn)
     user = db.get_user_by_email(conn, DEMO_EMAIL)
     warnings = (check_trades(conn, user["id"]) if user else []) + check_manual_dividends(conn)
+    warnings += check_price_spikes(conn, db.get_traded_tickers(conn))
     print_warnings(warnings)
     conn.close()
     return 0

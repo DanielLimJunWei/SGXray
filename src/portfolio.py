@@ -56,7 +56,11 @@ def _average_cost(trades, actions=()):
             shares += t.quantity
             cost += t.quantity * t.price + t.fees
         else:
-            avg = cost / shares                       # the importer guarantees shares >= quantity
+            if t.quantity > shares:                   # the importer stops this; guard anything else that saves trades
+                raise ValueError(
+                    f"{t.ticker} sells {t.quantity} on {t.trade_date} but only {shares} are held then"
+                )
+            avg = cost / shares
             realised += t.quantity * t.price - t.fees - t.quantity * avg
             cost -= t.quantity * avg
             shares -= t.quantity
@@ -71,7 +75,9 @@ def dividends_received(conn, user_id, as_of=None):
     """Every dividend the user was entitled to: one row per ticker and ex-date.
 
     Shares held = trades BEFORE the ex-date (buying on the ex-date is too late), with any
-    split or bonus issue up to and including that day. Ignored dividends don't count.
+    split or bonus issue BEFORE that day. If a bonus issue has the same ex-date as a dividend,
+    the new shares arrive after the record date, so they don't get that dividend.
+    Ignored dividends don't count.
     The cash usually arrives a few weeks after the ex-date; SGXray counts it from the ex-date.
     Singapore dividends and REIT distributions are tax-free for individuals, so there's no tax to take off.
     """
@@ -89,7 +95,7 @@ def dividends_received(conn, user_id, as_of=None):
             before = group[group["trade_date"] < day]
             if before.empty:
                 continue
-            shares = _average_cost(before, [a for a in actions if a["ex_date"] <= day])["shares"]
+            shares = _average_cost(before, [a for a in actions if a["ex_date"] < day])["shares"]
             if shares > 0:
                 rows.append({"ticker": ticker, "ex_date": day, "shares": shares, "amount": d["amount"]})
 
@@ -129,11 +135,32 @@ def positions(conn, user_id, as_of=None):
     return df[COLUMNS]
 
 
+STALE_DAYS = 5      # a price this many days older than the newest one is flagged as stale
+
+
 def summary(df):
-    """Totals for the whole portfolio, from a positions() table."""
-    cost, value = df["cost"].sum(), df["value"].sum(min_count=1)
+    """Totals for the whole portfolio, from a positions() table.
+
+    If any stock you still hold has no price, the value and profit totals are NaN (unknown)
+    and the stock is listed in 'missing_prices'. Adding up only the stocks that have prices
+    would quietly show a total that's too low.
+    """
+    held = df[df["shares"] > 0]
+    missing = sorted(held.loc[held["price"].isna(), "ticker"])
+    cost = df["cost"].sum()
+    value = float("nan") if missing else df["value"].sum()
     realised, dividends = df["realised"].sum(), df["dividends"].sum()
+
+    dates = pd.to_datetime(held["price_date"].dropna())
+    newest = dates.max() if len(dates) else None
+    stale = sorted(
+        held.loc[pd.to_datetime(held["price_date"]) < newest - pd.Timedelta(days=STALE_DAYS), "ticker"]
+    ) if newest is not None else []
+
     return {
+        "missing_prices": missing,
+        "stale_prices": stale,
+        "prices_as_of": newest.date().isoformat() if newest is not None else None,
         "cost": cost,
         "value": value,
         "unrealised": value - cost,
@@ -174,7 +201,11 @@ def main():
 
     s = summary(df)
     print()
-    print(f"Prices as of {held['price_date'].max()}")
+    print(f"Prices as of {s['prices_as_of']}")
+    if s["missing_prices"]:
+        print(f"  ! No price yet for {', '.join(s['missing_prices'])}: run python src/market.py. Totals can't be worked out until then.")
+    if s["stale_prices"]:
+        print(f"  ! Older prices for {', '.join(s['stale_prices'])} (suspended, or the download failed?)")
     print(f"Total cost      ${_money(s['cost'])}")
     print(f"Value now       ${_money(s['value'])}")
     print(f"Unrealised      ${_money(s['unrealised'])} ({s['unrealised_pct']:+.1%})  - on paper, until you sell")

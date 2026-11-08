@@ -11,6 +11,7 @@ Run it directly to import a file for the demo user:
 import math
 import re
 import sys
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -39,10 +40,19 @@ class ImportResult:
 
 # ---------- Checking one row ----------
 
+def _clean_number(text):
+    """Removes what spreadsheets add to numbers: a leading S$ or $, and thousands commas ('1,000')."""
+    text = text.strip()
+    for prefix in ("S$", "$"):
+        if text.upper().startswith(prefix):
+            text = text[len(prefix):].strip()
+    return text.replace(",", "")
+
+
 def _parse_number(text):
     """Turns text into a float, or None if it isn't a normal number ('abc', 'nan', 'inf')."""
     try:
-        value = float(text)
+        value = float(_clean_number(text))
     except ValueError:
         return None
     return value if math.isfinite(value) else None
@@ -56,7 +66,8 @@ def _check_row(row, row_no, known_tickers, today):
     if not ticker:
         errors.append("ticker is empty")
     elif ticker not in known_tickers:
-        errors.append(f"unknown ticker '{ticker}'")
+        hint = f" (did you mean {ticker}.SI?)" if f"{ticker}.SI" in known_tickers else ""
+        errors.append(f"unknown ticker '{ticker}'{hint}")
 
     date_text = row["date"].strip()
     trade_date = None
@@ -77,8 +88,9 @@ def _check_row(row, row_no, known_tickers, today):
     if side not in ("BUY", "SELL"):
         errors.append(f"side '{row['side'].strip()}' must be BUY or SELL")
 
-    qty_text = row["quantity"].strip()
-    quantity = int(qty_text) if qty_text.isdigit() else None
+    qty_text = _clean_number(row["quantity"])
+    # isascii: isdigit alone also accepts digits from other scripts, like '١٠٠'
+    quantity = int(qty_text) if qty_text.isascii() and qty_text.isdigit() else None
     if quantity is None or quantity == 0:
         errors.append(f"quantity '{qty_text}' must be a whole number above 0")
 
@@ -160,7 +172,8 @@ def import_trades_csv(conn, user_id, source, today=None):
     # dtype=str: read every value as text, so we check it ourselves instead of pandas guessing.
     # keep_default_na=False: an empty cell stays "" instead of becoming NaN.
     try:
-        df = pd.read_csv(source, dtype=str, keep_default_na=False)
+        # utf-8-sig also reads files Excel saves as "CSV UTF-8", which start with an invisible marker (BOM).
+        df = pd.read_csv(source, dtype=str, keep_default_na=False, encoding="utf-8-sig")
     except FileNotFoundError:
         result.errors.append(f"File not found: {source}")
         return result
@@ -198,9 +211,18 @@ def import_trades_csv(conn, user_id, source, today=None):
         return result
 
     # 2. Skip trades that are already saved, so importing the same file twice is harmless.
+    # Count them, don't just check "seen before": a broker often fills one order in identical
+    # pieces (two lots of 100 at the same price on the same day). If 1 is saved and the file has 2,
+    # only 1 is a repeat; the other is a real trade.
     existing = [dict(t) for t in db.get_trades(conn, user_id)]
-    saved_keys = {_trade_key(t) for t in existing}
-    to_save = [t for t in new_trades if _trade_key(t) not in saved_keys]
+    saved_count = Counter(_trade_key(t) for t in existing)
+    to_save = []
+    for t in new_trades:
+        key = _trade_key(t)
+        if saved_count[key] > 0:
+            saved_count[key] -= 1                  # this one matches a saved trade: skip it
+        else:
+            to_save.append(t)
     result.skipped = len(new_trades) - len(to_save)
 
     # 3. Check sells against everything held at that date, old and new trades together.
