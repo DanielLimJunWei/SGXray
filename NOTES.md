@@ -28,6 +28,17 @@ Important things to remember about how SGXray works and the data it uses. Newest
 - A sold-out position is worth $0 even with no saved price; otherwise one missing price made the whole total NaN (a test caught it).
 - Yahoo's dividend list can be odd: check unusual amounts against the company's announcements, then fix with `dividends.py add` or `dividends.py ignore`.
 
+## Performance vs the STI (src/performance.py)
+
+- A simple "profit ÷ cost" % ignores WHEN money went in. SGXray uses the money-weighted return, **XIRR** (same as Excel): the one yearly rate that turns every amount in and out, on its date, into what you have now.
+- XIRR is solved by bisection (keep halving the range that contains the answer). It's slower than Excel's Newton method but can't fail to converge. Tested against Microsoft's own XIRR example (37.34%).
+- The benchmark replays YOUR cash flows into ES3: each buy's dollars buy ES3 that day, each sale's dollars come out, ES3's dividends are paid out, and it pays the same fees you did. Without the fees it got a small free ride: a test (buy only ES3 → must tie exactly) caught it.
+- ES3 units can be fractions in the what-if, so rounding doesn't decide the result.
+- If a sale takes out more than the ES3 version is worth (you did much better than the index), it's flagged as a shortfall.
+- Dividends count from their ex-date, a few weeks before the cash arrives. That's a tiny bias in the yearly rate.
+- Under a year of history, the yearly rate can look extreme (a 10% gain in 2 months ≈ +77% a year), so the output warns.
+- Demo portfolio, up to 2026-11-06: you +32.08% a year vs the STI ETF +25.86% a year.
+
 ## Database changes (migrations)
 
 - `CREATE TABLE IF NOT EXISTS` won't add a new column to a table that already exists. New columns go in `MIGRATIONS` in `db.py`, which runs `ALTER TABLE ... ADD COLUMN` only if the column is missing.
