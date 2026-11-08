@@ -67,6 +67,16 @@ CREATE TABLE IF NOT EXISTS dividends (
     source   TEXT NOT NULL DEFAULT 'yfinance' CHECK (source IN ('yfinance', 'manual')),
     PRIMARY KEY (ticker, ex_date)
 );
+
+-- Splits, bonus issues and consolidations. factor = shares you hold after for each share before:
+-- 1-for-10 bonus = 1.1, 2-for-1 split = 2.0, 10-to-1 consolidation = 0.1. Shared by all users.
+CREATE TABLE IF NOT EXISTS corporate_actions (
+    ticker   TEXT NOT NULL REFERENCES instruments(ticker),
+    ex_date  TEXT NOT NULL,               -- 'YYYY-MM-DD'
+    factor   REAL NOT NULL CHECK (factor > 0 AND factor <> 1),
+    source   TEXT NOT NULL DEFAULT 'yfinance' CHECK (source IN ('yfinance', 'manual')),
+    PRIMARY KEY (ticker, ex_date)
+);
 """
 
 
@@ -167,7 +177,8 @@ def add_trades(conn, user_id, trades):
 
 
 def get_holdings(conn, user_id):
-    """How many shares the user holds now in each ticker: buys minus sells."""
+    """Buys minus sells per ticker, in plain SQL. It doesn't include splits or bonus issues:
+    for real holdings use portfolio.positions()."""
     return conn.execute(
         """
         SELECT ticker,
@@ -335,6 +346,50 @@ def get_dividends(conn, ticker):
     return conn.execute(
         "SELECT ex_date, amount, source FROM dividends WHERE ticker = ? ORDER BY ex_date",
         (ticker,),
+    ).fetchall()
+
+
+# ---------- Corporate actions ----------
+
+def save_actions(conn, ticker, rows):
+    """Saves (ex_date, factor) pairs from yfinance. Returns how many were added or changed.
+
+    A manual entry on the same date is left alone.
+    """
+    before = conn.total_changes
+    with conn:
+        conn.executemany(
+            """
+            INSERT INTO corporate_actions (ticker, ex_date, factor, source)
+            VALUES (?, ?, ?, 'yfinance')
+            ON CONFLICT (ticker, ex_date) DO UPDATE SET factor = excluded.factor
+            WHERE corporate_actions.source <> 'manual'
+              AND corporate_actions.factor <> excluded.factor
+            """,
+            [(ticker, ex_date, factor) for ex_date, factor in rows],
+        )
+    return conn.total_changes - before
+
+
+def add_manual_action(conn, ticker, ex_date, factor):
+    """Saves a split or bonus issue that Yahoo doesn't know about."""
+    with conn:
+        conn.execute(
+            "INSERT INTO corporate_actions (ticker, ex_date, factor, source) VALUES (?, ?, ?, 'manual')",
+            (ticker, ex_date, factor),
+        )
+
+
+def get_actions(conn, ticker, source=None):
+    """One ticker's corporate actions, oldest first, optionally only from one source."""
+    return conn.execute(
+        """
+        SELECT ex_date, factor, source
+        FROM corporate_actions
+        WHERE ticker = ? AND (? IS NULL OR source = ?)
+        ORDER BY ex_date
+        """,
+        (ticker, source, source),
     ).fetchall()
 
 

@@ -20,23 +20,35 @@ Important things to remember about how SGXray works and the data it uses. Newest
 - Selling everything resets the cost to exactly 0, so no rounding leftovers carry into a later buy.
 - No saved price means value shows as blank (NaN), never as 0: a wrong number is worse than no number.
 - Demo portfolio by hand: DBS avg cost $37.96 (7,592 / 200); C38U realised $278 on the 800-unit sale. The tests check these.
-- The DBS cost is on Yahoo's bonus-adjusted basis (31.47 instead of the real 34.60), so its profit looks bigger than DBS's real one would. Corporate actions (Week 2) fix this.
+- Fixed with corporate actions: the demo DBS trade is now the real price (34.62), and SGXray shows the real 210 shares, $14,641.20 value, +85.2%.
+
+## Splits and bonus issues (src/adjust.py)
+
+- **Rule: everything is stored as it really was.** Trades as on the broker statement; prices and dividends as really traded and paid.
+- Yahoo rewrites old prices and dividends after a split or bonus issue. `market.py` downloads the actions first, then multiplies Yahoo's older numbers back: real = Yahoo × the factor of every action after that day. DBS 15 Mar 2024: 31.52 × 1.1 = 34.67; dividend 0.490909 × 1.1 = 0.54.
+- `factor` = shares after per share before: 1-for-10 bonus = 1.1, 2-for-1 split = 2, 10-to-1 consolidation = 0.1. Yahoo calls them all "splits".
+- Holdings change at the start of the ex-date: bought on the ex-date = no bonus; sold on the ex-date = already had it. Fractions of a share are dropped, as SGX does.
+- The total cost doesn't change with a bonus, so the average cost per share drops.
+- Manual actions (ones Yahoo doesn't know) change holdings, but are NOT used to un-adjust Yahoo's prices, because Yahoo never adjusted for them.
+- Rights issues aren't actions: you pay for the new shares. Record them as a BUY at the rights price.
+- Saved prices never need rewriting, even if a split happens later, because they're stored as real.
+- Changing the price basis meant rebuilding the database (delete it, import, run market.py).
 
 ## Price data (yfinance)
 
 - yfinance is **unofficial**: it can break or rate-limit. SGXray saves prices in SQLite and only fetches new days.
 - `src/market.py` only saves a day's close after **5:30pm Singapore time**. Before that, Yahoo's price for today is still moving, and saving it would store a wrong close forever.
 - First download for a ticker starts at its first trade. The STI ETF benchmark starts at the first trade in *anything*, so the comparison covers the whole portfolio.
-- A close on the trade day differs slightly from the trade price (e.g. DBS 2024-03-15: close 31.52, bought at 31.47). That's normal: the trade happened during the day.
+- A close on the trade day differs slightly from the trade price (e.g. DBS 2024-03-15: close 34.67, bought at 34.62). That's normal: the trade happened during the day.
 - Prices come back with tiny rounding errors (`71.709999`). Round when displaying.
 - `auto_adjust=True` (the default) adjusts old prices for **dividends**. Use `auto_adjust=False` for the price actually traded that day.
-- Even with `auto_adjust=False`, yfinance still adjusts for **splits and bonus issues**. Example: DBS's 1-for-10 bonus issue in April 2024 makes March 2024's ~$34.60 show as ~$31.47 (÷ 1.1). Trade prices and price history must use the same basis, or values will be ~10% off.
+- Even with `auto_adjust=False`, yfinance still adjusts for **splits and bonus issues**. Example: DBS's 1-for-10 bonus issue in April 2024 makes March 2024's ~$34.60 show as ~$31.47 (÷ 1.1). SGXray undoes this when saving (see Splits and bonus issues).
 
 ## Dividends
 
 - Dividend data is **irregular** (different amounts, extra payouts) and Yahoo can have gaps. Keep manual dividend entry and check against the company's own announcements.
 - Dividend dates from yfinance are **ex-dividend dates** in Singapore time (`+08:00`).
-- Old dividends are adjusted for bonus issues, like prices: DBS's 54-cent dividend (ex-date 2024-04-05) shows as **$0.490909** (0.54 ÷ 1.1). That's correct on the same basis as the prices, but it won't match DBS's announcement.
+- Yahoo adjusts old dividends for bonus issues, like prices: DBS's 54-cent dividend (ex-date 2024-04-05) comes back as $0.490909. `market.py` turns it back into the real $0.54 before saving (see Splits and bonus issues).
 - `market.py` fetches the whole dividend list each run (one small request), so Yahoo's corrections get saved. A change only counts when the amount is actually different.
 - Fix a wrong or missing dividend by hand: `python src/dividends.py add D05.SI 2024-04-10 0.54`. Manual entries are marked `manual` and never overwritten by yfinance.
 - Not handled yet: deleting a dividend that Yahoo has wrong (it would come back on the next fetch). It needs an "ignore" flag later.
@@ -55,5 +67,5 @@ Important things to remember about how SGXray works and the data it uses. Newest
 - Only weekends are rejected so far. SGX public holidays (e.g. Chinese New Year) aren't checked yet; the price data can catch those later.
 - A ticker must be in `src/instruments.py` (the starter list) before trades in it can be saved.
 - `src/checks.py` compares saved trades and manual dividends with market data and gives **warnings, not errors**: a trade on a day SGX didn't trade (public holiday), a price more than 10% from that day's close, a manual dividend at a time of year the company doesn't usually pay. They only work once prices are saved, so the order is: import, then `market.py`, then `checks.py`.
-- A real trade before a split or bonus issue can be flagged by the 10% check, because Yahoo's older prices are adjusted. That's expected until corporate actions are handled.
+- Real trades before a split or bonus issue pass the 10% check, because saved prices are real too.
 - `pd.read_csv` does **not** check the data: a word in the price column or a weekend date loads without any error. The CSV importer must validate every row (numbers are numbers, dates are trading days, SELLs don't exceed holdings) and reject bad rows with a clear message.

@@ -17,6 +17,7 @@ from datetime import date
 import pandas as pd
 
 import db
+from adjust import shares_after
 from checks import check_trades, print_warnings
 from instruments import seed_instruments
 
@@ -106,18 +107,23 @@ def _check_row(row, row_no, known_tickers, today):
 
 # ---------- Checking the file as a whole ----------
 
-def _check_sells(existing, new_trades):
+def _check_sells(existing, new_trades, actions=()):
     """Goes through every trade in date order and reports any SELL of more shares than held.
 
-    Saved trades come first on the same day; new trades keep their order in the file.
+    Splits and bonus issues (actions) change holdings on their ex-date, before that day's trades.
+    Saved trades come next on the same day; new trades keep their order in the file.
     """
-    events = [(t["trade_date"], 0, t, False) for t in existing]
+    events = [(a["ex_date"], -1, a, False) for a in actions]
+    events += [(t["trade_date"], 0, t, False) for t in existing]
     events += [(t["trade_date"], 1, t, True) for t in new_trades]
     events.sort(key=lambda e: (e[0], e[1]))    # sort is stable, so file order is kept
 
     held = {}
     errors = []
-    for trade_date, _, t, is_new in events:
+    for trade_date, kind, t, is_new in events:
+        if kind == -1:
+            held[t["ticker"]] = shares_after(held.get(t["ticker"], 0), t["factor"])
+            continue
         ticker, qty = t["ticker"], t["quantity"]
         if t["side"] == "BUY":
             held[ticker] = held.get(ticker, 0) + qty
@@ -198,7 +204,9 @@ def import_trades_csv(conn, user_id, source, today=None):
     result.skipped = len(new_trades) - len(to_save)
 
     # 3. Check sells against everything held at that date, old and new trades together.
-    result.errors.extend(_check_sells(existing, to_save))
+    tickers = {t["ticker"] for t in existing + to_save}
+    actions = [dict(a, ticker=tk) for tk in sorted(tickers) for a in db.get_actions(conn, tk)]
+    result.errors.extend(_check_sells(existing, to_save, actions))
     if result.errors:
         return result
 
@@ -235,9 +243,12 @@ def main(argv):
         return 1
 
     print(f"Imported {result.imported} trades ({result.skipped} already saved, skipped).")
-    print("Holdings now:")
-    for h in db.get_holdings(conn, user_id):
-        print(f"  {h['ticker']:<8} {h['shares']:>6} shares")
+    from portfolio import positions     # here, not at the top: portfolio imports this file too
+
+    print("Holdings now (splits and bonus issues are added once market.py has fetched them):")
+    for h in positions(conn, user_id).itertuples():
+        if h.shares > 0:
+            print(f"  {h.ticker:<8} {h.shares:>6} shares")
     print_warnings(check_trades(conn, user_id))   # only finds things once prices are saved
     conn.close()
     return 0

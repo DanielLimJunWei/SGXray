@@ -15,6 +15,7 @@ import sys
 import pandas as pd
 
 import db
+from adjust import shares_after
 
 COLUMNS = [
     "ticker", "shares", "avg_cost", "cost", "price_date", "price", "value",
@@ -32,14 +33,21 @@ def trades_frame(conn, user_id, as_of=None):
     return df
 
 
-def _average_cost(trades):
+def _average_cost(trades, actions=()):
     """Walks one ticker's trades in order and returns its totals.
 
     This has to be a loop, not one pandas calculation: each SELL depends on the average cost
     at that moment, which depends on every trade before it.
+
+    A split or bonus issue changes the number of shares but not the total cost, so the
+    average cost per share drops. It counts from the start of its ex-date: shares bought on
+    the ex-date don't get it, shares sold on the ex-date already did.
     """
     shares, cost, realised, fees = 0, 0.0, 0.0, 0.0
+    pending = list(actions)                          # oldest first
     for t in trades.itertuples():
+        while pending and pending[0]["ex_date"] <= t.trade_date:
+            shares = shares_after(shares, pending.pop(0)["factor"])
         fees += t.fees
         if t.side == "BUY":
             shares += t.quantity
@@ -51,6 +59,8 @@ def _average_cost(trades):
             shares -= t.quantity
             if shares == 0:
                 cost = 0.0                            # sold out: start fresh, no rounding leftovers
+    for action in pending:                            # actions after the last trade
+        shares = shares_after(shares, action["factor"])
     return {"shares": shares, "cost": cost, "realised": realised, "fees": fees}
 
 
@@ -66,7 +76,8 @@ def positions(conn, user_id, as_of=None):
 
     rows = []
     for ticker, group in trades.groupby("ticker", sort=True):
-        row = {"ticker": ticker, **_average_cost(group)}
+        actions = [a for a in db.get_actions(conn, ticker) if not as_of or a["ex_date"] <= as_of]
+        row = {"ticker": ticker, **_average_cost(group, actions)}
         latest = db.get_latest_close(conn, ticker, as_of)
         row["price_date"], row["price"] = latest if latest else (None, float("nan"))
         rows.append(row)
@@ -103,6 +114,7 @@ def main():
     from importer import DEMO_EMAIL
 
     conn = db.get_connection()
+    db.init_db(conn)
     user = db.get_user_by_email(conn, DEMO_EMAIL)
     if not user:
         print("No demo portfolio yet. Run: python src/importer.py data/demo_trades.csv")

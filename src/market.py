@@ -16,6 +16,7 @@ from datetime import date, datetime, time as clock_time, timedelta, timezone
 import yfinance as yf
 
 import db
+from adjust import price_factor, yahoo_actions
 from instruments import seed_instruments
 
 SGT = timezone(timedelta(hours=8))      # Singapore time. No daylight saving, so a fixed offset is exact.
@@ -69,8 +70,8 @@ def _next_weekday(day):
 def download_closes(ticker, start, end):
     """Downloads daily closes from Yahoo for start..end (both included).
 
-    Returns a list of ('YYYY-MM-DD', close) pairs. auto_adjust=False gives the price actually
-    traded that day (only splits and bonus issues are still adjusted; see NOTES.md).
+    Returns a list of ('YYYY-MM-DD', close) pairs. auto_adjust=False leaves out the dividend
+    adjustment, but Yahoo still adjusts for splits and bonus issues; update_prices undoes that.
     """
     df = yf.Ticker(ticker).history(
         start=start.isoformat(),
@@ -110,6 +111,9 @@ def update_prices(conn, tickers, now=None, download=download_closes, pause=PAUSE
                 rows = download(ticker, start, end)
                 # Keep only days in the range we asked for. Yahoo sometimes adds today's live price.
                 rows = [(d, c) for d, c in rows if start.isoformat() <= d <= end.isoformat()]
+                # Undo Yahoo's split/bonus adjustment, so we store the price really traded.
+                actions = yahoo_actions(conn, ticker)
+                rows = [(d, round(c * price_factor(actions, d), 4)) for d, c in rows]
                 update.added = db.save_prices(conn, ticker, rows)
                 if not rows and latest is None:
                     update.error = "no price data found. Is the ticker right?"
@@ -134,7 +138,7 @@ class DividendUpdate:
 def download_dividends(ticker):
     """Every dividend Yahoo has for a ticker, as ('YYYY-MM-DD' ex-date, amount per share) pairs.
 
-    Like prices, old amounts are adjusted for splits and bonus issues (see NOTES.md).
+    Like prices, old amounts are adjusted for splits and bonus issues; update_dividends undoes that.
     """
     series = yf.Ticker(ticker).dividends
     return [(day.strftime("%Y-%m-%d"), round(float(amount), 6)) for day, amount in series.items() if amount > 0]
@@ -156,11 +160,48 @@ def update_dividends(conn, tickers, now=None, download=download_dividends, pause
         if i and pause:
             time.sleep(pause)
         try:
-            rows = [(d, a) for d, a in download(ticker) if start <= d <= today]
+            actions = yahoo_actions(conn, ticker)
+            rows = [
+                (d, round(a * price_factor(actions, d), 6))       # the amount really paid per share
+                for d, a in download(ticker)
+                if start <= d <= today
+            ]
             update.saved = db.save_dividends(conn, ticker, rows)
         except Exception as e:
             update.error = f"download failed ({type(e).__name__}: {e})"
         update.total = len(db.get_dividends(conn, ticker))
+        results.append(update)
+    return results
+
+
+# ---------- Corporate actions ----------
+
+@dataclass
+class ActionUpdate:
+    ticker: str
+    saved: int = 0
+    error: str = None
+
+
+def download_actions(ticker):
+    """Every split or bonus issue Yahoo knows for a ticker, as ('YYYY-MM-DD' ex-date, factor) pairs.
+    Yahoo calls them all "splits": DBS's 1-for-10 bonus issue shows as a 1.1 split."""
+    series = yf.Ticker(ticker).splits
+    return [(day.strftime("%Y-%m-%d"), float(f)) for day, f in series.items() if f > 0 and f != 1]
+
+
+def update_actions(conn, tickers, download=download_actions, pause=PAUSE_SECONDS):
+    """Saves every ticker's splits and bonus issues. Runs BEFORE prices and dividends,
+    because those are un-adjusted with these factors as they're saved."""
+    results = []
+    for i, ticker in enumerate(tickers):
+        update = ActionUpdate(ticker)
+        if i and pause:
+            time.sleep(pause)
+        try:
+            update.saved = db.save_actions(conn, ticker, download(ticker))
+        except Exception as e:
+            update.error = f"download failed ({type(e).__name__}: {e})"
         results.append(update)
     return results
 
@@ -173,8 +214,17 @@ def main():
     seed_instruments(conn)
 
     tickers = sorted(set(db.get_traded_tickers(conn)) | {BENCHMARK})
-    print(f"Updating prices up to {last_complete_day()} for {', '.join(tickers)}")
 
+    print("Updating splits and bonus issues")
+    act_results = update_actions(conn, tickers)
+    for r in act_results:
+        if r.error:
+            print(f"  {r.ticker:<8} ERROR: {r.error}")
+        else:
+            total = len(db.get_actions(conn, r.ticker))
+            print(f"  {r.ticker:<8} {r.saved:>4} new   {total} saved in total")
+
+    print(f"Updating prices up to {last_complete_day()} for {', '.join(tickers)}")
     results = update_prices(conn, tickers)
     for r in results:
         if r.error:
@@ -194,7 +244,7 @@ def main():
             print(f"  {r.ticker:<8} {r.saved:>4} new or corrected   {r.total} saved in total")
 
     conn.close()
-    return 1 if any(r.error for r in results + div_results) else 0
+    return 1 if any(r.error for r in act_results + results + div_results) else 0
 
 
 if __name__ == "__main__":
