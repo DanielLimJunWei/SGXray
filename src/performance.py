@@ -15,6 +15,7 @@ XIRR, so the only difference is what you picked.
     python src/performance.py
 """
 
+import math
 import sys
 from dataclasses import dataclass
 from datetime import date
@@ -26,14 +27,25 @@ from market import BENCHMARK
 from portfolio import dividends_received, positions, summary, trades_frame
 
 DAYS_PER_YEAR = 365.0      # Excel's XIRR uses 365-day years too
+MIN_DAYS = 30              # under this much history, no yearly rate is shown
+STALE_DAYS = 5             # an STI ETF price this much older than your end date is flagged
 
 
 # ---------- XIRR ----------
 
 def _npv(rate, flows):
-    """Net present value: what all the flows are worth on the first date, at a yearly rate."""
+    """Net present value: what all the flows are worth on the first date, at a yearly rate.
+
+    Written as exp(-years x log(1 + rate)) rather than amount / (1 + rate) ** years: same maths,
+    but the power version underflows to 0 for long spans at very low rates and crashed with a
+    divide-by-zero (found in the second audit). The exponent is capped so it can't overflow.
+    """
     start = flows[0][0]
-    return sum(amount / (1 + rate) ** ((day - start).days / DAYS_PER_YEAR) for day, amount in flows)
+    log_growth = math.log1p(rate)
+    return sum(
+        amount * math.exp(max(-700.0, min(700.0, -((day - start).days / DAYS_PER_YEAR) * log_growth)))
+        for day, amount in flows
+    )
 
 
 def xirr(flows, low=-0.9999, high=100.0, tolerance=1e-10):
@@ -42,8 +54,11 @@ def xirr(flows, low=-0.9999, high=100.0, tolerance=1e-10):
 
     Solved by BISECTION: NPV goes down as the rate goes up, so we keep halving the range that
     contains zero. Slower than Excel's method (Newton's) but it can't shoot off and fail.
-    Returns NaN if there's no answer (e.g. money only ever went in, or only came out).
+    Returns NaN if there's no answer (e.g. money only ever went in, or only came out), and
+    -1.0 (-100%) if money went in and nothing at all came back.
     """
+    if flows and any(a < 0 for _, a in flows) and all(a <= 0 for _, a in flows) and any(a == 0 for _, a in flows):
+        return -1.0                             # everything lost: the end value is exactly 0
     flows = sorted((d, a) for d, a in flows if a != 0)
     if not flows or all(a > 0 for _, a in flows) or all(a < 0 for _, a in flows):
         return float("nan")
@@ -66,7 +81,27 @@ def xirr(flows, low=-0.9999, high=100.0, tolerance=1e-10):
 
 # ---------- Your cash flows ----------
 
-def portfolio_flows(conn, user_id, as_of=None, only=None):
+@dataclass
+class _Context:
+    """Everything the calculations need, worked out once. Before the second audit, the
+    per-stock comparison recalculated all of this for every stock (slow for big portfolios)."""
+    trades: pd.DataFrame
+    positions: pd.DataFrame
+    dividends: pd.DataFrame
+    end: date
+
+
+def _context(conn, user_id, as_of=None):
+    trades = trades_frame(conn, user_id, as_of)
+    if trades.empty:
+        return None
+    pos = positions(conn, user_id, as_of)
+    newest = summary(pos)["prices_as_of"]
+    end = date.fromisoformat(as_of or newest or trades["trade_date"].max())
+    return _Context(trades, pos, dividends_received(conn, user_id, as_of), end)
+
+
+def portfolio_flows(conn, user_id, as_of=None, only=None, ctx=None):
     """Your money in and out as (date, amount) pairs, plus your holdings' value at the end.
     With only='D05.SI', just that one stock's money.
 
@@ -74,12 +109,14 @@ def portfolio_flows(conn, user_id, as_of=None, only=None):
     ex-date (the cash really arrives a few weeks later; close enough for a yearly rate).
     Returns (flows, end_date, end_value); end_value is NaN if a price is missing.
     """
-    trades = trades_frame(conn, user_id, as_of)
-    if trades.empty:
+    ctx = ctx or _context(conn, user_id, as_of)
+    if ctx is None:
         return [], None, 0.0
-    end = _end_date(conn, user_id, as_of, trades)
+    trades, pos, paid = ctx.trades, ctx.positions, ctx.dividends
     if only:
         trades = trades[trades["ticker"] == only]
+        pos = pos[pos["ticker"] == only]
+        paid = paid[paid["ticker"] == only]
     flows = []
     for t in trades.itertuples():
         day = date.fromisoformat(t.trade_date)
@@ -87,22 +124,9 @@ def portfolio_flows(conn, user_id, as_of=None, only=None):
             flows.append((day, -(t.quantity * t.price + t.fees)))
         else:
             flows.append((day, t.quantity * t.price - t.fees))
-    for d in dividends_received(conn, user_id, as_of).itertuples():
-        if not only or d.ticker == only:
-            flows.append((date.fromisoformat(d.ex_date), d.total))
-
-    pos = positions(conn, user_id, as_of)
-    if only:
-        pos = pos[pos["ticker"] == only]
-    return flows, end, summary(pos)["value"]
-
-
-def _end_date(conn, user_id, as_of, trades):
-    """The valuation date: as_of, else the newest price date, else the last trade."""
-    if as_of:
-        return date.fromisoformat(as_of)
-    newest = summary(positions(conn, user_id))["prices_as_of"]
-    return date.fromisoformat(newest or trades["trade_date"].max())
+    for d in paid.itertuples():
+        flows.append((date.fromisoformat(d.ex_date), d.total))
+    return flows, ctx.end, summary(pos)["value"]
 
 
 # ---------- The same money in the STI ETF ----------
@@ -116,20 +140,30 @@ class BenchmarkResult:
     shortfall: bool = False  # True if a sale took out more than the ES3 holding was worth
     units_history: list = None   # (date, units held after that day's events), for charts
     dividend_history: list = None  # (date, ES3 dividend cash paid), for charts
+    price_date: str = None   # the date of the ES3 price used for the end value
+    stale: bool = False      # True if that price is more than STALE_DAYS older than the end date
 
 
-def benchmark(conn, user_id, as_of=None, ticker=BENCHMARK, only=None):
+def benchmark(conn, user_id, as_of=None, ticker=BENCHMARK, only=None, end=None, trades=None):
     """Replays your buys and sells, in dollars, into the benchmark ETF.
     With only='D05.SI', just the dollars that went into and out of that one stock.
+
+    It's valued on `end`, the same date as your portfolio, so both sides cover exactly the
+    same period. (Before the second audit it used ES3's own newest price date; if ES3's
+    prices stopped updating, the two sides covered different periods.)
 
     Units can be fractions here: it's a what-if, and whole lots would make the comparison
     depend on rounding rather than on what you picked.
     """
-    trades = trades_frame(conn, user_id, as_of)
+    if trades is None:
+        trades = trades_frame(conn, user_id, as_of)
     if only and not trades.empty:
         trades = trades[trades["ticker"] == only]
     if trades.empty:
         return BenchmarkResult([], 0.0, 0.0, 0.0)
+    if end is None:
+        end = date.fromisoformat(as_of or _close_on(conn, ticker, None)[0])
+    last_day = end.isoformat()
 
     # Every dated event. On the same day: the dividend first (bonus shares don't get a
     # dividend with the same ex-date), then the split or bonus, then the trades in their own order.
@@ -141,7 +175,7 @@ def benchmark(conn, user_id, as_of=None, ticker=BENCHMARK, only=None):
     for t in trades.itertuples():
         events.append((t.trade_date, 2, t.side, (t.quantity * t.price, t.fees)))
     first = trades["trade_date"].min()
-    events = [e for e in events if e[0] >= first and (not as_of or e[0] <= as_of)]
+    events = [e for e in events if first <= e[0] <= last_day]
     events.sort(key=lambda e: (e[0], e[1]))     # by date and kind only; stable, so trade order is kept
 
     units, paid, flows, shortfall = 0.0, 0.0, [], False
@@ -171,37 +205,57 @@ def benchmark(conn, user_id, as_of=None, ticker=BENCHMARK, only=None):
                 flows.append((when, wanted * price - fees))
         units_history.append((when, units))
 
-    end_price = _price_on(conn, ticker, as_of)
+    price_date, end_price = _close_on(conn, ticker, last_day)
     value = units * end_price
-    end_day = date.fromisoformat(as_of) if as_of else date.fromisoformat(db.get_latest_close(conn, ticker)[0])
-    flows.append((end_day, value))
-    return BenchmarkResult(flows, units, value, paid, shortfall, units_history, dividend_history)
+    flows.append((end, value))
+    stale = (end - date.fromisoformat(price_date)).days > STALE_DAYS
+    return BenchmarkResult(flows, units, value, paid, shortfall, units_history, dividend_history, price_date, stale)
 
 
-def _price_on(conn, ticker, day):
-    """The benchmark's close on a day, or the last close before it (for a holiday or missing day)."""
+def _close_on(conn, ticker, day):
+    """(date, close) of the benchmark on a day, or the last close before it (holiday or missing day)."""
     latest = db.get_latest_close(conn, ticker, day)
     if latest is None:
         raise ValueError(f"No {ticker} price on or before {day}. Run python src/market.py first.")
-    return latest[1]
+    return latest
+
+
+def _price_on(conn, ticker, day):
+    return _close_on(conn, ticker, day)[1]
 
 
 # ---------- Both together ----------
 
 def compare(conn, user_id, as_of=None):
-    """Your XIRR and the benchmark's XIRR for the same cash flows."""
-    flows, end, end_value = portfolio_flows(conn, user_id, as_of)
-    mine = xirr(flows + [(end, end_value)]) if flows and end_value == end_value else float("nan")
-    bench = benchmark(conn, user_id, as_of)
+    """Your XIRR and the benchmark's XIRR for the same cash flows, over the same dates.
+
+    Under MIN_DAYS of history there's no yearly rate (too_short): turning a week into a
+    "per year" figure is meaningless (+10% in a week would show as +14,000% a year).
+    """
+    ctx = _context(conn, user_id, as_of)
+    if ctx is None:
+        return {"you": float("nan"), "benchmark": float("nan"), "your_value": 0.0, "benchmark_value": 0.0,
+                "benchmark_dividends": 0.0, "shortfall": False, "end": None, "days": 0,
+                "too_short": True, "stale_benchmark": False, "your_profit": 0.0, "benchmark_profit": 0.0}
+    flows, end, end_value = portfolio_flows(conn, user_id, as_of, ctx=ctx)
+    bench = benchmark(conn, user_id, as_of, end=end, trades=ctx.trades)
+    days = (end - min(d for d, _ in flows)).days
+    too_short = days < MIN_DAYS
+    known = end_value == end_value
+    mine = xirr(flows + [(end, end_value)]) if known and not too_short else float("nan")
     return {
         "you": mine,
-        "benchmark": xirr(bench.flows),
+        "benchmark": float("nan") if too_short else xirr(bench.flows),
         "your_value": end_value,
         "benchmark_value": bench.value,
         "benchmark_dividends": bench.dividends,
+        "your_profit": sum(a for _, a in flows) + end_value,
+        "benchmark_profit": sum(a for _, a in bench.flows),
         "shortfall": bench.shortfall,
         "end": end,
-        "days": (end - min(d for d, _ in flows)).days if flows else 0,
+        "days": days,
+        "too_short": too_short,
+        "stale_benchmark": bench.stale,
     }
 
 
@@ -215,20 +269,21 @@ def per_stock(conn, user_id, as_of=None):
       holding that's slightly better matters more than a tiny one that doubled.
     Profit = everything that came out + what's still held - everything that went in.
     """
-    trades = trades_frame(conn, user_id, as_of)
+    ctx = _context(conn, user_id, as_of)
     rows = []
-    for ticker in sorted(trades["ticker"].unique()) if not trades.empty else []:
-        flows, end, value = portfolio_flows(conn, user_id, as_of, only=ticker)
+    for ticker in sorted(ctx.trades["ticker"].unique()) if ctx else []:
+        flows, end, value = portfolio_flows(conn, user_id, as_of, only=ticker, ctx=ctx)
         mine = flows + [(end, value)]
-        bench = benchmark(conn, user_id, as_of, only=ticker)
+        bench = benchmark(conn, user_id, as_of, only=ticker, end=end, trades=ctx.trades)
         your_profit = sum(a for _, a in mine)
         sti_profit = sum(a for _, a in bench.flows)
         put_in = -sum(a for _, a in mine if a < 0)
         difference = your_profit - sti_profit
+        too_short = (end - min(d for d, _ in flows)).days < MIN_DAYS
         rows.append({
             "ticker": ticker,
-            "you": xirr(mine) if value == value else float("nan"),
-            "sti": xirr(bench.flows),
+            "you": xirr(mine) if value == value and not too_short else float("nan"),
+            "sti": float("nan") if too_short else xirr(bench.flows),
             "your_profit": your_profit,
             "sti_profit": sti_profit,
             "difference": difference,
@@ -264,13 +319,30 @@ def main():
     stocks = per_stock(conn, user["id"])
     conn.close()
 
+    if c["end"] is None:
+        print("No trades yet.")
+        return 0
     print(f"Up to {c['end']}")
+    if c["too_short"]:
+        print(f"  Only {c['days']} days of history: too short for a yearly rate.")
+        print(f"  Profit so far: you ${c['your_profit']:,.2f}, same money in the STI ETF ${c['benchmark_profit']:,.2f}")
+        return 0
     if c["days"] < 365:
         print(f"  ! Only {c['days']} days of history: a yearly rate over a short time can look extreme.")
-    print(f"  Your portfolio            {c['you']:+.2%} a year")
-    print(f"  Same money in the STI ETF {c['benchmark']:+.2%} a year")
+    if c["stale_benchmark"]:
+        print("  ! The STI ETF's newest price is older than yours: run python src/market.py.")
+    print("  Money-weighted (XIRR): what you earned, including when you added money")
+    print(f"    Your portfolio            {c['you']:+.2%} a year")
+    print(f"    Same money in the STI ETF {c['benchmark']:+.2%} a year")
     diff = c["you"] - c["benchmark"]
-    print(f"  You {'beat' if diff > 0 else 'trailed'} the market by {abs(diff):.2%} a year")
+    print(f"    You {'beat' if diff > 0 else 'trailed'} the market by {abs(diff):.2%} a year")
+    from history import time_weighted         # here: history imports this file
+    conn = db.get_connection()
+    t = time_weighted(conn, user["id"])
+    conn.close()
+    print("  Time-weighted (TWR): how your picks did, ignoring when you added money")
+    print(f"    Your portfolio            {t['you_year']:+.2%} a year ({t['you_total']:+.2%} in total)")
+    print(f"    STI ETF                   {t['sti_year']:+.2%} a year ({t['sti_total']:+.2%} in total)")
     print()
     print(f"  Your holdings now worth          ${c['your_value']:,.2f}")
     print(f"  The STI ETF version now worth    ${c['benchmark_value']:,.2f}"

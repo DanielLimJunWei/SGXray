@@ -88,6 +88,9 @@ Important things to remember about how SGXray works and the data it uses. Newest
 | One month's move tells you little | monthly | profit swung by over 5% of the value |
 | Behind the STI: an ETF may suit you | monthly, vs-sti | you're behind |
 | Short history makes yearly rates extreme (+10% in 2 months ≈ +77% a year) | vs-sti | under a year of history |
+| Weeks of results say almost nothing | vs-sti | under 30 days (no yearly rate at all) |
+| STI comparison is rough after a big withdrawal | vs-sti | shortfall |
+| STI price out of date | vs-sti | stale benchmark |
 | Skill or luck? One stock did the work | vs-sti | one stock gives over 75% of the lead |
 | Past results don't predict the future | vs-sti | always |
 | An ETF gives you the average | vs-sti | when you're ahead |
@@ -135,6 +138,22 @@ Known gaps (not bugs, but limits):
 - Scrip dividends (e.g. DBS's scrip scheme): record the new shares as a BUY at the scrip price. The dividend is still counted as income, which is correct, because it paid for those shares.
 - Money is stored as floats, so tiny leftovers like 0.5999999 appear inside calculations. Everything is rounded for display; integer cents or Decimal before launch.
 - Fees should be the broker's total charge: commission, clearing fee, SGX fee and GST.
+
+## Audit 2 (9 Nov 2026)
+
+Checked against sources: ES3 distributions 9.1c (Feb 2025), 8.9c (Aug 2025), 8.5c (Feb 2026); CICT 2026 advanced distribution 3.98c (Apr) + 2.04c (Aug); ES3's 2025 price change +22.6% vs the official STI +22.7% (total return 28.6%). The STI comparison is a recognised method: the Long-Nickels Public Market Equivalent (PME), used to benchmark funds; its known weakness (the index side going negative) is the "shortfall" flag. XIRR checked on 300 random cash-flow sets: leftover NPV under 0.00001 every time.
+
+Fixed in audit 2:
+- **Split inside the last 12 months doubled the yield and forecast.** Dividends paid per OLD share are now restated per CURRENT share.
+- **The STI side was valued on ES3's own newest date.** If ES3's prices stopped, the two sides covered different periods (+10% vs +21%). Both now use your end date, with a stale flag.
+- **XIRR crashed on very long spans** (100 years: divide-by-zero from underflow). It now uses exp/log with a capped exponent. Losing everything gives -100% instead of "unknown".
+- **Under 30 days, no yearly rate** (+10% in a week would show as +14,000% a year). Dollar profits are still shown.
+- **Portfolio yield with a missing price** was quietly too high; it's now unknown.
+- **Per-stock comparison was slow** (1.3s for 10 stocks / 400 trades; it recalculated everything per stock). Now 0.16s.
+- **Added time-weighted return (TWR)** next to XIRR. Research: indexes and funds report TWR; good trackers show both. TWR = how the picks did ignoring timing; XIRR = what YOU earned, timing included. Demo: TWR +34.17% vs the STI +25.19% a year; XIRR +32.08% vs +25.86%.
+- My first TWR counted buys at the start of the day, priced at the previous close. A test buying at the bottom of a dip caught it (0% showed as +50%). Buys now count at the end of the day, except the very first.
+
+Known gaps (unchanged): rights and preferential-offering adjustments in Yahoo data, mergers and ticker changes, floats for money, dividends counted on the ex-date rather than the payment date, ES3 Aug 2026 (9.3c in Yahoo, about 9c in one unofficial source; not confirmed officially).
 
 ## Price data (yfinance)
 

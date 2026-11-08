@@ -133,6 +133,61 @@ def value_history(conn, user_id, as_of=None):
     return out[COLUMNS]
 
 
+# ---------- Time-weighted return ----------
+
+MIN_DAYS = 30       # under this much history, no yearly rate is shown
+
+
+def _daily_growth(value, dividends_cum, buys, sells):
+    """Each day's growth factor, ignoring money you added or took out.
+
+    Normal day: (close value - money added today + money taken out today + dividends today)
+    divided by yesterday's close value. So money added or taken out on a day doesn't count as growth.
+    Starting from nothing (yesterday's value was 0): close value divided by the money put in
+    that day, so the first day's fees and price move still count.
+    A day you held nothing and bought nothing is skipped (growth 1).
+
+    (The first version counted buys at the start of the day, valued at the PREVIOUS close.
+    With gaps in prices, a purchase at the bottom looked like one at the old high. A test
+    that buys at the bottom of a dip caught it.)
+    """
+    divs_today = dividends_cum.diff().fillna(dividends_cum.iloc[0])
+    before = value.shift(1).fillna(0.0)
+    held_before = (value - buys + sells + divs_today) / before
+    from_nothing = (value + sells + divs_today) / buys
+    growth = held_before.where(before > 0, from_nothing.where(buys > 0, 1.0))
+    return growth.fillna(1.0)
+
+
+def time_weighted(conn, user_id, as_of=None, history=None):
+    """Time-weighted return (TWR): how the investments themselves did, as if you'd put in one
+    dollar at the start and never added or taken out money.
+
+    XIRR (money-weighted) tells you what YOU earned, timing included. TWR takes your timing
+    out: it chains each day's growth together. Fund managers and indexes report TWR, so it's
+    the usual way to compare a portfolio with an index. SGXray shows both.
+    """
+    h = history if history is not None else value_history(conn, user_id, as_of)
+    empty = {"you_total": float("nan"), "sti_total": float("nan"), "you_year": float("nan"),
+             "sti_year": float("nan"), "days": 0}
+    if h.empty or h["value"].isna().any() or h["sti_value"].isna().any():
+        return empty
+
+    trades = trades_frame(conn, user_id, as_of)
+    when = pd.to_datetime(trades["trade_date"])
+    gross = trades["quantity"] * trades["price"]
+    buys = (gross + trades["fees"]).where(trades["side"] == "BUY", 0.0).groupby(when).sum()
+    sells = (gross - trades["fees"]).where(trades["side"] == "SELL", 0.0).groupby(when).sum()
+    buys = buys.reindex(h.index, fill_value=0.0)
+    sells = sells.reindex(h.index, fill_value=0.0)
+
+    you = _daily_growth(h["value"], h["dividends"], buys, sells).prod() - 1
+    sti = _daily_growth(h["sti_value"], h["sti_dividends"], buys, sells).prod() - 1
+    days = (h.index[-1] - h.index[0]).days
+    yearly = (lambda total: (1 + total) ** (365.0 / days) - 1) if days >= MIN_DAYS else (lambda total: float("nan"))
+    return {"you_total": you, "sti_total": sti, "you_year": yearly(you), "sti_year": yearly(sti), "days": days}
+
+
 # ---------- Run directly ----------
 
 def main():

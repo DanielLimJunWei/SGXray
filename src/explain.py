@@ -305,9 +305,21 @@ def explain_performance(conn, user_id, as_of=None):
     """Explains 'you vs the STI ETF', for the whole portfolio and per stock."""
     from performance import compare, per_stock
 
+    from history import time_weighted
+
     c = compare(conn, user_id, as_of)
+    if c["end"] is None:
+        return Explanation(["You haven't made any trades yet."])
+    if c["too_short"]:
+        return Explanation(
+            [f"You have only {c['days']} days of history, which is too short for a yearly rate. "
+             f"So far you're {up_down(c['your_profit'])}; the same money in the STI ETF would be "
+             f"{up_down(c['benchmark_profit'])}."],
+            ["A few days or weeks of results say almost nothing about how good your picks are. "
+             "Check back after a few months."])
     if c["you"] != c["you"]:
-        return Explanation(["There isn't enough history to work out a yearly return yet."])
+        return Explanation(["A stock you hold has no saved price yet, so your return can't be worked out. "
+                            "Run the price update first."])
     gap = c["you"] - c["benchmark"]
     out = [
         f"Your portfolio grew at {c['you']:+.2%} a year. That's the money-weighted return (XIRR): it counts "
@@ -318,6 +330,14 @@ def explain_performance(conn, user_id, as_of=None):
         f"So you {'beat' if gap > 0 else 'trailed'} the market by {abs(gap):.2%} a year. Because the timing and "
         f"amounts are the same on both sides, the difference comes only from what you chose to buy.",
     ]
+    t = time_weighted(conn, user_id, as_of)
+    if t["you_year"] == t["you_year"]:
+        out.append(
+            f"A second way to measure it, the time-weighted return, ignores WHEN you added money and "
+            f"just asks how your picks did: {t['you_year']:+.2%} a year for you, {t['sti_year']:+.2%} for "
+            f"the STI ETF. Fund managers and indexes report this one. If the two measures disagree a lot, "
+            f"your timing (when you added or took out money) made a big difference."
+        )
     stocks = per_stock(conn, user_id, as_of)
     for r in stocks.itertuples():
         if r.verdict == "about level":
@@ -329,6 +349,12 @@ def explain_performance(conn, user_id, as_of=None):
                        f"{'+' if r.difference >= 0 else '-'}{money(r.difference)}.")
 
     watch = []
+    if c["shortfall"]:
+        watch.append("At one point you took out more money than the STI ETF version was worth (your picks "
+                     "did far better than the index), so the STI comparison is rough from then on.")
+    if c["stale_benchmark"]:
+        watch.append("The STI ETF's newest saved price is older than yours, so the comparison may be out of "
+                     "date. Run the price update.")
     if c["days"] < 365:
         watch.append(f"Only {c['days']} days of history. Turning a short period into a yearly rate assumes the "
                      f"same luck repeats all year: +10% in 2 months works out to about +77% a year (1.10 x 1.10 "

@@ -31,12 +31,27 @@ def _window(as_of):
 
 
 def trailing_dividends(conn, ticker, as_of):
-    """The dividends one share of `ticker` paid in the 12 months up to as_of (ignored ones left out)."""
+    """The dividends `ticker` paid in the 12 months up to as_of (ignored ones left out),
+    each restated PER SHARE YOU HOLD NOW.
+
+    Why restate: after a 2-for-1 split, a $1.00 dividend paid on one old share was really
+    $0.50 for each of today's shares. Using $1.00 doubled the yield and the forecast
+    (found in the second audit). So each amount is divided by every split or bonus from its
+    ex-date (a same-day bonus counts: those new shares didn't get that dividend) up to as_of.
+    'paid' keeps the amount as really paid at the time.
+    """
     start, end = _window(as_of)
-    return [
-        d for d in db.get_dividends(conn, ticker, include_ignored=False)
-        if start < pd.Timestamp(d["ex_date"]) <= end
-    ]
+    actions = db.get_actions(conn, ticker)
+    out = []
+    for d in db.get_dividends(conn, ticker, include_ignored=False):
+        if not start < pd.Timestamp(d["ex_date"]) <= end:
+            continue
+        factor = 1.0
+        for a in actions:
+            if d["ex_date"] <= a["ex_date"] <= as_of:
+                factor *= a["factor"]
+        out.append({"ex_date": d["ex_date"], "amount": d["amount"] / factor, "paid": d["amount"]})
+    return out
 
 
 def _as_of(conn, user_id, as_of):
@@ -92,8 +107,11 @@ def yields(conn, user_id, as_of=None):
 
 
 def portfolio_yield(df_yields, df_positions):
-    """The whole portfolio's yield: a year's dividends on what you hold / what it's worth now."""
+    """The whole portfolio's yield: a year's dividends on what you hold / what it's worth now.
+    Unknown (NaN) if any stock you hold has no price, rather than quietly too high."""
     held = df_positions[df_positions["shares"] > 0]
+    if held["value"].isna().any():
+        return float("nan")
     value = held["value"].sum()
     return df_yields["income_12m"].sum() / value if value else float("nan")
 
