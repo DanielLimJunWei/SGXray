@@ -98,24 +98,32 @@ def update_prices(conn, tickers, now=None, download=download_closes, pause=PAUSE
     for ticker in tickers:
         update = PriceUpdate(ticker)
         latest = db.get_latest_price_date(conn, ticker)
+        needed_from = _history_start(conn, ticker, end)
 
+        # The date ranges still missing. Normally just the new days at the end. But if older trades
+        # were added later (back-dating), the history now starts earlier than the saved prices, so
+        # that gap at the start is downloaded too. (Before audit 3 it was never filled, and the app crashed.)
         if latest:
-            start = date.fromisoformat(latest) + timedelta(days=1)          # only the new days
+            earliest = date.fromisoformat(db.get_earliest_price_date(conn, ticker))
+            ranges = [(needed_from, earliest - timedelta(days=1)),
+                      (date.fromisoformat(latest) + timedelta(days=1), end)]
         else:
-            start = _history_start(conn, ticker, end)                       # first time
+            ranges = [(needed_from, end)]
 
-        if _next_weekday(start) <= end:                                     # else already up to date
+        for start, stop in ranges:
+            if _next_weekday(start) > stop:                                 # nothing missing here
+                continue
             if downloaded_before and pause:
                 time.sleep(pause)
             downloaded_before = True
             try:
-                rows = download(ticker, start, end)
+                rows = download(ticker, start, stop)
                 # Keep only days in the range we asked for. Yahoo sometimes adds today's live price.
-                rows = [(d, c) for d, c in rows if start.isoformat() <= d <= end.isoformat()]
+                rows = [(d, c) for d, c in rows if start.isoformat() <= d <= stop.isoformat()]
                 # Undo Yahoo's split/bonus adjustment, so we store the price really traded.
                 actions = yahoo_actions(conn, ticker)
                 rows = [(d, round(c * price_factor(actions, d), 4)) for d, c in rows]
-                update.added = db.save_prices(conn, ticker, rows)
+                update.added += db.save_prices(conn, ticker, rows)
                 if not rows and latest is None:
                     update.error = "no price data found. Is the ticker right?"
             except Exception as e:                                          # network down, rate limit, ...
@@ -212,6 +220,8 @@ def update_actions(conn, tickers, download=download_actions, pause=PAUSE_SECONDS
 # ---------- Run directly ----------
 
 def main():
+    from fmt import safe_console
+    safe_console()                     # never crash printing characters the terminal can't show
     conn = db.get_connection()
     db.init_db(conn)
     seed_instruments(conn)

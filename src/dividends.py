@@ -52,6 +52,8 @@ def add_manual_dividend(conn, ticker, ex_date, amount, today=None):
 
 
 def main(argv):
+    from fmt import safe_console
+    safe_console()                     # never crash printing characters the terminal can't show
     parser = argparse.ArgumentParser(description="See or add dividends by hand.")
     commands = parser.add_subparsers(dest="command", required=True)
 

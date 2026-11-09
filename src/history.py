@@ -17,23 +17,32 @@ import pandas as pd
 
 import db
 from adjust import shares_after
+from fmt import money
 from market import BENCHMARK
-from performance import benchmark
+from performance import benchmark, valuation_date
 from portfolio import dividends_received, trades_frame
 
 COLUMNS = ["value", "net_invested", "dividends", "profit", "sti_value", "sti_dividends", "sti_profit"]
 
 
-def _price_table(conn, tickers, days):
+def _price_table(conn, tickers, days, trades=None):
     """Closing prices: rows = days, columns = tickers.
 
     ffill ("forward fill") carries the last known price over a missing day, e.g. a stock
-    that was suspended. A day before a stock's first saved price stays empty (NaN).
+    that was suspended. If Yahoo is missing the price on a day you traded, the price you
+    traded at fills that day (audit 3: before, the day's value was unknown and that broke the
+    time-weighted return). Saved closes always win over trade prices.
     """
     columns = {}
     for ticker in tickers:
         rows = db.get_prices(conn, ticker)
         series = pd.Series({pd.Timestamp(r["price_date"]): r["close"] for r in rows}, dtype=float)
+        if trades is not None and not series.empty:
+            # Only fills gaps in a stock that HAS saved prices. With no saved prices at all, the value
+            # stays unknown, so a missing download can't hide behind your old trade price forever.
+            mine = trades[trades["ticker"] == ticker]
+            traded = mine.groupby(pd.to_datetime(mine["trade_date"]))["price"].last()
+            series = series.combine_first(traded)
         columns[ticker] = series
     table = pd.DataFrame(columns)
     return table.reindex(table.index.union(days)).sort_index().ffill().reindex(days)
@@ -98,12 +107,13 @@ def value_history(conn, user_id, as_of=None):
 
     tickers = sorted(trades["ticker"].unique())
     first = pd.Timestamp(trades["trade_date"].min())
+    end = pd.Timestamp(valuation_date(conn, trades, as_of))     # the same end date as the comparisons
     all_days = sorted({pd.Timestamp(d) for d in db.get_trading_days(conn)})
-    days = pd.DatetimeIndex([d for d in all_days if d >= first and (not as_of or d <= pd.Timestamp(as_of))])
+    days = pd.DatetimeIndex([d for d in all_days if first <= d <= end])
     if days.empty:
         return pd.DataFrame(columns=COLUMNS)
 
-    prices = _price_table(conn, tickers, days)
+    prices = _price_table(conn, tickers, days, trades)
     holdings = _holdings_table(conn, trades, days)
 
     # A held stock with no price makes that day's value unknown, not lower:
@@ -120,7 +130,7 @@ def value_history(conn, user_id, as_of=None):
     out["profit"] = out["value"] - out["net_invested"] + out["dividends"]
 
     # The STI ETF version: its units on each day x its price.
-    bench = benchmark(conn, user_id, as_of)
+    bench = benchmark(conn, user_id, as_of, end=end.date(), trades=trades)
     units = pd.Series({pd.Timestamp(d): u for d, u in bench.units_history}, dtype=float)
     units = units.groupby(level=0).last()                   # several events on a day: keep the last
     units = units.reindex(units.index.union(days)).sort_index().ffill().fillna(0).reindex(days)
@@ -129,8 +139,22 @@ def value_history(conn, user_id, as_of=None):
     sti_paid = pd.Series({pd.Timestamp(d): c for d, c in bench.dividend_history}, dtype=float)
     sti_paid = sti_paid.groupby(level=0).sum()
     out["sti_dividends"] = _running_total(sti_paid, days)
-    out["sti_profit"] = out["sti_value"] - out["net_invested"] + out["sti_dividends"]
-    return out[COLUMNS]
+    # The STI version's money in is the same as yours; its money out is what it really paid out,
+    # which is less than your sales after a shortfall.
+    sti_out = pd.Series({pd.Timestamp(d): w for d, w in bench.withdrawals}, dtype=float).groupby(level=0).sum()
+    your_out = _running_total(_sales(trades), days)
+    sti_net = out["net_invested"] + your_out - _running_total(sti_out, days)
+    out["sti_profit"] = out["sti_value"] - sti_net + out["sti_dividends"]
+    out.attrs["sti_withdrawals"] = sti_out                     # for its time-weighted return
+    result = out[COLUMNS]
+    result.attrs["sti_withdrawals"] = sti_out
+    return result
+
+
+def _sales(trades):
+    """Money out per day from sales, after fees."""
+    gross = trades["quantity"] * trades["price"] - trades["fees"]
+    return gross.where(trades["side"] == "SELL", 0.0).groupby(pd.to_datetime(trades["trade_date"])).sum()
 
 
 # ---------- Time-weighted return ----------
@@ -176,21 +200,47 @@ def time_weighted(conn, user_id, as_of=None, history=None):
     trades = trades_frame(conn, user_id, as_of)
     when = pd.to_datetime(trades["trade_date"])
     gross = trades["quantity"] * trades["price"]
-    buys = (gross + trades["fees"]).where(trades["side"] == "BUY", 0.0).groupby(when).sum()
-    sells = (gross - trades["fees"]).where(trades["side"] == "SELL", 0.0).groupby(when).sum()
-    buys = buys.reindex(h.index, fill_value=0.0)
-    sells = sells.reindex(h.index, fill_value=0.0)
+    buys = _on_trading_days((gross + trades["fees"]).where(trades["side"] == "BUY", 0.0).groupby(when).sum(), h.index)
+    sells = _on_trading_days(_sales(trades), h.index)
+    sti_sells = h.attrs.get("sti_withdrawals")
+    if sti_sells is None:                     # history passed in without it: work it out again
+        bench = benchmark(conn, user_id, as_of, end=h.index[-1].date(), trades=trades)
+        sti_sells = pd.Series({pd.Timestamp(d): w for d, w in bench.withdrawals}, dtype=float).groupby(level=0).sum()
+    sti_sells = _on_trading_days(sti_sells, h.index)
 
     you = _daily_growth(h["value"], h["dividends"], buys, sells).prod() - 1
-    sti = _daily_growth(h["sti_value"], h["sti_dividends"], buys, sells).prod() - 1
+    sti = _daily_growth(h["sti_value"], h["sti_dividends"], buys, sti_sells).prod() - 1
     days = (h.index[-1] - h.index[0]).days
-    yearly = (lambda total: (1 + total) ** (365.0 / days) - 1) if days >= MIN_DAYS else (lambda total: float("nan"))
-    return {"you_total": you, "sti_total": sti, "you_year": yearly(you), "sti_year": yearly(sti), "days": days}
+    return {"you_total": you, "sti_total": sti, "you_year": _yearly(you, days),
+            "sti_year": _yearly(sti, days), "days": days}
+
+
+def _yearly(total, days):
+    """A total return turned into a yearly rate. -100% stays -100%."""
+    if days < MIN_DAYS or total != total:
+        return float("nan")
+    return -1.0 if total <= -1 else (1 + total) ** (365.0 / days) - 1
+
+
+def _on_trading_days(amounts_by_day, days):
+    """Moves each amount to the first trading day on or after its date, then adds up per day.
+
+    A trade on a day with no saved price (a gap in Yahoo's data) would otherwise be dropped,
+    because the daily table only has days with prices. Its effect shows in the next close anyway.
+    """
+    if amounts_by_day is None or amounts_by_day.empty:
+        return pd.Series(0.0, index=days)
+    positions_ = days.searchsorted(amounts_by_day.index)
+    keep = positions_ < len(days)
+    moved = pd.Series(amounts_by_day.values[keep], index=days[positions_[keep]])
+    return moved.groupby(level=0).sum().reindex(days, fill_value=0.0)
 
 
 # ---------- Run directly ----------
 
 def main():
+    from fmt import safe_console
+    safe_console()                     # never crash printing characters the terminal can't show
     from importer import DEMO_EMAIL
 
     conn = db.get_connection()
@@ -203,6 +253,9 @@ def main():
     trades = trades_frame(conn, user["id"])
     paid = dividends_received(conn, user["id"])
     conn.close()
+    if h.empty:
+        print("No history yet: add trades and run python src/market.py.")
+        return 0
 
     # What happened in each month, keyed by "YYYY-MM": trades by date, then dividends as one total.
     happened = {}
@@ -211,22 +264,28 @@ def main():
         happened.setdefault(t.trade_date[:7], []).append(
             f"{verb} {t.quantity:,} {t.ticker} on {int(t.trade_date[8:])} {pd.Timestamp(t.trade_date):%b}"
         )
-    for month, total in paid.groupby(paid["ex_date"].str[:7])["total"].sum().items():
-        happened.setdefault(month, []).append(f"dividends ${total:,.2f}")
+    if not paid.empty:
+        for month, total in paid.groupby(paid["ex_date"].str[:7])["total"].sum().items():
+            happened.setdefault(month, []).append(f"dividends {money(total)}")
 
     # Group the days by month (to_period("M")) and keep each month's last row (tail(1)).
     # Unlike resample, this keeps the real date of that row: the last day SGX traded that month.
     monthly = h.groupby(h.index.to_period("M")).tail(1)
     print(f"{len(h)} trading days, {h.index[0].date()} to {h.index[-1].date()}.")
     print("Each row is a snapshot at the close on the last trading day of the month.")
-    print(f"{'Snapshot':<11} {'Value':>11} {'Money in':>11} {'Profit':>10} {'STI profit':>11}  What happened that month")
+    print(f"{'Snapshot':<11} {'Value':>12} {'Money in':>12} {'Profit':>11} {'STI profit':>11}  What happened that month")
     for day, r in monthly.iterrows():
         note = "; ".join(happened.get(f"{day:%Y-%m}", []))
-        print(f"{day:%d %b %Y}  {r.value:>11,.2f} {r.net_invested:>11,.2f} {r.profit:>10,.2f} {r.sti_profit:>11,.2f}  {note}")
+        print(f"{day:%d %b %Y}  {money(r.value):>12} {money(r.net_invested):>12} {money(r.profit):>11} "
+              f"{money(r.sti_profit):>11}  {note}")
 
-    best, worst = h["profit"].idxmax(), h["profit"].idxmin()
-    print(f"\nHighest profit: ${h.loc[best, 'profit']:,.2f} on {best.date()}")
-    print(f"Lowest profit:  ${h.loc[worst, 'profit']:,.2f} on {worst.date()}")
+    known = h["profit"].dropna()
+    if known.empty:
+        print("\nProfit can't be worked out yet: a stock you hold has no saved price.")
+        return 0
+    best, worst = known.idxmax(), known.idxmin()
+    print(f"\nHighest profit: {money(known[best])} on {best.date()}")
+    print(f"Lowest profit:  {money(known[worst])} on {worst.date()}")
     return 0
 
 

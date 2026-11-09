@@ -244,6 +244,8 @@ DEMO_EMAIL = "demo@sgxray.local"
 
 
 def main(argv):
+    from fmt import safe_console
+    safe_console()                     # never crash printing characters the terminal can't show
     if len(argv) != 2:
         print("Usage: python src/importer.py <trades.csv>")
         return 1

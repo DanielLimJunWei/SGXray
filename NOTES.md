@@ -158,6 +158,33 @@ Fixed in audit 2:
 
 Known gaps (unchanged): rights and preferential-offering adjustments in Yahoo data, mergers and ticker changes, floats for money, dividends counted on the ex-date rather than the payment date, ES3 Aug 2026 (9.3c in Yahoo, about 9c in one unofficial source; not confirmed officially).
 
+## Audit 3 (9 Nov 2026): property-based testing
+
+Method: build hundreds of RANDOM portfolios (random trades, prices, holidays, dividends, splits and bonus issues) and check that every calculation agrees with every other. Any disagreement is a bug. These are the invariants:
+1. Shares from positions() = an independent share count written separately.
+2. Total profit = money out + value + dividends − money in.
+3. The daily history's last row = the portfolio snapshot (value, profit, money in).
+4. The history's STI line = the STI comparison.
+5. XIRR really makes NPV ≈ 0.
+6. Per-stock differences add up to the whole-portfolio difference (unless there's a shortfall).
+7. Forecast total = the yields table's yearly income.
+8. TWR is never NaN when all values are known.
+After the fixes, 300 random portfolios passed all 8; 12 run in every `pytest` (tests/test_audit3.py).
+
+Fixed in audit 3:
+- **Older trades added later crashed the app.** Prices only downloaded forward. `update_prices` now also fills the gap at the START when the history begins earlier than the saved prices.
+- **Sold-out portfolios** were compared up to the last sale but charted up to today. One `valuation_date()` (as_of, else the newest trading day) is now used by everything.
+- **STI version after a shortfall:** its TWR and profit line used YOUR sales instead of what it really paid out. It now tracks its own withdrawals.
+- **Yahoo missing the price on your trade day** made that day unknown and TWR NaN. The trade price now fills that gap, but only for stocks that HAVE saved prices, so a missing download can't hide.
+- **ES3 missing its price on your first trade day** crashed the comparison. It now uses the next price within 7 days.
+- **Trades on days with no saved price** were dropped from TWR's cash flows. They now count on the next trading day.
+- **TWR's yearly rate** gave "invalid value" for −100%. It's guarded now.
+- **Terminal output:** 4 crashes on an empty portfolio or with no dividends, "nan" and "$nan", "$-200.00", and "Prices as of None". All numbers now go through `src/fmt.py`: -$200.00, n/a, +12.34%.
+- **Printing a CSV error with Chinese characters crashed the importer** on Windows. Every program now calls `safe_console()`, so such characters print as "?".
+- The "STI can't be compared" case (extreme shortfall) is now explained in words instead of "+nan%".
+
+Still known limits (unchanged): Yahoo's rights and preferential-offering adjustments, mergers and ticker changes, floats for money, dividends counted on the ex-date, prices never re-downloaded if Yahoo corrects one, ES3's Aug 2026 amount unconfirmed.
+
 ## Price data (yfinance)
 
 - yfinance is **unofficial**: it can break or rate-limit. SGXray saves prices in SQLite and only fetches new days.

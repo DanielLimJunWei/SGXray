@@ -265,6 +265,23 @@ def get_latest_price_date(conn, ticker):
     return row["latest"]
 
 
+def get_earliest_price_date(conn, ticker):
+    """The oldest day we have a price for, or None. Used to spot a gap when older trades are added."""
+    row = conn.execute(
+        "SELECT MIN(price_date) AS earliest FROM prices WHERE ticker = ?", (ticker,)
+    ).fetchone()
+    return row["earliest"]
+
+
+def get_next_close(conn, ticker, day):
+    """(date, close) of the first saved price AFTER day, or None."""
+    row = conn.execute(
+        "SELECT price_date, close FROM prices WHERE ticker = ? AND price_date > ? ORDER BY price_date LIMIT 1",
+        (ticker, day),
+    ).fetchone()
+    return (row["price_date"], row["close"]) if row else None
+
+
 def get_trading_days(conn):
     """Every day SGX traded, as far as our saved prices know: any day with a price for any ticker."""
     rows = conn.execute("SELECT DISTINCT price_date FROM prices ORDER BY price_date").fetchall()

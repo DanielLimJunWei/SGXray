@@ -18,6 +18,7 @@ import pandas as pd
 
 import db
 from adjust import shares_after
+from fmt import money, num, pct
 
 COLUMNS = [
     "ticker", "shares", "avg_cost", "cost", "price_date", "price", "value",
@@ -174,11 +175,9 @@ def summary(df):
 
 # ---------- Run directly ----------
 
-def _money(x):
-    return "-" if pd.isna(x) else f"{x:,.2f}"
-
-
 def main():
+    from fmt import safe_console
+    safe_console()                     # never crash printing characters the terminal can't show
     from importer import DEMO_EMAIL
 
     conn = db.get_connection()
@@ -191,33 +190,39 @@ def main():
     df = positions(conn, user["id"])
     dividends = dividends_received(conn, user["id"])
     conn.close()
+    if df.empty:
+        print("No trades yet.")
+        return 0
     held = df[df["shares"] > 0]
 
-    print(f"{'Ticker':<8} {'Shares':>7} {'Avg cost':>9} {'Price':>7} {'Cost':>10} {'Value':>10} {'Unrealised':>11} {'%':>7}")
-    for r in held.itertuples():
-        pct = "-" if pd.isna(r.unrealised_pct) else f"{r.unrealised_pct:+.1%}"
-        print(f"{r.ticker:<8} {r.shares:>7} {r.avg_cost:>9.4f} {_money(r.price):>7} "
-              f"{_money(r.cost):>10} {_money(r.value):>10} {_money(r.unrealised):>11} {pct:>7}")
+    if held.empty:
+        print("You don't hold any stocks right now.")
+    else:
+        print(f"{'Ticker':<8} {'Shares':>7} {'Avg cost':>9} {'Price':>7} {'Cost':>11} {'Value':>11} {'Unrealised':>12} {'%':>8}")
+        for r in held.itertuples():
+            print(f"{r.ticker:<8} {r.shares:>7} {num(r.avg_cost, '.4f'):>9} {num(r.price):>7} "
+                  f"{money(r.cost):>11} {money(r.value):>11} {money(r.unrealised):>12} {pct(r.unrealised_pct):>8}")
 
     s = summary(df)
     print()
-    print(f"Prices as of {s['prices_as_of']}")
+    print(f"Prices as of {s['prices_as_of'] or 'n/a (no prices saved yet)'}")
     if s["missing_prices"]:
         print(f"  ! No price yet for {', '.join(s['missing_prices'])}: run python src/market.py. Totals can't be worked out until then.")
     if s["stale_prices"]:
         print(f"  ! Older prices for {', '.join(s['stale_prices'])} (suspended, or the download failed?)")
-    print(f"Total cost      ${_money(s['cost'])}")
-    print(f"Value now       ${_money(s['value'])}")
-    print(f"Unrealised      ${_money(s['unrealised'])} ({s['unrealised_pct']:+.1%})  - on paper, until you sell")
-    print(f"Realised        ${_money(s['realised'])}  - locked in from sales")
-    print(f"Dividends       ${_money(s['dividends'])}  - cash paid to you")
-    print(f"Total profit    ${_money(s['total_profit'])}  - all three added up")
-    print(f"Fees paid       ${_money(s['fees'])}  - already counted in the costs above")
+    print(f"Total cost      {money(s['cost'])}")
+    print(f"Value now       {money(s['value'])}")
+    print(f"Unrealised      {money(s['unrealised'])} ({pct(s['unrealised_pct'])})  - on paper, until you sell")
+    print(f"Realised        {money(s['realised'])}  - locked in from sales")
+    print(f"Dividends       {money(s['dividends'])}  - cash paid to you")
+    print(f"Total profit    {money(s['total_profit'])}  - all three added up")
+    print(f"Fees paid       {money(s['fees'])}  - already counted in the costs above")
 
-    print()
-    print("Dividends received")
-    for d in dividends.itertuples():
-        print(f"  {d.ex_date}  {d.ticker:<8} {d.shares:>5} x ${d.amount:<8g} = ${d.total:,.2f}")
+    if not dividends.empty:
+        print()
+        print("Dividends received")
+        for d in dividends.itertuples():
+            print(f"  {d.ex_date}  {d.ticker:<8} {d.shares:>5} x ${d.amount:<8g} = {money(d.total)}")
     return 0
 
 

@@ -91,14 +91,28 @@ class _Context:
     end: date
 
 
+def valuation_date(conn, trades, as_of=None):
+    """The one date every comparison ends on: as_of, else the newest day SGX traded (from saved
+    prices), else the last trade.
+
+    Before audit 3 it was the newest price of the stocks you still HOLD. If you'd sold out of
+    everything, the comparison stopped at your last sale while the daily history ran on to today,
+    and the two disagreed. Everything now ends on the same day.
+    """
+    if as_of:
+        return date.fromisoformat(as_of)
+    days = db.get_trading_days(conn)
+    last_trade = trades["trade_date"].max()
+    newest = days[-1] if days else last_trade
+    return date.fromisoformat(max(newest, last_trade))
+
+
 def _context(conn, user_id, as_of=None):
     trades = trades_frame(conn, user_id, as_of)
     if trades.empty:
         return None
     pos = positions(conn, user_id, as_of)
-    newest = summary(pos)["prices_as_of"]
-    end = date.fromisoformat(as_of or newest or trades["trade_date"].max())
-    return _Context(trades, pos, dividends_received(conn, user_id, as_of), end)
+    return _Context(trades, pos, dividends_received(conn, user_id, as_of), valuation_date(conn, trades, as_of))
 
 
 def portfolio_flows(conn, user_id, as_of=None, only=None, ctx=None):
@@ -142,6 +156,7 @@ class BenchmarkResult:
     dividend_history: list = None  # (date, ES3 dividend cash paid), for charts
     price_date: str = None   # the date of the ES3 price used for the end value
     stale: bool = False      # True if that price is more than STALE_DAYS older than the end date
+    withdrawals: list = None # (date, cash it actually paid out for your sales), for its time-weighted return
 
 
 def benchmark(conn, user_id, as_of=None, ticker=BENCHMARK, only=None, end=None, trades=None):
@@ -179,7 +194,7 @@ def benchmark(conn, user_id, as_of=None, ticker=BENCHMARK, only=None, end=None, 
     events.sort(key=lambda e: (e[0], e[1]))     # by date and kind only; stable, so trade order is kept
 
     units, paid, flows, shortfall = 0.0, 0.0, [], False
-    units_history, dividend_history = [], []
+    units_history, dividend_history, withdrawals = [], [], []
     for day, _, kind, x in events:
         when = date.fromisoformat(day)
         if kind == "ACTION":
@@ -203,20 +218,33 @@ def benchmark(conn, user_id, as_of=None, ticker=BENCHMARK, only=None, end=None, 
                     shortfall, wanted = True, units    # can't take out more than the ETF is worth
                 units -= wanted
                 flows.append((when, wanted * price - fees))
+                withdrawals.append((when, wanted * price - fees))
         units_history.append((when, units))
 
     price_date, end_price = _close_on(conn, ticker, last_day)
     value = units * end_price
     flows.append((end, value))
     stale = (end - date.fromisoformat(price_date)).days > STALE_DAYS
-    return BenchmarkResult(flows, units, value, paid, shortfall, units_history, dividend_history, price_date, stale)
+    return BenchmarkResult(flows, units, value, paid, shortfall, units_history, dividend_history,
+                           price_date, stale, withdrawals)
+
+
+NEXT_PRICE_DAYS = 7     # if ES3 has no price on or before a trade day, use one up to this many days after
 
 
 def _close_on(conn, ticker, day):
-    """(date, close) of the benchmark on a day, or the last close before it (holiday or missing day)."""
+    """(date, close) of the benchmark on a day, or the last close before it (holiday or missing day).
+
+    If there's nothing before it (e.g. Yahoo is missing ES3's price on your very first trade day),
+    the next close within NEXT_PRICE_DAYS is used instead of crashing (audit 3).
+    """
     latest = db.get_latest_close(conn, ticker, day)
+    if latest is None and day:
+        nxt = db.get_next_close(conn, ticker, day)
+        if nxt and (date.fromisoformat(nxt[0]) - date.fromisoformat(day)).days <= NEXT_PRICE_DAYS:
+            return nxt
     if latest is None:
-        raise ValueError(f"No {ticker} price on or before {day}. Run python src/market.py first.")
+        raise ValueError(f"No {ticker} price near {day}. Run python src/market.py first.")
     return latest
 
 
@@ -288,8 +316,12 @@ def per_stock(conn, user_id, as_of=None):
             "sti_profit": sti_profit,
             "difference": difference,
             "verdict": _verdict(difference, put_in),
+            # This stock alone did so well that a sale took out more than its STI version held.
+            # Then the per-stock rows don't add up exactly to the whole-portfolio difference.
+            "shortfall": bench.shortfall,
         })
-    df = pd.DataFrame(rows, columns=["ticker", "you", "sti", "your_profit", "sti_profit", "difference", "verdict"])
+    df = pd.DataFrame(rows, columns=["ticker", "you", "sti", "your_profit", "sti_profit", "difference",
+                                     "verdict", "shortfall"])
     return df.sort_values("difference", ascending=False, ignore_index=True)
 
 
@@ -307,6 +339,9 @@ def _verdict(difference, put_in):
 # ---------- Run directly ----------
 
 def main():
+    from fmt import safe_console
+    safe_console()                     # never crash printing characters the terminal can't show
+    from fmt import money, pct as _pct
     from importer import DEMO_EMAIL
 
     conn = db.get_connection()
@@ -325,28 +360,29 @@ def main():
     print(f"Up to {c['end']}")
     if c["too_short"]:
         print(f"  Only {c['days']} days of history: too short for a yearly rate.")
-        print(f"  Profit so far: you ${c['your_profit']:,.2f}, same money in the STI ETF ${c['benchmark_profit']:,.2f}")
+        print(f"  Profit so far: you {money(c['your_profit'])}, same money in the STI ETF {money(c['benchmark_profit'])}")
         return 0
     if c["days"] < 365:
         print(f"  ! Only {c['days']} days of history: a yearly rate over a short time can look extreme.")
     if c["stale_benchmark"]:
         print("  ! The STI ETF's newest price is older than yours: run python src/market.py.")
     print("  Money-weighted (XIRR): what you earned, including when you added money")
-    print(f"    Your portfolio            {c['you']:+.2%} a year")
-    print(f"    Same money in the STI ETF {c['benchmark']:+.2%} a year")
+    print(f"    Your portfolio            {_pct(c['you'])} a year")
+    print(f"    Same money in the STI ETF {_pct(c['benchmark'])} a year")
     diff = c["you"] - c["benchmark"]
-    print(f"    You {'beat' if diff > 0 else 'trailed'} the market by {abs(diff):.2%} a year")
+    if diff == diff:
+        print(f"    You {'beat' if diff > 0 else 'trailed'} the market by {abs(diff):.2%} a year")
     from history import time_weighted         # here: history imports this file
     conn = db.get_connection()
     t = time_weighted(conn, user["id"])
     conn.close()
     print("  Time-weighted (TWR): how your picks did, ignoring when you added money")
-    print(f"    Your portfolio            {t['you_year']:+.2%} a year ({t['you_total']:+.2%} in total)")
-    print(f"    STI ETF                   {t['sti_year']:+.2%} a year ({t['sti_total']:+.2%} in total)")
+    print(f"    Your portfolio            {_pct(t['you_year'])} a year ({_pct(t['you_total'])} in total)")
+    print(f"    STI ETF                   {_pct(t['sti_year'])} a year ({_pct(t['sti_total'])} in total)")
     print()
-    print(f"  Your holdings now worth          ${c['your_value']:,.2f}")
-    print(f"  The STI ETF version now worth    ${c['benchmark_value']:,.2f}"
-          f"  (plus ${c['benchmark_dividends']:,.2f} of its dividends paid out)")
+    print(f"  Your holdings now worth          {money(c['your_value'])}")
+    print(f"  The STI ETF version now worth    {money(c['benchmark_value'])}"
+          f"  (plus {money(c['benchmark_dividends'])} of its dividends paid out)")
     if c["shortfall"]:
         print("  ! A sale took out more than the STI ETF version held, so the comparison is rough.")
 
@@ -354,10 +390,10 @@ def main():
     print("Which stocks helped or held you back (each against the same money in the STI ETF)")
     print(f"  {'Ticker':<8} {'You':>9} {'STI ETF':>9} {'Your profit':>12} {'STI profit':>11} {'Difference':>11}")
     for r in stocks.itertuples():
-        print(f"  {r.ticker:<8} {r.you:>+9.1%} {r.sti:>+9.1%} {r.your_profit:>12,.2f} {r.sti_profit:>11,.2f} "
-              f"{r.difference:>+11,.2f}  {r.verdict}")
+        print(f"  {r.ticker:<8} {_pct(r.you):>9} {_pct(r.sti):>9} {money(r.your_profit):>12} {money(r.sti_profit):>11} "
+              f"{money(r.difference, signed=True):>11}  {r.verdict}{'  (shortfall)' if r.shortfall else ''}")
     total = stocks["difference"].sum()
-    print(f"  Together: {'+' if total >= 0 else '-'}${abs(total):,.2f} versus putting the same money in the STI ETF")
+    print(f"  Together: {money(total, signed=True)} versus putting the same money in the STI ETF")
     return 0
 
 

@@ -141,6 +141,8 @@ def print_warnings(warnings):
 # ---------- Run directly ----------
 
 def main():
+    from fmt import safe_console
+    safe_console()                     # never crash printing characters the terminal can't show
     from importer import DEMO_EMAIL
 
     conn = db.get_connection()

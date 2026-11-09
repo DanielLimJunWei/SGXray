@@ -19,6 +19,7 @@ import sys
 import pandas as pd
 
 import db
+from fmt import money, num, pct
 from portfolio import positions, summary
 
 FORECAST_COLUMNS = ["expected", "ticker", "shares", "amount", "total", "based_on"]
@@ -119,6 +120,8 @@ def portfolio_yield(df_yields, df_positions):
 # ---------- Run directly ----------
 
 def main():
+    from fmt import safe_console
+    safe_console()                     # never crash printing characters the terminal can't show
     from importer import DEMO_EMAIL
 
     conn = db.get_connection()
@@ -134,22 +137,28 @@ def main():
     pos = positions(conn, uid)
     conn.close()
 
-    print(f"Dividend yields (last 12 months of payouts, prices as of {as_of})")
+    if y.empty:
+        print("You don't hold any stocks right now, so there are no yields or expected dividends.")
+        return 0
+    print(f"Dividend yields (last 12 months of payouts, prices as of {as_of or 'n/a'})")
     print(f"  {'Ticker':<8} {'Paid/share':>10} {'Price':>7} {'Yield':>7} {'Your cost':>9} {'On cost':>8}")
     for r in y.itertuples():
-        print(f"  {r.ticker:<8} {r.per_share_12m:>10.4f} {r.price:>7.2f} {r.div_yield:>7.2%} "
-              f"{r.avg_cost:>9.4f} {r.yield_on_cost:>8.2%}")
-    print(f"  Whole portfolio: {portfolio_yield(y, pos):.2%} a year on today's value")
+        print(f"  {r.ticker:<8} {r.per_share_12m:>10.4f} {num(r.price):>7} {pct(r.div_yield, False):>7} "
+              f"{num(r.avg_cost, '.4f'):>9} {pct(r.yield_on_cost, False):>8}")
+    print(f"  Whole portfolio: {pct(portfolio_yield(y, pos), False)} a year on today's value")
 
     print()
+    if f.empty:
+        print("No dividends expected: nothing you hold paid one in the last 12 months.")
+        return 0
     print("Expected dividends, next 12 months (an ESTIMATE: last year's payouts on what you hold now)")
     for r in f.itertuples():
-        print(f"  ~{r.expected:%d %b %Y}  {r.ticker:<8} {r.shares:>5,} x ${r.amount:<8g} = ${r.total:>8,.2f}"
+        print(f"  ~{r.expected:%d %b %Y}  {r.ticker:<8} {r.shares:>5,} x ${r.amount:<8g} = {money(r.total):>9}"
               f"   (like {pd.Timestamp(r.based_on):%d %b %Y})")
     by_month = f.groupby(f["expected"].dt.to_period("M"))["total"].sum()
     print()
-    print("  By month: " + ", ".join(f"{m:%b %Y} ${t:,.2f}" for m, t in by_month.items()))
-    print(f"  Total: about ${f['total'].sum():,.2f} over the next 12 months")
+    print("  By month: " + ", ".join(f"{m:%b %Y} {money(t)}" for m, t in by_month.items()))
+    print(f"  Total: about {money(f['total'].sum())} over the next 12 months")
     print("  Dividends can be cut, raised or skipped, and one-off payouts may not repeat.")
     return 0
 

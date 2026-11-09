@@ -87,6 +87,8 @@ def _trade_sentences(trades, month):
 def explain_month(conn, user_id, month, history=None):
     """Explains one row of the monthly table. month is 'YYYY-MM'."""
     h = history if history is not None else value_history(conn, user_id)
+    if h.empty:
+        return Explanation(["There's no history yet: add trades and update prices first."])
     rows = h[h.index.to_period("M") == pd.Period(month)]
     if rows.empty:
         return Explanation([f"There's no snapshot for {month}: it's before your first trade or after the newest price."])
@@ -178,6 +180,10 @@ def explain_yields(conn, user_id, as_of=None):
         if r.per_share_12m == 0:
             out.append(f"{r.ticker} paid no dividends in the last 12 months, so both yields are 0%.")
             continue
+        if r.price != r.price:
+            out.append(f"{r.ticker} has no saved price yet, so its yield can't be worked out. "
+                       f"Its dividends were ${r.per_share_12m:g} a share over the last 12 months.")
+            continue
         # "divided by" in words: plain for beginners, and a Windows terminal can't show the ÷ sign.
         out.append(
             f"{r.ticker}: each share paid ${r.per_share_12m:g} in dividends over the last 12 months. "
@@ -200,8 +206,11 @@ def explain_yields(conn, user_id, as_of=None):
                         f"for less than they cost now. That shows you bought well, not that they're good buys "
                         f"today: a new buyer only gets the 'Yield'. Compare stocks using 'Yield', not 'On cost'.")
     total = portfolio_yield(y, positions(conn, user_id, as_of))
-    out.append(f"Whole portfolio: a year's dividends on everything you hold, ${y['income_12m'].sum():,.2f}, "
-               f"divided by what it's all worth today = {total:.2%} a year.")
+    if total == total:
+        out.append(f"Whole portfolio: a year's dividends on everything you hold, ${y['income_12m'].sum():,.2f}, "
+                   f"divided by what it's all worth today = {total:.2%} a year.")
+    else:
+        out.append("The whole portfolio's yield can't be worked out until every stock you hold has a price.")
     watch.append("Yields look back at the last 12 months. A company can raise, cut or stop its dividend, "
                  "so they're a guide, not a promise.")
     reits = {i["ticker"] for i in db.get_instruments(conn) if i["type"] == "reit"} & set(y["ticker"])
@@ -352,6 +361,14 @@ def explain_performance(conn, user_id, as_of=None):
     if c["you"] != c["you"]:
         return Explanation(["A stock you hold has no saved price yet, so your return can't be worked out. "
                             "Run the price update first."])
+    if c["benchmark"] != c["benchmark"]:
+        return Explanation(
+            [f"Your portfolio grew at {c['you']:+.2%} a year (money-weighted, XIRR).",
+             f"The STI comparison can't be given a yearly rate here. Your picks did so much better than the "
+             f"index that, when you sold, you took out more money than the same dollars in the STI ETF would "
+             f"have been worth. In dollars: you're {up_down(c['your_profit'])}; the STI ETF version would be "
+             f"{up_down(c['benchmark_profit'])}."],
+            ["One or two big winners can produce results like this. Past results don't predict the future."])
     gap = c["you"] - c["benchmark"]
     out = [
         f"Your portfolio grew at {c['you']:+.2%} a year. That's the money-weighted return (XIRR): it counts "
@@ -375,6 +392,10 @@ def explain_performance(conn, user_id, as_of=None):
                             "put more money in just before prices fell. Adding money bit by bit on a regular "
                             "schedule, instead of in big lumps, makes timing matter less.")
     stocks = per_stock(conn, user_id, as_of)
+    if stocks["shortfall"].any():
+        out.append("Note: for " + ", ".join(stocks.loc[stocks["shortfall"], "ticker"]) + ", a sale took out "
+                   "more than the STI version of that stock held, so the per-stock rows won't add up exactly "
+                   "to the whole-portfolio difference.")
     for r in stocks.itertuples():
         if r.verdict == "about level":
             out.append(f"{r.ticker}: about the same as the STI ETF ({money(r.difference)} apart).")
@@ -413,6 +434,8 @@ def explain_performance(conn, user_id, as_of=None):
 
 
 def main(argv):
+    from fmt import safe_console
+    safe_console()                     # never crash printing characters the terminal can't show
     usage = ("Usage:\n  python src/explain.py YYYY-MM     the monthly table, e.g. 2024-03\n"
              "  python src/explain.py holdings    the holdings table\n"
              "  python src/explain.py vs-sti      you vs the STI ETF, and per stock\n"

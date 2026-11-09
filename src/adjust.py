@@ -76,6 +76,8 @@ def add_manual_action(conn, ticker, ex_date, factor, today=None):
 
 
 def main(argv):
+    from fmt import safe_console
+    safe_console()                     # never crash printing characters the terminal can't show
     parser = argparse.ArgumentParser(description="See or add splits and bonus issues.")
     commands = parser.add_subparsers(dest="command", required=True)
     show = commands.add_parser("list")
