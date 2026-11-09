@@ -122,6 +122,12 @@ Important things to remember about how SGXray works and the data it uses. Newest
 - Saved prices never need rewriting, even if a split happens later, because they're stored as real.
 - Changing the price basis meant rebuilding the database (delete it, import, run market.py).
 
+## Feature research (9 Nov 2026)
+
+What investors value in trackers (Financial Horse, Seedly, PortfolioTrackr, The Accounting Investor): accurate SGX REIT and stock dividends, projected dividends and income by year, returns including dividends, comparison with the STI, allocation charts, multiple portfolios. Complaints: small free tiers, poor local broker support, no good CPF/SRS or regular-savings-plan support, and trackers that encourage daily price-watching. Beginner mistakes (Endowus, The Smart Investor, Saxo): too little diversification and home bias (local banks and REITs), not knowing about fees, emotional decisions, not understanding what they own.
+
+Added because of it: Week 3 gets allocation and concentration (moved up from stretch), a Learn page, regular savings plans, a Simple/Detailed switch, a fees insight, dividend income by year, and "why I bought" notes. Stretch gets a monthly check-in, a "what if" calculator, alerts, a watchlist, Savings Bonds/T-bills/FDs, goals, REIT and bank health numbers, a PWA and dark mode.
+
 ## Audit (8 Nov 2026)
 
 Checked against official sources: DBS bonus issue (1-for-10, ex-date 22 Apr 2024, on SGX), DBS dividends 2024–26 (54c quarterly in 2024; 60c in Apr 2025; 60c + 15c capital return from May 2025; 66c + 15c from Apr 2026), CICT distributions (2.16c advanced Sep 2024, 3.29c Feb 2025, 5.62c + 1.35c on one Aug 2025 ex-date, 4.61c Feb 2026), SGX close (closing auction 5:00–5:06pm, trade-at-close until 5:16pm, so 5:30pm is safe), IRAS (one-tier dividends and S-REIT distributions are tax-free for individuals). Demo totals re-added by hand: cost 13,639, value 22,695.20, dividends 2,183.28.
@@ -184,6 +190,11 @@ Fixed in audit 3:
 - The "STI can't be compared" case (extreme shortfall) is now explained in words instead of "+nan%".
 
 Still known limits (unchanged): Yahoo's rights and preferential-offering adjustments, mergers and ticker changes, floats for money, dividends counted on the ex-date, prices never re-downloaded if Yahoo corrects one, ES3's Aug 2026 amount unconfirmed.
+
+Plan for them (agreed 9 Nov 2026):
+- Week 4: re-download the last ~10 trading days each run (plus a weekly full check) and update changed prices; round money to cents when saving and showing it. A full Decimal rewrite isn't worth it: float errors are trillionths of a cent, and pandas would be much slower.
+- Stretch: a dividend payment date (estimated from each stock's usual gap after the ex-date, or typed in); ticker changes and delistings/privatisations (as a sale at the offer price); then mergers (old shares → new at the announced ratio, plus cash).
+- After launch: undo Yahoo's rights-issue adjustments with a user-entered "price adjustment", or get unadjusted data from a paid provider. A licensed provider would also supply payment dates and corporate actions.
 
 ## Price data (yfinance)
 
