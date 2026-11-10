@@ -100,7 +100,7 @@ TERMS = {
                        "The money you put into DBS would have made +$4,660 in the STI ETF."),
     "all-together": ("All together",
                      "Your own money + price gains + dividends: everything your investing has given you so far, "
-                     "the top edge of the X-ray chart.",
+                     "shown by the solid light-blue line along the top of the X-ray chart.",
                      "$13,361 + $9,334 + $2,183 = $24,878."),
     "buy": ("Buy",
             "A day you bought shares. On the chart it sits on that day's closing price; what you actually paid "

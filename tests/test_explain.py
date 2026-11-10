@@ -175,7 +175,8 @@ def test_xray_chart_explains_its_layers(conn, user_id):
     ex = explain_value_chart(conn, user_id)
     text = ex.text
     # End of February: $3,010 put in; worth 100 x $29 = $2,900 (-$110 from prices); $50 of dividends.
-    assert "Your own money (solid layer): $3,010.00" in text
+    assert "Your own money (the plain dark-blue area at the bottom): $3,010.00" in text
+    assert "light-blue line along the top is your TOTAL" in text and "top edge" not in text
     assert "Price gains (blue dots): $110.00 down" in text
     assert "Dividends (amber dots): $50.00" in text
     assert any("isn't all profit" in w for w in ex.watch_out)

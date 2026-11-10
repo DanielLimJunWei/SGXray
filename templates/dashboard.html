@@ -114,7 +114,7 @@
       <div class="compare" id="xray-compare" hidden></div>
     </div>
     <ol class="steps" id="xray-steps">
-      <li class="step" data-at="0"><b>An ordinary chart</b><span class="muted">One line going up. It doesn't say why.</span></li>
+      <li class="step" data-at="0"><b><span class="key key-line"></span>{{ term("all-together", "Your total") }}</b><span class="muted">The light-blue line: shares + dividends, {{ (last.money + last.gains + last.divs)|money }}. On its own it doesn't say why.</span></li>
       <li class="step" data-at="0.2"><b><span class="key" style="background:#4A5B82"></span>{{ term("money-in", "Your own money") }}</b><span class="muted">{{ last.money|money }} put in. Not profit.</span></li>
       <li class="step" data-at="0.45"><b><span class="key" style="background:#3A73FF"></span>{{ term("price-gains", "Price gains") }} · <span class="key" style="background:#E3A35E"></span>{{ term("dividend", "dividends") }}</b><span class="muted">{{ last.gains|money(signed=True) }} from prices, {{ last.divs|money }} paid in cash.</span></li>
       {% if last.sti is not none %}<li class="step" data-at="0.8"><b><span class="key key-dash"></span>The market: {{ term("sti-etf", "STI ETF") }}</b><span class="muted">Same money in the STI ETF: {{ last.sti|money }}.</span></li>{% endif %}

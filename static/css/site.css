@@ -203,6 +203,7 @@ footer.site p + p { margin-top: var(--space-2); }
 .step.on { opacity: 1; }
 .step b { display: block; font-weight: 500; margin-bottom: var(--space-1); }
 .key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: var(--space-2); }
+.key-line { width: 14px; height: 0; border-top: 2px solid #9CC4FF; border-radius: 0; vertical-align: middle; }
 .key-dash { width: 14px; height: 0; border-top: 2px dashed var(--color-text); border-radius: 0; vertical-align: middle; }
 .as-table { margin-top: var(--space-6); }
 .as-table summary { cursor: pointer; font: 500 var(--text-xs)/1 var(--font-mono); letter-spacing: 0.04em; color: var(--color-text-muted); padding: var(--space-2) 0; }
