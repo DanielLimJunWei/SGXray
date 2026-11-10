@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}SGXray: see inside your portfolio{% endblock %}
+{% block head %}<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.css">{% endblock %}
+{% block backdrop %}<canvas id="scene" aria-hidden="true"></canvas>{% endblock %}
+{% block navlinks %}
+  <ul>
+    <li><a href="#what">WHAT IT DOES</a></li>
+    <li><a href="#xray">THE X-RAY</a></li>
+    <li><a href="#learn">LEARN</a></li>
+  </ul>
+{% endblock %}
+
+{% block content %}
+  <section class="hero wrap">
+    <p class="eyebrow">For Singapore investors · SGX stocks, REITs and ETFs</p>
+    <h1>See inside your portfolio.</h1>
+    <p>SGXray tracks what you own and explains every number in plain English: what you put in, what you've made, and whether you're beating the market.</p>
+    <div class="ctas">
+      <a class="btn btn-primary" href="{{ url_for('demo') }}">Try the demo, no sign-up</a>
+      <a class="btn btn-ghost" href="#what">How it works</a>
+    </div>
+    <p class="scroll-hint" aria-hidden="true">SCROLL</p>
+  </section>
+
+  <section class="panel-section wrap" id="what">
+    <div class="panel">
+      <p class="eyebrow">01 · What it does</p>
+      <h2>Your numbers, made clear</h2>
+      <ul class="points">
+        <li><span class="n">01</span><span><b>Track</b> <span class="muted">your SGX stocks, REITs and ETFs from your broker's trades, with real prices and dividends.</span></span></li>
+        <li><span class="n">02</span><span><b>Understand</b> <span class="muted">every figure with a "What does this mean?" note, and a "Watch out" when something needs a second look.</span></span></li>
+        <li><span class="n">03</span><span><b>Compare</b> <span class="muted">yourself with the STI: the same money, on the same days, in the whole market.</span></span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="panel-section wrap" id="xray">
+    <div class="panel right">
+      <p class="eyebrow">02 · The X-ray</p>
+      <h2>One line hides three stories</h2>
+      <p class="muted">A normal chart shows a line going up. SGXray splits it into what's really inside: the money you put in, the gains from prices, and the dividends paid to you.</p>
+      <p class="muted">Then it lays the market beside it, so you know whether picking stocks was worth it.</p>
+    </div>
+  </section>
+
+  <section class="panel-section wrap" id="learn">
+    <div class="panel">
+      <p class="eyebrow">03 · Learn as you go</p>
+      <h2>Built for beginners, honest with everyone</h2>
+      <p class="muted">Ex-dates, yields, bonus issues, why dividends aren't free money: explained with your own numbers, not textbook examples.</p>
+      <p class="muted">Educational, not financial advice. SGXray never tells you what to buy.</p>
+    </div>
+  </section>
+
+  <section class="cta wrap">
+    <div class="panel">
+      <h2>Ready to look inside?</h2>
+      <p class="muted">Start with a sample portfolio, or bring your own trades from a CSV.</p>
+      <div class="ctas">
+        <a class="btn btn-primary" href="{{ url_for('demo') }}">Try the demo</a>
+        <a class="btn btn-ghost" href="#main">Back to top</a>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.min.js"></script>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/" } }</script>
+<script type="module" src="{{ url_for('static', filename='js/home-scene.js') }}"></script>
+{% endblock %}

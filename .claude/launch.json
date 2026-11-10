@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "design-preview",
+      "name": "sgxray-web",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "5500", "--bind", "127.0.0.1", "--directory", "design-system"],
-      "port": 5500
+      "runtimeArgs": ["-m", "flask", "--app", "app", "run", "--debug", "--port", "5000"],
+      "port": 5000
     }
   ]
 }

@@ -125,16 +125,27 @@ Important things to remember about how SGXray works and the data it uses. Newest
 ## Design system (design-system/)
 
 - **Mood:** a rainy evening in a finance office. Cool navy outside, warm lamplight inside, a screen glowing calmly in blue. Clear, smooth, never loud or tiring on the eyes.
-- `tokens.css` holds every colour, font, size, space, corner and timing as a named variable. Pages use only these; a missing value becomes a new token, never a hard-coded one.
+- `static/css/tokens.css` holds every colour, font, size, space, corner and timing as a named variable. Pages use only these; a missing value becomes a new token, never a hard-coded one.
 - Colours: night `#0A0F1E`, dry navy `#121C33`, screen glow `#3A73FF` (data accent, sparingly; never small text), glow-as-text `#9CC4FF`, lamplight `#E3A35E` (warmth, Watch out), paper text `#EEE7DC` (never pure white), muted up/down `#7BC4A0` / `#D98282`.
 - Fonts: Newsreader (headings, like a financial paper), Inter (body), JetBrains Mono (numbers and ASCII, so columns line up).
 - Chart layers: your money = solid slate, price gains = blue halftone dots, dividends = amber halftone dots, STI = light dashed line with a dark outline so it reads over the dots.
 - Textures (felt grain, dot grid, halftone, lightbox glow, ASCII, pixel X logo) only in backgrounds and decoration; numbers always on solid surfaces.
 - Motion: real numbers count up once, then sit still; decoration (rain, the sample chart) may move gently; everything is still when "reduce motion" is on.
-- `preview.html` shows it all, including the scroll-driven X-ray chart built from the demo portfolio. Run it with the `design-preview` launch config (a Python server on port 5500; 8765 was taken), then open http://localhost:5500/preview.html.
-- `home.html` is the landing page: one made-up 3D stock chart (Three.js 0.186.1, smooth scroll from Lenis 1.3.26) that keeps its shape while the camera moves round it. Scrolling goes: whole chart behind the headline, then a zoom while a scan line reveals the numbers, then the line splits into money in / price gains / dividends (the X-ray), then a pull back. Small ▲/▼ arrows fade in where the line rises or falls. It's pure decoration (same fake data for everyone); real user charts animate in once, then stay still. One motif, as on the Conoid reference: no unrelated effects.
+- `design-system/preview.html` shows it all, including the scroll-driven X-ray chart built from the demo portfolio. With the app running in debug mode, open http://127.0.0.1:5000/design-system/preview.html (hidden on the live site).
+- The landing page (`templates/home.html`, scene in `static/js/home-scene.js`) is one made-up 3D stock chart (Three.js 0.186.1, smooth scroll from Lenis 1.3.26) that keeps its shape while the camera moves round it. Scrolling goes: whole chart behind the headline, then a zoom while a scan line reveals the numbers, then the line splits into money in / price gains / dividends (the X-ray), then a pull back. Small ▲/▼ arrows fade in where the line rises or falls. It's pure decoration (same fake data for everyone); real user charts animate in once, then stay still. One motif, as on the Conoid reference: no unrelated effects.
 - Lessons from building it: many loose lines morphing between shapes looked messy; a single object with a moving camera reads better. Text over the scene needs a dark haze or solid panel behind it. Wait for the web font to load before drawing labels onto canvases, or they fall back to a default font.
 - Lessons from building it: `.wrap { padding: 0 X }` silently wiped `section`'s vertical padding (class beats element), so use `padding-inline` / `padding-block`. On phones, SVG text shrinks with the chart, so the script resizes chart text to stay ~12px. Opening the HTML file directly in the browser pane loaded it as `data:` and dropped `tokens.css`, so serve it instead.
+
+## Web app (app.py, Flask)
+
+- Run it: `python -m flask --app app run --debug`, then open http://127.0.0.1:5000. Debug mode reloads when you save a file; never use it on the live site.
+- `app.py` turns addresses into pages: `/` is the 3D landing page, `/demo` is the sample portfolio (GET only, so nobody can change it). Each page view opens its own database connection and closes it afterwards.
+- `templates/` holds the HTML with blanks Jinja fills in. `base.html` is the shared frame (nav, lamp, grain, footer with the data credit); the other pages fill its blocks. `_explain.html` is the ⓘ / ⚠ pair of buttons and popups, reused under every table.
+- `static/` holds files sent as they are: `css/tokens.css`, `css/site.css`, `js/home-scene.js` and `js/count-up.js`.
+- Numbers on pages use fmt.py through template filters (`money`, `pct`, `num`), plus `trend` and `arrow`: colour is never the only signal, so up/down also get ▲/▼.
+- Jinja escapes everything it fills in, so text from a CSV can't become HTML or a script. Every response says "don't put me in a frame" and "trust my file types".
+- `tests/test_web.py` opens each page with Flask's test client: no crash, the right totals, no "nan", the demo is read-only.
+- Found while building it: the dashboard crashed when the STI ETF had no prices yet (compare() raises). The page now shows "n/a: no STI ETF prices saved yet".
 
 ## Feature research (9 Nov 2026)
 
