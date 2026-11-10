@@ -18,7 +18,27 @@ const W = 16;                           // chart width in scene units (x from -8
 const BASE = -3.0;                      // floor of the price area
 const xAt = j => (j / (N - 1) - 0.5) * W;
 
-if (!reduceMotion && window.Lenis) new window.Lenis({ autoRaf: true });
+// Smooth scrolling. `anchors` makes the nav links (What it does, The X-ray, Learn, Back to top) glide
+// there instead of jumping, so the 3D chart travels smoothly through each stage on the way, like Conoid.
+// easeInOutCubic: starts gently, moves, then settles gently. Longer trips get a little more time.
+const easeInOutCubic = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+if (!reduceMotion && window.Lenis) {
+  const lenis = new window.Lenis({ autoRaf: true });
+  document.querySelectorAll('a[href^="#"]').forEach(link => link.addEventListener("click", e => {
+    const target = document.querySelector(link.getAttribute("href"));
+    if (!target) return;
+    e.preventDefault();
+    const distance = Math.abs(target.getBoundingClientRect().top) / innerHeight;    // in screen-heights
+    lenis.scrollTo(target, {
+      duration: Math.min(2.4, 1.1 + distance * 0.35), easing: easeInOutCubic,
+      onComplete: () => {                                        // keyboard users continue from the section they chose
+        if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
+        target.focus({ preventScroll: true });
+      },
+    });
+    history.replaceState(null, "", link.getAttribute("href"));                   // keep the address bar in step
+  }));
+}
 
 // ---------- Renderer, scene, camera ----------
 const canvas = document.getElementById("scene");

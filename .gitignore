@@ -17,8 +17,8 @@ instance/
 .pytest_cache/
 .coverage
 
-# Claude Code: personal permission settings stay on this computer (launch.json is shared)
-.claude/settings.local.json
+# Claude Code's own settings (preview launch config, permissions): only for this computer, not part of SGXray
+.claude/
 
 # Editor and system files
 .vscode/

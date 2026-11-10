@@ -22,6 +22,7 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 400; line-height: var(
 p { margin: 0; max-width: 60ch; }
 a { color: var(--color-glow-soft); }
 :focus-visible { outline: 2px solid var(--color-glow-soft); outline-offset: 3px; border-radius: var(--radius-sm); }
+section[tabindex="-1"]:focus, main[tabindex="-1"]:focus { outline: none; }   /* a section reached by a nav link: no box round it */
 .wrap { max-width: var(--page-width); margin: 0 auto; padding-inline: var(--space-6); }
 .eyebrow { font: 500 var(--text-xs)/1.4 var(--font-mono); color: var(--color-text-muted); letter-spacing: 0.08em; text-transform: uppercase; }
 .muted { color: var(--color-text-muted); }

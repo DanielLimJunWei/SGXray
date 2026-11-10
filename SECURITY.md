@@ -13,9 +13,9 @@ sessions that end on logout, CSRF tokens on every form, a strict Content Securit
 only ever reaching their own data, generic error pages, and a security log that never holds secrets.
 Every protection has an attack test in `tests/test_auth.py`.
 
-## Audit: 70 checks for AI-built apps (10 November 2026)
+## Security audit: 70-point launch checklist (10 November 2026)
 
-Checked against "Vibe-coded app security", checks 01-54 (Part 3) and 55-70 (Part 4). Rule used: **no PASS without
+Checked against a 70-point web application security checklist covering secrets, authentication, input handling, sessions, APIs, dependencies, data, infrastructure, CI/CD and AI risks, which draws on the [OWASP Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/), the [OWASP API Security Top 10](https://owasp.org/www-project-api-security/) and the [OWASP Top 10 for LLM Applications](https://genai.owasp.org/llm-top-10/). Rule used: **no PASS without
 evidence** (a file, setting or test). FAIL items found in this audit were fixed the same day (marked FIXED).
 UNKNOWN = can only be checked on the live site; each has a Week 4 task.
 
