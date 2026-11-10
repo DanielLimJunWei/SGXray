@@ -1,7 +1,8 @@
 {#
   The account pages are a sheet of X-ray film clipped to a lightbox (SGXray's world: an X-ray
   lightbox in an office at night). The film shows the demo portfolio's value as a plain price line, from its
-  real monthly numbers (the X-ray comes after you log in). While you type a password the lightbox dims, like covering the film, and when
+  real monthly numbers, coloured like the home page's chart (the X-ray comes after you log in).
+  The film edge reads like a real X-ray's label: the patient is your portfolio. While you type a password the lightbox dims, like covering the film, and when
   you log in it brightens before the page changes (static/js/lightbox.js). Nothing here is required:
   with no JavaScript or "reduce motion" on, it's a still, readable page.
 #}
@@ -11,25 +12,28 @@
 <svg class="film-chart" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true" focusable="false">
   <defs>
     <linearGradient id="film-fill" x1="0" x2="0" y1="0" y2="1">
-      <stop offset="0" stop-color="#9CC4FF" stop-opacity="0.22"/><stop offset="1" stop-color="#9CC4FF" stop-opacity="0"/>
+      <stop offset="0" stop-color="#3A73FF" stop-opacity="0.30"/><stop offset="1" stop-color="#9CC4FF" stop-opacity="0"/>
     </linearGradient>
   </defs>
   <line x1="0" x2="400" y1="92.5" y2="92.5" stroke="rgba(156,196,255,0.10)" vector-effect="non-scaling-stroke"/>
   <line x1="0" x2="400" y1="65.0" y2="65.0" stroke="rgba(156,196,255,0.10)" vector-effect="non-scaling-stroke"/>
   <line x1="0" x2="400" y1="37.5" y2="37.5" stroke="rgba(156,196,255,0.10)" vector-effect="non-scaling-stroke"/>
   <path d="M0.0 118.4 L12.5 117.1 L25.0 116.3 L37.5 99.0 L50.0 97.7 L62.5 81.3 L75.0 79.6 L87.5 80.3 L100.0 77.9 L112.5 77.4 L125.0 76.4 L137.5 75.1 L150.0 52.8 L162.5 56.0 L175.0 53.2 L187.5 52.1 L200.0 48.1 L212.5 43.0 L225.0 42.1 L237.5 38.3 L250.0 45.2 L262.5 42.6 L275.0 38.7 L287.5 39.7 L300.0 41.3 L312.5 38.0 L325.0 33.1 L337.5 29.5 L350.0 18.8 L362.5 14.8 L375.0 15.6 L387.5 20.8 L400.0 24.5 L400 120 L0 120 Z" fill="url(#film-fill)"/>
-  <path class="film-line" d="M0.0 118.4 L12.5 117.1 L25.0 116.3 L37.5 99.0 L50.0 97.7 L62.5 81.3 L75.0 79.6 L87.5 80.3 L100.0 77.9 L112.5 77.4 L125.0 76.4 L137.5 75.1 L150.0 52.8 L162.5 56.0 L175.0 53.2 L187.5 52.1 L200.0 48.1 L212.5 43.0 L225.0 42.1 L237.5 38.3 L250.0 45.2 L262.5 42.6 L275.0 38.7 L287.5 39.7 L300.0 41.3 L312.5 38.0 L325.0 33.1 L337.5 29.5 L350.0 18.8 L362.5 14.8 L375.0 15.6 L387.5 20.8 L400.0 24.5" fill="none" stroke="#9CC4FF" stroke-width="1.75" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+  <g stroke="#3A73FF" stroke-opacity="0.35" stroke-width="2" vector-effect="non-scaling-stroke"><line x1="12.5" x2="12.5" y1="120" y2="115.8"/><line x1="25.0" x2="25.0" y1="120" y2="116.3"/><line x1="37.5" x2="37.5" y1="120" y2="104.0"/><line x1="50.0" x2="50.0" y1="120" y2="115.8"/><line x1="62.5" x2="62.5" y1="120" y2="104.0"/><line x1="75.0" x2="75.0" y1="120" y2="115.5"/><line x1="87.5" x2="87.5" y1="120" y2="116.4"/><line x1="100.0" x2="100.0" y1="120" y2="114.8"/><line x1="112.5" x2="112.5" y1="120" y2="116.5"/><line x1="125.0" x2="125.0" y1="120" y2="116.1"/><line x1="137.5" x2="137.5" y1="120" y2="115.8"/><line x1="150.0" x2="150.0" y1="120" y2="104.0"/><line x1="162.5" x2="162.5" y1="120" y2="114.1"/><line x1="175.0" x2="175.0" y1="120" y2="114.5"/><line x1="187.5" x2="187.5" y1="120" y2="116.0"/><line x1="200.0" x2="200.0" y1="120" y2="113.4"/><line x1="212.5" x2="212.5" y1="120" y2="112.4"/><line x1="225.0" x2="225.0" y1="120" y2="116.2"/><line x1="237.5" x2="237.5" y1="120" y2="113.6"/><line x1="250.0" x2="250.0" y1="120" y2="110.8"/><line x1="262.5" x2="262.5" y1="120" y2="114.7"/><line x1="275.0" x2="275.0" y1="120" y2="113.5"/><line x1="287.5" x2="287.5" y1="120" y2="116.1"/><line x1="300.0" x2="300.0" y1="120" y2="115.6"/><line x1="312.5" x2="312.5" y1="120" y2="114.0"/><line x1="325.0" x2="325.0" y1="120" y2="112.6"/><line x1="337.5" x2="337.5" y1="120" y2="113.8"/><line x1="350.0" x2="350.0" y1="120" y2="107.4"/><line x1="362.5" x2="362.5" y1="120" y2="113.4"/><line x1="375.0" x2="375.0" y1="120" y2="116.3"/><line x1="387.5" x2="387.5" y1="120" y2="112.3"/><line x1="400.0" x2="400.0" y1="120" y2="113.7"/></g>
+  <path d="M0.0 118.4 L12.5 117.8 L25.0 117.3 L37.5 110.8 L50.0 104.3 L62.5 92.7 L75.0 86.2 L87.5 80.4 L100.0 79.3 L112.5 78.5 L125.0 77.2 L137.5 76.3 L150.0 68.1 L162.5 61.3 L175.0 54.0 L187.5 53.8 L200.0 51.1 L212.5 47.7 L225.0 44.4 L237.5 41.1 L250.0 41.9 L262.5 42.0 L275.0 42.2 L287.5 40.3 L300.0 39.9 L312.5 39.7 L325.0 37.5 L337.5 33.5 L350.0 27.1 L362.5 21.0 L375.0 16.4 L387.5 17.1 L400.0 20.3" class="film-avg" fill="none" stroke="#E3A35E" stroke-width="1.25" stroke-opacity="0.7" vector-effect="non-scaling-stroke"/>
+  <path class="film-line" d="M0.0 118.4 L12.5 117.1 L25.0 116.3 L37.5 99.0 L50.0 97.7 L62.5 81.3 L75.0 79.6 L87.5 80.3 L100.0 77.9 L112.5 77.4 L125.0 76.4 L137.5 75.1 L150.0 52.8 L162.5 56.0 L175.0 53.2 L187.5 52.1 L200.0 48.1 L212.5 43.0 L225.0 42.1 L237.5 38.3 L250.0 45.2 L262.5 42.6 L275.0 38.7 L287.5 39.7 L300.0 41.3 L312.5 38.0 L325.0 33.1 L337.5 29.5 L350.0 18.8 L362.5 14.8 L375.0 15.6 L387.5 20.8 L400.0 24.5" fill="none" stroke="#9CC4FF" stroke-width="1.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
 </svg>
-<span class="film-last" style="top: 20.4%">S$24,878</span>
 {% endmacro %}
 
-{% macro lightbox(caption) %}
+{% macro lightbox(patient, scan) %}
 <div class="lightbox" data-lightbox>
+  <span class="screw screw-tl" aria-hidden="true"></span><span class="screw screw-tr" aria-hidden="true"></span>
+  <span class="screw screw-bl" aria-hidden="true"></span><span class="screw screw-br" aria-hidden="true"></span>
   <div class="film">
     <span class="clip clip-left" aria-hidden="true"></span><span class="clip clip-right" aria-hidden="true"></span>
     <div class="film-edge" aria-hidden="true">
       <svg class="film-mark" viewBox="0 0 7 7" shape-rendering="crispEdges"><g fill="#9CC4FF"><rect x="0" y="0" width="1" height="1"/><rect x="6" y="0" width="1" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="5" y="1" width="1" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="4" y="2" width="1" height="1"/><rect x="2" y="4" width="1" height="1"/><rect x="4" y="4" width="1" height="1"/><rect x="1" y="5" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/><rect x="0" y="6" width="1" height="1"/><rect x="6" y="6" width="1" height="1"/></g><rect x="3" y="3" width="1" height="1" fill="#E3A35E"/></svg>
-      <span>SGXRAY</span><span class="film-caption">{{ caption }}</span>
+      <span>SGXRAY</span><span class="film-caption">Patient: {{ patient }}</span><span class="film-scan">{{ scan }}</span>
     </div>
     <figure class="film-image">{{ film_chart() }}</figure>
     <div class="film-body">
