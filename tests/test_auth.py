@@ -278,3 +278,32 @@ def test_errors_are_generic_and_debug_is_off(db_path, monkeypatch):
     assert "secret internal detail" not in body and "Traceback" not in body
     missing = app.test_client().get("/no-such-page")
     assert missing.status_code == 404 and "Page not found" in missing.get_data(as_text=True)
+
+
+# ---------- Added after the Part 4 checks (55-70) ----------
+
+def test_two_signups_for_one_email_at_the_same_moment(app, db_path, monkeypatch):
+    """Check 58: if two requests race past the "is this email free?" check, the database's UNIQUE rule
+    still allows only one account, and the loser gets the normal calm message, not a crash."""
+    import app as web
+    c = app.test_client()
+    real = db.get_user_by_email
+    monkeypatch.setattr(web.db, "get_user_by_email", lambda conn, email: None)   # both see "free"
+    assert signup(c, "race@example.com").status_code == 302
+    c.post("/logout", data={"csrf": csrf(c, "/portfolio")})
+    loser = signup(c, "race@example.com")
+    monkeypatch.setattr(web.db, "get_user_by_email", real)
+    assert loser.status_code == 422 and "couldn&#39;t create an account" in loser.get_data(as_text=True)
+    conn = db.get_connection(db_path)
+    assert conn.execute("SELECT COUNT(*) FROM users WHERE email = 'race@example.com'").fetchone()[0] == 1
+
+
+def test_a_forged_or_broken_cookie_means_logged_out(app):
+    """Check 63 (fail closed): a cookie that doesn't verify gives no access, never an error or a guess."""
+    c = app.test_client()
+    signup(c)
+    good = c.get_cookie("session").value
+    for bad in [good[:-4] + "AAAA", "not-a-real-cookie", ""]:
+        other = app.test_client()
+        other.set_cookie("session", bad)
+        assert other.get("/portfolio").status_code == 302

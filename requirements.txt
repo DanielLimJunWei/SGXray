@@ -1,0 +1,16 @@
+# What SGXray needs to run, pinned to the exact versions it's tested with.
+# Pinning means the live server installs exactly these, not whatever is newest that day
+# (a new release could break something, or in rare cases be a compromised package).
+# Install with:  python -m pip install -r requirements.txt
+# Update on purpose: bump one version, run the tests, check pip-audit, then commit.
+Flask==3.1.3
+Werkzeug==3.1.9
+Jinja2==3.1.6
+itsdangerous==2.2.0
+MarkupSafe==3.0.4
+click==8.5.0
+blinker==1.9.0
+pandas==3.1.1
+numpy==2.5.4
+yfinance==1.8.0
+requests==2.34.2

@@ -1,0 +1,4 @@
+# Extra tools for working on SGXray (not needed on the live server).
+-r requirements.txt
+pytest==9.2.0
+pip-audit==2.10.1   # scans these libraries for known security holes: python -m pip_audit -r requirements-dev.txt

@@ -14,6 +14,7 @@ then open http://127.0.0.1:5000
 
 import os
 import secrets
+import sqlite3
 import sys
 from datetime import date, timedelta
 from functools import wraps
@@ -100,14 +101,20 @@ def create_app(db_path=None):
         problem = auth.email_problem(email) or auth.password_problem(password, email)
         if not problem and request.form.get("password2", "") != password:
             problem = "The two passwords don't match."
-        if not problem and db.get_user_by_email(conn, email):
-            # Saying "that email is taken" would tell anyone who has an account. Instead, a calm message
-            # that doesn't confirm either way. (With email sending, this would say "check your inbox".)
-            problem = "We couldn't create an account with that email. If it's yours, log in instead."
         if problem:
             return render_template("signup.html", error=problem, email=email), 422
         auth.count(conn, "signup:" + (request.remote_addr or "?"))
-        uid = db.create_user(conn, email, auth.hash_password(password))
+        hashed = auth.hash_password(password)          # always, so an existing email isn't answered faster
+        taken = "We couldn't create an account with that email. If it's yours, log in instead."
+        if db.get_user_by_email(conn, email):
+            # Saying "that email is taken" would confirm who has an account. This calm message doesn't,
+            # and the sign-up limit stops anyone checking many emails. (With email sending, the fully
+            # private version is "check your inbox" for both cases.)
+            return render_template("signup.html", error=taken, email=email), 422
+        try:
+            uid = db.create_user(conn, email, hashed)
+        except sqlite3.IntegrityError:                 # the same email signed up a split second earlier
+            return render_template("signup.html", error=taken, email=email), 422
         db.log_security_event(conn, "signup", uid, request.remote_addr)
         _start_session(db.get_user(conn, uid))
         return redirect(url_for("portfolio"))
