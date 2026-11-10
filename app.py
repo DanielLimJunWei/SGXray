@@ -23,6 +23,7 @@ sys.path.insert(0, str(ROOT / "src"))      # let the app import db, portfolio, .
 
 import db  # noqa: E402
 import fmt  # noqa: E402
+import glossary  # noqa: E402
 from explain import (explain_forecast, explain_holdings, explain_performance,  # noqa: E402
                      explain_value_chart, explain_yields)
 from history import value_history  # noqa: E402
@@ -42,6 +43,7 @@ def create_app(db_path=None):
     conn.close()
 
     _add_filters(app)
+    app.jinja_env.globals.update(glossary=glossary.TERMS, glossary_entry=glossary.entry)   # tap-a-term
     app.teardown_appcontext(_close_db)
     app.after_request(_security_headers)
 

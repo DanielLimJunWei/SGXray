@@ -129,3 +129,18 @@ def test_safety_headers(client):
 
 def test_design_preview_is_hidden_on_the_live_site(client):
     assert client.get("/design-system/preview.html").status_code == 404
+
+
+def test_tap_a_term_every_word_has_a_meaning(client, db_path):
+    """Every tappable word opens a popup that exists, and every popup has a meaning and an example."""
+    import re
+    import glossary
+    load_demo(db_path)
+    html = client.get("/demo").get_data(as_text=True)
+    used = set(re.findall(r'popovertarget="term-([a-z-]+)"', html))
+    assert {"dividend", "unrealised", "avg-cost", "yield", "sti-etf"} <= used   # ex-date only shows with a forecast
+    for key in used:
+        assert key in glossary.TERMS
+        assert f'id="term-{key}"' in html
+    for name, meaning, example in glossary.TERMS.values():
+        assert name and meaning.endswith(".") and example

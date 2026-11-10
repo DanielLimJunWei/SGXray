@@ -1,0 +1,19 @@
+{#
+  Tap a term to see what it means. term("dividend") shows the glossary's own name for it;
+  term("dividend", "Dividends received") shows your own words but opens the same meaning.
+  The popups themselves are written once per page by term_popups(), from src/glossary.py.
+#}
+{% macro term(key, text=None) -%}
+  {%- set t = glossary_entry(key) -%}
+  <button class="term" type="button" popovertarget="term-{{ key }}" data-term="{{ key }}">{{ text or t[0] }}</button>
+{%- endmacro %}
+
+{% macro term_popups() %}
+  {% for key, t in glossary.items() %}
+  <div class="term-pop" id="term-{{ key }}" popover role="dialog" aria-labelledby="term-{{ key }}-name">
+    <b id="term-{{ key }}-name">{{ t[0] }}</b>
+    <p>{{ t[1] }}</p>
+    <p class="term-eg"><span>For example:</span> {{ t[2] }}</p>
+  </div>
+  {% endfor %}
+{% endmacro %}

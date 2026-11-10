@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_explain.html" import explain_buttons %}
+{% from "_term.html" import term, term_popups %}
 {% block title %}Demo portfolio · SGXray{% endblock %}
 {% block navlinks %}
   <ul>
@@ -15,7 +16,7 @@
     <p class="eyebrow">Demo portfolio · sample trades, real SGX prices</p>
     <h1>Your portfolio</h1>
     {% if s %}
-    <p class="as-of">Prices as of {{ s.prices_as_of|longdate }} (closing prices)</p>
+    <p class="as-of">Prices as of {{ s.prices_as_of|longdate }} ({{ term("closing-price", "closing prices") }})</p>
     {% endif %}
   </header>
 
@@ -29,22 +30,22 @@
 
   <section class="panel figures" aria-label="Key figures">
     <div class="figure">
-      <span class="label">Worth now</span>
+      <span class="label">{{ term("worth", "Worth now") }}</span>
       <span class="value" data-count="{{ s.value|rawnum }}">{{ s.value|money }}</span>
       <span class="note">What you hold, at the latest closing prices</span>
     </div>
     <div class="figure">
-      <span class="label">Total profit</span>
+      <span class="label">{{ term("total-profit", "Total profit") }}</span>
       <span class="value {{ s.total_profit|trend }}" data-count="{{ s.total_profit|rawnum }}" data-signed>{{ s.total_profit|arrow }} {{ s.total_profit|money(signed=True) }}</span>
-      <span class="note">Unrealised {{ s.unrealised|money(signed=True) }} · realised {{ s.realised|money(signed=True) }} · dividends {{ s.dividends|money(signed=True) }}</span>
+      <span class="note">{{ term("unrealised", "Unrealised") }} {{ s.unrealised|money(signed=True) }} · {{ term("realised", "realised") }} {{ s.realised|money(signed=True) }} · {{ term("dividend", "dividends") }} {{ s.dividends|money(signed=True) }}</span>
     </div>
     <div class="figure">
-      <span class="label">Dividends received</span>
+      <span class="label">{{ term("dividend", "Dividends") }} received</span>
       <span class="value" data-count="{{ s.dividends|rawnum }}">{{ s.dividends|money }}</span>
       <span class="note">Cash paid to you so far</span>
     </div>
     <div class="figure">
-      <span class="label">You vs the STI, a year</span>
+      <span class="label">You vs the {{ term("sti-etf", "STI") }}, {{ term("a-year", "a year") }}</span>
       {% if not vs %}
       <span class="value">n/a</span>
       <span class="note">No STI ETF prices saved yet</span>
@@ -109,9 +110,9 @@
     </div>
     <ol class="steps" id="xray-steps">
       <li class="step" data-at="0"><b>An ordinary chart</b><span class="muted">One line going up. It doesn't say why.</span></li>
-      <li class="step" data-at="0.2"><b><span class="key" style="background:#4A5B82"></span>Your own money</b><span class="muted">{{ last.money|money }} put in. Not profit.</span></li>
-      <li class="step" data-at="0.45"><b><span class="key" style="background:#3A73FF"></span>Price gains · <span class="key" style="background:#E3A35E"></span>dividends</b><span class="muted">{{ last.gains|money(signed=True) }} from prices, {{ last.divs|money }} paid in cash.</span></li>
-      {% if last.sti is not none %}<li class="step" data-at="0.8"><b><span class="key key-dash"></span>The market</b><span class="muted">Same money in the STI ETF: {{ last.sti|money }}.</span></li>{% endif %}
+      <li class="step" data-at="0.2"><b><span class="key" style="background:#4A5B82"></span>{{ term("money-in", "Your own money") }}</b><span class="muted">{{ last.money|money }} put in. Not profit.</span></li>
+      <li class="step" data-at="0.45"><b><span class="key" style="background:#3A73FF"></span>{{ term("price-gains", "Price gains") }} · <span class="key" style="background:#E3A35E"></span>{{ term("dividend", "dividends") }}</b><span class="muted">{{ last.gains|money(signed=True) }} from prices, {{ last.divs|money }} paid in cash.</span></li>
+      {% if last.sti is not none %}<li class="step" data-at="0.8"><b><span class="key key-dash"></span>The market ({{ term("sti-etf", "STI ETF") }})</b><span class="muted">Same money in the STI ETF: {{ last.sti|money }}.</span></li>{% endif %}
     </ol>
     <details class="as-table">
       <summary>Show as a table</summary>
@@ -138,8 +139,8 @@
     <div class="panel table-wrap">
       <table class="data">
         <thead>
-          <tr><th scope="col">Stock</th><th scope="col">Shares</th><th scope="col">Avg cost</th><th scope="col">Price</th>
-              <th scope="col">Cost</th><th scope="col">Worth now</th><th scope="col">Unrealised</th></tr>
+          <tr><th scope="col">Stock</th><th scope="col">{{ term("shares", "Shares") }}</th><th scope="col">{{ term("avg-cost", "Avg cost") }}</th><th scope="col">{{ term("closing-price", "Price") }}</th>
+              <th scope="col">{{ term("cost", "Cost") }}</th><th scope="col">{{ term("worth", "Worth now") }}</th><th scope="col">{{ term("unrealised", "Unrealised") }}</th></tr>
         </thead>
         <tbody>
           {% for r in holdings %}
@@ -160,7 +161,7 @@
 
   <section class="block" aria-labelledby="vs-title">
     <div class="section-head">
-      <h2 id="vs-title">You vs the STI ETF, stock by stock</h2>
+      <h2 id="vs-title">You vs the {{ term("sti-etf", "STI ETF") }}, stock by stock</h2>
       {% if vs_ex %}{{ explain_buttons(vs_ex, "vs", "You vs the STI ETF") }}{% endif %}
     </div>
     {% if stocks is none %}
@@ -170,8 +171,8 @@
     <div class="panel table-wrap">
       <table class="data">
         <thead>
-          <tr><th scope="col">Stock</th><th scope="col">You, a year</th><th scope="col">STI ETF, a year</th>
-              <th scope="col">Your profit</th><th scope="col">Same money in the STI ETF</th><th scope="col">Difference</th></tr>
+          <tr><th scope="col">Stock</th><th scope="col">You, {{ term("a-year", "a year") }}</th><th scope="col">STI ETF, a year</th>
+              <th scope="col">Your profit</th><th scope="col">Same money in the STI ETF</th><th scope="col">{{ term("difference", "Difference") }}</th></tr>
         </thead>
         <tbody>
           {% for r in stocks %}
@@ -195,7 +196,7 @@
 
   <section class="block" aria-labelledby="yields-title">
     <div class="section-head">
-      <h2 id="yields-title">Dividend yields</h2>
+      <h2 id="yields-title">{{ term("yield", "Dividend yields") }}</h2>
       {{ explain_buttons(yields_ex, "yields", "Dividend yields") }}
     </div>
     <p class="muted lead">Dividends paid over the last 12 months, against today's price and against what you paid.</p>
@@ -203,7 +204,7 @@
       <table class="data">
         <thead>
           <tr><th scope="col">Stock</th><th scope="col">Paid a share, 12 months</th><th scope="col">Price</th>
-              <th scope="col">Yield</th><th scope="col">Your avg cost</th><th scope="col">On cost</th><th scope="col">A year's income</th></tr>
+              <th scope="col">{{ term("yield", "Yield") }}</th><th scope="col">Your {{ term("avg-cost", "avg cost") }}</th><th scope="col">{{ term("yield-on-cost", "On cost") }}</th><th scope="col">A year's income</th></tr>
         </thead>
         <tbody>
           {% for r in yields %}
@@ -227,7 +228,7 @@
 
   <section class="block" aria-labelledby="forecast-title">
     <div class="section-head">
-      <h2 id="forecast-title">Dividends expected, next 12 months</h2>
+      <h2 id="forecast-title">{{ term("forecast", "Dividends expected") }}, next 12 months</h2>
       {{ explain_buttons(forecast_ex, "forecast", "Dividends expected") }}
     </div>
     {% if not forecast %}
@@ -238,7 +239,7 @@
       <table class="data">
         <thead>
           <tr><th scope="col">Around</th><th scope="col">Stock</th><th scope="col">Shares</th>
-              <th scope="col">A share</th><th scope="col">Expected</th><th scope="col">Based on</th></tr>
+              <th scope="col">A share</th><th scope="col">Expected</th><th scope="col">Last {{ term("ex-date", "ex-date") }}</th></tr>
         </thead>
         <tbody>
           {% for r in forecast %}
@@ -261,9 +262,11 @@
   </section>
   {% endif %}
 </div>
+{{ term_popups() }}
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/count-up.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/xray-chart.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/terms.js') }}" defer></script>
 {% endblock %}

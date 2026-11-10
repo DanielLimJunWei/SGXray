@@ -99,6 +99,20 @@ footer.site p + p { margin-top: var(--space-2); }
 .block { margin-top: var(--space-16); }
 .panel.figures + .block, .xray-block { margin-top: var(--space-12); }
 
+/* ---------- Tap a term ---------- */
+/* Looks like the words around it, with a quiet dotted underline: a hint, not a link to chase. */
+.term { font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; background: none; border: 0; padding: 0;
+  cursor: help; text-decoration: underline dotted; text-decoration-color: var(--color-text-faint); text-underline-offset: 0.22em; }
+.term:hover { text-decoration-color: var(--color-glow-soft); }
+.term-pop { width: min(20rem, calc(100vw - 24px)); margin: auto; padding: var(--space-4); color: var(--color-text);
+  background: var(--color-surface-raised); border: 1px solid var(--color-line-strong); border-radius: var(--radius-md);
+  font: var(--text-sm)/1.55 var(--font-sans); text-transform: none; letter-spacing: 0; text-align: left; }
+.terms-js .term-pop { position: fixed; inset: auto; margin: 0; }      /* placed next to the word by terms.js */
+.term-pop b { display: block; font-weight: 600; margin-bottom: var(--space-1); }
+.term-pop p + p { margin-top: var(--space-2); }
+.term-eg { color: var(--color-text-muted); font-size: var(--text-xs); }
+.term-eg span { color: var(--color-text-faint); }
+
 /* ---------- The X-ray chart ---------- */
 .chart-card { position: relative; padding: var(--space-6) var(--space-6) var(--space-4); }
 .chart-card svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
