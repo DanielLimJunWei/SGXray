@@ -226,14 +226,19 @@ function cameraAt(p) {
   camera.position.copy(camPos); camera.lookAt(camLook);
 }
 
-// ---------- Drag to turn the chart ----------
+// ---------- Drag to turn the chart, all the way round ----------
 // Holding the left mouse button on an empty part of the page turns the chart. It's done by swinging
 // the CAMERA around the chart's centre (with its aim point), so the chart keeps its shape and every
 // scroll stage (the zoom, the scan, the X-ray layers) still lands on the same part of the chart,
-// whichever way it's been turned. Double-click an empty spot to turn it back.
+// whichever way it's been turned. Left and right turn it a full 360 degrees and beyond; up and down
+// tilt it a little (never upside down). Let go mid-swing and it keeps spinning, then slows to a stop:
+// a hard flick spins far, a gentle push barely coasts. Double-click an empty spot to turn it back.
 const PIVOT = new THREE.Vector3(0, -0.4, 0), UP = new THREE.Vector3(0, 1, 0);
-const YAW_MAX = 0.7, PITCH_MIN = -0.25, PITCH_MAX = 0.35;    // about 40 degrees each way: always readable, never edge-on
+const PITCH_MIN = -0.3, PITCH_MAX = 0.45;       // tilt limits, in radians (about -17 to +26 degrees)
+const FRICTION = 1.6;                           // how quickly a spin slows: speed halves about every 0.4 s
+const MAX_SPIN = 9;                             // the fastest spin, in radians a second (about 1.4 turns)
 const turn = { yaw: 0, pitch: 0, toYaw: 0, toPitch: 0, vYaw: 0, vPitch: 0, dragging: false };
+const samples = [];                             // the last fraction of a second of dragging, to measure the flick
 const qYaw = new THREE.Quaternion(), qPitch = new THREE.Quaternion(), right = new THREE.Vector3(), fwd = new THREE.Vector3();
 function turnAroundChart(pos, look) {
   if (!turn.yaw && !turn.pitch) return;
@@ -245,14 +250,22 @@ function turnAroundChart(pos, look) {
   qPitch.multiply(qYaw);
   for (const v of [pos, look]) v.sub(PIVOT).applyQuaternion(qPitch).add(PIVOT);
 }
-function easeTurn() {
-  if (!turn.dragging) {                                        // a little glide after letting go
-    turn.toYaw += turn.vYaw; turn.toPitch += turn.vPitch;
-    turn.vYaw *= 0.85; turn.vPitch *= 0.85;
+let lastTurnTime = null;
+function easeTurn(now) {
+  const dt = lastTurnTime === null ? 0 : Math.min(0.05, (now - lastTurnTime) / 1000);   // seconds since last frame
+  lastTurnTime = now;
+  if (!turn.dragging && !reduceMotion) {                       // coasting after a flick
+    turn.toYaw += turn.vYaw * dt;
+    turn.toPitch += turn.vPitch * dt;
+    const keep = Math.exp(-FRICTION * dt);                     // the same slow-down whatever the frame rate
+    turn.vYaw *= keep; turn.vPitch *= keep;
+    if (Math.abs(turn.vYaw) < 0.01) turn.vYaw = 0;
   }
-  turn.toYaw = Math.max(-YAW_MAX, Math.min(YAW_MAX, turn.toYaw));
-  turn.toPitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, turn.toPitch));
-  const k = reduceMotion ? 1 : 0.14;
+  if (turn.toPitch < PITCH_MIN || turn.toPitch > PITCH_MAX) {  // tilting stops softly at its limit
+    turn.toPitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, turn.toPitch));
+    turn.vPitch = 0;
+  }
+  const k = reduceMotion ? 1 : 1 - Math.exp(-20 * dt);         // the view follows the hand closely, without jitter
   turn.yaw += (turn.toYaw - turn.yaw) * k;
   turn.pitch += (turn.toPitch - turn.pitch) * k;
 }
@@ -262,6 +275,7 @@ const finePointer = matchMedia("(hover: hover) and (pointer: fine)").matches;   
 if (finePointer) {
   document.documentElement.classList.add("can-turn");
   let last = null;
+  const speed = () => Math.PI / Math.max(innerWidth, 600);    // a full-width drag turns it half way round
   const startsTurn = e => e.button === 0 && e.pointerType !== "touch" && !e.target.closest(NOT_DRAGGABLE);
   const clearSelection = () => { const sel = getSelection(); if (sel && sel.rangeCount) sel.removeAllRanges(); };
   // Text selection starts on mousedown, a separate event from pointerdown, so stop it there too.
@@ -271,31 +285,50 @@ if (finePointer) {
     if (!startsTurn(e)) return;
     e.preventDefault();
     clearSelection();                                          // a click on empty space clears any old highlight, as usual
-    turn.dragging = true; turn.vYaw = turn.vPitch = 0;
+    turn.dragging = true; turn.vYaw = turn.vPitch = 0;         // grabbing a spinning chart stops it, like a real object
+    turn.toYaw = turn.yaw; turn.toPitch = turn.pitch;
     last = { x: e.clientX, y: e.clientY };
+    samples.length = 0;
+    samples.push({ t: e.timeStamp, yaw: turn.toYaw, pitch: turn.toPitch });
     document.documentElement.classList.add("turning");
   });
   addEventListener("pointermove", e => {
     if (!turn.dragging) return;
     const dx = e.clientX - last.x, dy = e.clientY - last.y;
     last = { x: e.clientX, y: e.clientY };
-    const speed = 1.6 / Math.max(innerWidth, 600);             // a full-width drag turns about 90 degrees
-    turn.toYaw -= dx * speed; turn.toPitch += dy * speed;
-    turn.vYaw = -dx * speed * 0.4; turn.vPitch = dy * speed * 0.4;   // a short glide after letting go
+    turn.toYaw -= dx * speed();
+    turn.toPitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, turn.toPitch + dy * speed()));
+    samples.push({ t: e.timeStamp, yaw: turn.toYaw, pitch: turn.toPitch });
+    while (samples.length > 2 && e.timeStamp - samples[0].t > 100) samples.shift();   // keep the last 0.1 s
     if (reduceMotion) requestAnimationFrame(frame);
   });
-  const stop = () => {
+  const stop = e => {
     if (!turn.dragging) return;
     turn.dragging = false;
     document.documentElement.classList.remove("turning");
     clearSelection();
-    if (reduceMotion) { turn.vYaw = turn.vPitch = 0; requestAnimationFrame(frame); }
+    // The flick: how fast the chart was turning over the last 0.1 s. Holding still before letting go = no spin.
+    const now = e && e.timeStamp ? e.timeStamp : performance.now();
+    const first = samples[0], newest = samples[samples.length - 1];
+    const span = first && newest ? (newest.t - first.t) / 1000 : 0;
+    const fresh = newest && now - newest.t < 60;
+    if (!reduceMotion && fresh && span > 0.008) {
+      const clampSpin = v => Math.max(-MAX_SPIN, Math.min(MAX_SPIN, v));
+      turn.vYaw = clampSpin((newest.yaw - first.yaw) / span);
+      turn.vPitch = clampSpin((newest.pitch - first.pitch) / span) * 0.5;   // tilting coasts less
+    } else {
+      turn.vYaw = turn.vPitch = 0;
+    }
+    if (reduceMotion) requestAnimationFrame(frame);
   };
   addEventListener("pointerup", stop);
   addEventListener("pointercancel", stop);
-  addEventListener("blur", stop);
+  addEventListener("blur", () => stop());
   addEventListener("dblclick", e => {
     if (e.target.closest(NOT_DRAGGABLE)) return;
+    // Back to the start the short way round (after three full spins, don't unwind all three).
+    const full = Math.PI * 2;
+    turn.yaw -= Math.round(turn.yaw / full) * full;
     turn.toYaw = turn.toPitch = turn.vYaw = turn.vPitch = 0;
     if (reduceMotion) { turn.yaw = turn.pitch = 0; requestAnimationFrame(frame); }
   });
@@ -320,7 +353,7 @@ function frame(now) {
   const t = reduceMotion ? 0 : now / 1000;
   const p = scrollProgress();
   pe += (p - pe) * (reduceMotion ? 1 : 0.07);
-  easeTurn();
+  easeTurn(now);
   cameraAt(pe);
 
   // Gentle float: the chart breathes a little but never changes shape.
