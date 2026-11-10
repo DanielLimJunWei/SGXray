@@ -129,6 +129,30 @@ footer.site p + p { margin-top: var(--space-2); }
 .reveal-js [data-reveal]:not(.in-view) .bar { transform: scaleY(0); }
 .reveal-js [data-reveal]:not(.in-view) .bar-value { opacity: 0; }
 
+/* ---------- Period returns: one slim row under the X-ray chart ---------- */
+.periods { margin-top: var(--space-6); padding: var(--space-4) 0; border-top: 1px solid var(--color-line); border-bottom: 1px solid var(--color-line); }
+.periods-head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
+.periods-head h3 { font: 500 var(--text-sm)/1.3 var(--font-sans); margin-right: auto; }
+.period-list { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--space-3); list-style: none; margin: 0; padding: 0; }
+.period-list li { display: grid; gap: 2px; }
+.period-key { font: 500 var(--text-xs)/1.2 var(--font-mono); color: var(--color-text-muted); letter-spacing: 0.06em; }
+.period-list b { font: 500 var(--text-lg)/1.2 var(--font-mono); font-variant-numeric: tabular-nums; }
+.period-sti { font: var(--text-xs)/1.3 var(--font-mono); color: var(--color-text-faint); }
+@media (max-width: 560px) { .period-list { grid-template-columns: repeat(3, 1fr); row-gap: var(--space-4); } }
+
+/* ---------- 52-week range bar (in each price chart) ---------- */
+.range52 { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-3); margin: 0 0 var(--space-3);
+  font: var(--text-xs)/1.4 var(--font-mono); color: var(--color-text-muted); }
+.range-label { font-family: var(--font-sans); font-size: var(--text-sm); margin-right: var(--space-1); }
+.range-bar { position: relative; flex: 0 1 12rem; min-width: 6rem; height: 4px; border-radius: 2px;
+  background: linear-gradient(90deg, rgba(217, 130, 130, 0.5), var(--color-line-strong) 50%, rgba(123, 196, 160, 0.5)); }
+.range-dot { position: absolute; top: 50%; width: 10px; height: 10px; border-radius: 50%; transform: translate(-50%, -50%);
+  background: var(--color-glow-soft); border: 2px solid var(--color-night); }
+.range-now { color: var(--color-text); }
+
+/* ---------- "Sold" (folded under the holdings table) ---------- */
+.as-table.sold summary { font-family: var(--font-sans); font-size: var(--text-sm); letter-spacing: 0; }
+
 /* ---------- Axis titles and comparing points (both charts) ---------- */
 .axis .axis-title { fill: var(--color-text-muted); font-size: var(--svg-text, 12px); letter-spacing: 0.04em; }
 .chart-card svg { user-select: none; -webkit-user-select: none; }      /* a double-click never highlights axis text */

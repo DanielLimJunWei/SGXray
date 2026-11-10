@@ -121,6 +121,32 @@ TERMS = {
                     "as if one dollar went in at the start and stayed. It's how funds and the STI report returns, "
                     "so it's the fair way to judge your picks.",
                     "A stock goes $100 -> $50 -> $100: TWR 0%, even if buying more at $50 made you money."),
+    "day-change": ("Day's change",
+                   "How much your holdings moved from the previous closing price to the latest one, in $ and %. "
+                   "Buying or selling that day doesn't count, only price moves and dividends.",
+                   "DBS closed $1.48 lower: 210 shares x -$1.48 = -$310.80."),
+    "simple-return": ("Simple total return",
+                      "Your total profit divided by all the money you've put in (every buy, fees included). "
+                      "One plain percentage for the whole time, not a yearly rate.",
+                      "+$11,517 profit on $15,207 put in = +75.7% over 2 years and 8 months."),
+    "weight": ("Weight",
+               "A stock's share of what your whole portfolio is worth. Weights add up to 100%.",
+               "DBS worth $14,641 of a $22,695 portfolio = a 65% weight."),
+    "periods": ("Period returns",
+                "How much your investments grew over a set stretch (1 month, 3 months, this year, 1 year, or "
+                "all the time), next to the STI ETF. Time-weighted, so deposits don't count as growth.",
+                "Over the last year: you +25.3%, the STI ETF +19.2%."),
+    "ytd": ("YTD (year to date)",
+            "From the last closing price of last year to now.",
+            "In November, YTD covers about 10 months."),
+    "sold": ("Sold (closed position)",
+             "A stock you've sold all your shares of. It leaves your holdings, but its realised profit and the "
+             "dividends it paid still count in your total.",
+             "Sold all 1,000 units: put in $1,980, got back $2,310 after fees = +$330 realised."),
+    "week52": ("52-week range",
+               "A stock's highest and lowest closing price over the last 52 weeks (one year), and where today's "
+               "price sits between them. History, not a forecast.",
+               "DBS: low $53.38, high $78.65, today $69.72, in the middle of its range."),
     "difference": ("Difference vs the STI ETF",
                    "Your profit on a stock minus what the same money would have made in the STI ETF. "
                    "Positive = that pick helped you beat the market.",

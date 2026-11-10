@@ -162,3 +162,18 @@ def test_every_table_column_explains_itself(client, db_path):
     for th in re.findall(r'<th scope="col">(.*?)</th>', html, flags=re.S):
         text = re.sub(r"<[^>]+>", "", th).strip()
         assert text in plain or 'class="term"' in th, f"column '{text}' has no tap-a-term meaning"
+
+
+def test_six_extras_show_on_the_demo(client, db_path):
+    """Day's change, simple return, weight, period returns, the Sold table and the 52-week range."""
+    load_demo(db_path)
+    conn = db.get_connection(db_path)
+    db.add_trade(conn, db.get_user_by_email(conn, DEMO_EMAIL)["id"], "ES3.SI", "2025-06-30", "SELL", 1000, 3.8, 10.0)
+    conn.close()
+    html = client.get("/demo").get_data(as_text=True)
+    assert "Day&#39;s change" in html or "Day's change" in html
+    assert "on the money you put in" in html
+    assert 'popovertarget="term-weight"' in html
+    assert "How you did over time" in html
+    assert "1 stock you no longer hold" in html and "ES3.SI" in html     # sold completely
+    assert "nan" not in html.lower().replace("financial", "").replace("finance", "")

@@ -116,6 +116,18 @@ Important things to remember about how SGXray works and the data it uses. Newest
 | A bonus issue drops the price, not the value | stock chart | the stock had a bonus issue or split |
 | Averaging down lowers your cost but adds risk | stock chart | you bought 5%+ below your average cost |
 | The price line leaves out dividends | stock chart | always |
+| One day's move tells you almost nothing | worth now | there's a day's change |
+| A 3%+ day is big: check the news, don't rush | worth now | the day's change is over 3% |
+| Closing prices, not live | worth now | always |
+| A total isn't a yearly rate | total profit | always (with the simple total return) |
+| Most profit is unrealised | total profit | over half the profit is unrealised |
+| Stretches are totals, and short ones are noise | period returns | always |
+| A period appears once you have that much history | period returns | a period is longer than your history |
+| Selling locks it in: "would I buy it again today?" | sold | always |
+| Selling after a fall often misses the recovery | sold | a stock was sold at a loss |
+| Near the 52-week low isn't cheap | stock chart | today's price is in the bottom 20% of the range |
+| Near the 52-week high isn't a forecast | stock chart | today's price is in the top 20% of the range |
+| A bonus issue widens the 52-week range | stock chart | a bonus issue or split in the last 52 weeks |
 
 ## Database changes (migrations)
 
@@ -164,6 +176,13 @@ Important things to remember about how SGXray works and the data it uses. Newest
 - Per-stock price charts (`src/stocks.py`, `static/js/stock-chart.js`): "Price chart" under each stock in the holdings table opens its closing-price line right under the table, one stock at a time. On it: your buys (▲), sales (▽), dividend ex-dates (● along the bottom), bonus issues (a thin dashed line) and your average cost as a dashed STEP line, which only changes at a trade or a bonus issue. Point, tap or use the arrow keys for any day's price, your average cost then, and anything you did that day. The line draws in once when opened (if animation is on). At most 400 points are drawn, always keeping the days with a marker, so the page stays light.
 - Compare points (`static/js/compare.js`, on the X-ray chart and every price chart): double-click (or double-tap) up to 3 days to set points A, B and C; click a point's circle to remove it, or "Clear". Below the chart each pair shows its change: for a price chart, the price move in $ and % plus the dividends paid per share in between (and a note if a bonus issue in between makes the move look smaller); for the X-ray chart, how much "All together" grew, split into your own money going in vs what you actually earned (price gains + dividends), next to the STI ETF version. Checked against other tools first: TradingView, Optuma, WH SelfInvest and Apple Stocks all have a two-point "measure" tool, and users request it (MultiCharts, Freetrade forums). Max 3 points to stay readable.
 - Both charts have axis titles (S$ up the side, the date along the bottom). Sales on the price chart are solid peach triangles above the line on a short stem (buys: solid blue below), so markers never cover the line.
+- Six extras (`src/insights.py`, plus `history.period_returns`), each with its own ⓘ/⚠ and tappable terms, placed so the page stays calm:
+  - Day's change: a small line under "Worth now", the move from the previous close to the latest one, dated ("on 6 Nov 2026") so it never looks live. Profit change, so a buy or sale that day isn't counted as a gain.
+  - Simple total return: under "Total profit", profit divided by ALL money put in (every buy, fees included): +75.7% on $15,207 for the demo. A total, not a yearly rate.
+  - Weight %: a column in holdings (each stock's share of what the portfolio is worth).
+  - Period returns: one slim row under the X-ray chart: 1M, 3M, YTD, 1Y and All, you vs the STI ETF. Time-weighted over each stretch, so deposits don't count as growth; "All" equals the time-weighted total. A stretch longer than your history shows "n/a" instead of a shorter one.
+  - "Sold": a folded section under holdings, only when a stock has been sold completely: held from/to, put in, got back, realised, dividends, made in all.
+  - 52-week range: a small bar under each price chart's heading (low, high, where today sits), with Watch outs for near the low / near the high / a bonus issue inside the year.
 - Tap a term: key words on the demo (dividends, unrealised, avg cost, yield, STI ETF, ex-date...) have a quiet dotted underline; tapping one opens a short meaning and an example next to the word. Every meaning lives in `src/glossary.py`, so the dashboard and the coming Learn page say the same thing. `templates/_term.html` has the `term()` macro. The meaning boxes are the same movable, resizable boxes as ⓘ/⚠ (`static/js/popups.js`): they open centred under the word (above it if there's no room), only one at a time, and every box is kept fully inside the visible page, measured without the scrollbar (measuring with it is what let boxes on the far right slide off screen). A test checks every tappable word has a meaning. Kept uncluttered on purpose: labels and headers only, never every word in a sentence.
 - `tests/test_web.py` opens each page with Flask's test client: no crash, the right totals, no "nan", the demo is read-only.
 - Found while building it: the dashboard crashed when the STI ETF had no prices yet (compare() raises). The page now shows "n/a: no STI ETF prices saved yet".

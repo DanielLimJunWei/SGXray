@@ -310,6 +310,11 @@ def explain_holdings(conn, user_id, as_of=None):
     s = summary(df)
 
     out = ["Each row is one stock you own."]
+    total_value = held["value"].sum()
+    if total_value == total_value and total_value:
+        top = held.loc[held["value"].idxmax()]
+        out.append(f"'Weight' is each stock's share of what the whole portfolio is worth. {top['ticker']} is "
+                   f"{top['value'] / total_value:.0%} of yours: {money(top['value'])} of {money(total_value)}.")
     r = held.sort_values("value", ascending=False).iloc[0]
     if r["value"] == r["value"]:
         out.append(
@@ -381,6 +386,93 @@ def _two_returns_section(xirr_year, twr_year):
         lines.append(f"  - Yours: XIRR {xirr_year:+.2%} is lower than TWR {twr_year:+.2%}, so your timing cost you: "
                      f"you tended to add money before prices fell.")
     return lines
+
+
+def _span(days):
+    """'2 years and 7 months' / '5 months' / '20 days', for how long you've been investing."""
+    years, months = divmod(round(days / 30.44), 12)
+    if years:
+        return f"{years} year{'s' if years != 1 else ''}" + (f" and {months} month{'s' if months != 1 else ''}" if months else "")
+    return f"{months} month{'s' if months != 1 else ''}" if months else f"{days} days"
+
+
+def explain_worth(conn, user_id, change):
+    """Explains 'Worth now' and the day's change under it."""
+    s = summary(positions(conn, user_id))
+    if s["value"] != s["value"]:                       # a held stock has no price yet
+        return Explanation([f"'Worth now' can't be worked out yet: there's no price for {', '.join(s['missing_prices'])}."])
+    out = [f"'Worth now' is what everything you hold would sell for at the latest closing prices: {money(s['value'])}."]
+    watch = ["SGXray uses end-of-day closing prices, not live ones: they change once a day, after the market closes."]
+    if change:
+        out.append(f"The line under it is the day's change: from the close on {_day(pd.Timestamp(change['previous']))} "
+                   f"to the close on {_day(pd.Timestamp(change['date']))}, your holdings went {up_down(change['change'])} "
+                   f"({change['pct']:+.2%}). Buying or selling that day doesn't count: only price moves and dividends do.")
+        if change["movers"]:
+            m = change["movers"][0]
+            out.append(f"The biggest mover was {m['ticker']}: {up_down(m['change'])} ({m['pct']:+.2%}).")
+        watch.insert(0, "One day's move tells you almost nothing. Prices go up and down every day; judge your "
+                        "investments over months and years.")
+        if abs(change["pct"]) > 0.03:
+            watch.append(f"A {abs(change['pct']):.1%} move in a day is big. It's worth checking the news for the "
+                         f"stock that moved most, but don't rush to buy or sell because of one day.")
+    return Explanation(out, watch)
+
+
+def explain_total_return(conn, user_id):
+    """Explains 'Total profit' and the simple total return under it."""
+    from insights import simple_return
+    s = summary(positions(conn, user_id))
+    r = simple_return(conn, user_id)
+    if s["total_profit"] != s["total_profit"]:
+        return Explanation([f"'Total profit' can't be worked out yet: there's no price for {', '.join(s['missing_prices'])}."])
+    out = [f"'Total profit' is everything you've made: {money(s['unrealised'])} unrealised (on paper, on what you "
+           f"still hold) + {money(s['realised'])} realised (locked in by selling) + {money(s['dividends'])} of "
+           f"dividends = {up_down(s['total_profit'])}."]
+    watch = []
+    if r["pct"] == r["pct"]:
+        out.append(f"The line under it is your simple total return: that profit divided by all the money you've put "
+                   f"in ({money(r['put_in'])} of buys, fees included) = {r['pct']:+.1%}, over {_span(r['days'])}.")
+        watch.append(f"This is a total, not a yearly rate: {r['pct']:+.1%} over {_span(r['days'])} is much less "
+                     f"per year. For a fair yearly number, see 'You vs the STI a year'.")
+        if s["unrealised"] > 0.5 * s["total_profit"] > 0:
+            watch.append("Most of this profit is unrealised: it's only real once you sell, and a market drop can shrink it.")
+    return Explanation(out, watch)
+
+
+def explain_periods(rows):
+    """Explains the period returns row (1M, 3M, YTD, 1Y, All)."""
+    shown = [r for r in rows if r["available"]]
+    if not shown:
+        return Explanation(["There isn't enough history for any period yet."])
+    out = ["Each figure is how much your investments grew over that stretch, next to the STI ETF over the same "
+           "stretch. YTD means 'year to date': since the last close of last year.",
+           "They're time-weighted, like 'Your picks alone': money you added in the middle doesn't count as "
+           "growth, so a big deposit can't make a month look good."]
+    best = max(shown, key=lambda r: r["you"] - r["sti"])
+    out.append(f"For example, over {best['words']} you made {best['you']:+.1%} and the STI ETF {best['sti']:+.1%}.")
+    watch = ["These are totals for each stretch, not yearly rates, and short stretches are mostly noise: a bad "
+             "month says little about a good investment."]
+    missing = [r["key"] for r in rows if not r["available"]]
+    if missing:
+        watch.append(f"{', '.join(missing)} will appear once you have that much history.")
+    return Explanation(out, watch)
+
+
+def explain_sold(rows):
+    """Explains the 'Sold' table: stocks you've sold completely."""
+    if not rows:
+        return Explanation(["You haven't sold all your shares of any stock yet."])
+    r = rows[0]
+    out = ["These are stocks you've sold completely. They're no longer in your holdings, but what they made "
+           "still counts in your total profit.",
+           f"For example, {r['ticker']}: you put in {money(r['put_in'])} and got back {money(r['got_back'])} after "
+           f"fees, a realised {up_down(r['realised'])}, plus {money(r['dividends'])} of dividends while you held it."]
+    watch = ["Selling locks in the result. A winner you sold can keep rising without you, and a loser you sold can "
+             "recover: neither means the sale was wrong, but it's worth asking 'would I buy it again today?'"]
+    if any(x["realised"] < 0 for x in rows):
+        watch.append("Some of these were sold at a loss. Many beginners sell after a fall and miss the recovery; "
+                     "only sell when your reason for owning it has changed.")
+    return Explanation(out, watch)
 
 
 def explain_two_returns(conn, user_id, as_of=None):
@@ -497,6 +589,23 @@ def explain_stock_chart(conn, user_id, ticker, history=None, as_of=None):
             watch.append(f"On {_day(pd.Timestamp(t['date']))} you bought below your average cost ('averaging down'). "
                          f"It lowers your average, but only helps if the price recovers: it also puts more money in one stock.")
             break
+    from insights import week52
+    w = week52(conn, ticker, last_day)
+    if w:
+        where = ("near the top of" if w["position"] > 0.8 else "near the bottom of" if w["position"] < 0.2
+                 else "in the middle of")
+        out.append(f"52-week range: over the last year it closed as high as ${w['high']:.2f} "
+                   f"({_day(pd.Timestamp(w['high_date']))}) and as low as ${w['low']:.2f} "
+                   f"({_day(pd.Timestamp(w['low_date']))}). Today's ${w['now']:.2f} is {where} that range.")
+        if w["position"] < 0.2:
+            watch.append("Near its 52-week low doesn't mean cheap: a price can keep falling, often for a reason. "
+                         "Check why it fell before buying more.")
+        elif w["position"] > 0.8:
+            watch.append("Near its 52-week high doesn't mean it must fall, or that it will keep rising. "
+                         "The range is history, not a forecast.")
+        if w["action_inside"]:
+            watch.append("A bonus issue or split happened in the last 52 weeks. Prices are real, so they dropped "
+                         "that day without any loss in value: the range looks wider than it really was.")
     watch.append("The line shows the price only. Dividends aren't in it, so the line alone undersells what a "
                  "dividend stock has paid you.")
     return Explanation(out, watch)

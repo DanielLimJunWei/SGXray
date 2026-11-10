@@ -194,9 +194,61 @@ def time_weighted(conn, user_id, as_of=None, history=None):
     h = history if history is not None else value_history(conn, user_id, as_of)
     empty = {"you_total": float("nan"), "sti_total": float("nan"), "you_year": float("nan"),
              "sti_year": float("nan"), "days": 0}
-    if h.empty or h["value"].isna().any() or h["sti_value"].isna().any():
+    g = _growth(conn, user_id, as_of, h)
+    if g is None:
         return empty
+    you = g["you"].prod() - 1
+    sti = g["sti"].prod() - 1
+    days = (h.index[-1] - h.index[0]).days
+    return {"you_total": you, "sti_total": sti, "you_year": _yearly(you, days),
+            "sti_year": _yearly(sti, days), "days": days}
 
+
+PERIODS = [("1M", "the last month"), ("3M", "the last 3 months"), ("YTD", "this year so far"), ("1Y", "the last year"), ("All", "the whole time since you started")]
+
+
+def period_returns(conn, user_id, as_of=None, history=None):
+    """How the portfolio and the STI ETF did over the last 1 month, 3 months, this year (YTD),
+    1 year, and since you started.
+
+    Each one is time-weighted (TWR) over just that stretch, so money you added in the middle
+    doesn't count as a gain. They're totals for the stretch, NOT yearly rates. A stretch longer
+    than your history is left out (available False), rather than quietly showing a shorter one.
+    """
+    h = history if history is not None else value_history(conn, user_id, as_of)
+    g = _growth(conn, user_id, as_of, h)
+    if g is None:
+        return []
+    end, first = h.index[-1], h.index[0]
+    starts = {
+        "1M": end - pd.DateOffset(months=1),
+        "3M": end - pd.DateOffset(months=3),
+        "YTD": pd.Timestamp(year=end.year, month=1, day=1) - pd.Timedelta(days=1),   # the last close of last year
+        "1Y": end - pd.DateOffset(years=1),
+        "All": None,
+    }
+    out = []
+    for key, words in PERIODS:
+        start = starts[key]
+        if start is not None and start < first:
+            out.append({"key": key, "words": words, "available": False, "start": None,
+                        "you": float("nan"), "sti": float("nan")})
+            continue
+        # Growth on a day is the move from the previous close to that close, so a stretch starting
+        # at a close uses every day AFTER it.
+        base = h.index[h.index <= start][-1] if start is not None else None
+        days = g.index > base if base is not None else slice(None)
+        out.append({"key": key, "words": words, "available": True,
+                    "start": (base if base is not None else first).date().isoformat(),
+                    "you": float(g["you"][days].prod() - 1), "sti": float(g["sti"][days].prod() - 1)})
+    return out
+
+
+def _growth(conn, user_id, as_of, h):
+    """Each trading day's growth factor for you and for the STI ETF version (a DataFrame), or None
+    if any value is unknown (a price is missing)."""
+    if h.empty or h["value"].isna().any() or h["sti_value"].isna().any():
+        return None
     trades = trades_frame(conn, user_id, as_of)
     when = pd.to_datetime(trades["trade_date"])
     gross = trades["quantity"] * trades["price"]
@@ -208,11 +260,8 @@ def time_weighted(conn, user_id, as_of=None, history=None):
         sti_sells = pd.Series({pd.Timestamp(d): w for d, w in bench.withdrawals}, dtype=float).groupby(level=0).sum()
     sti_sells = _on_trading_days(sti_sells, h.index)
 
-    you = _daily_growth(h["value"], h["dividends"], buys, sells).prod() - 1
-    sti = _daily_growth(h["sti_value"], h["sti_dividends"], buys, sti_sells).prod() - 1
-    days = (h.index[-1] - h.index[0]).days
-    return {"you_total": you, "sti_total": sti, "you_year": _yearly(you, days),
-            "sti_year": _yearly(sti, days), "days": days}
+    return pd.DataFrame({"you": _daily_growth(h["value"], h["dividends"], buys, sells),
+                         "sti": _daily_growth(h["sti_value"], h["sti_dividends"], buys, sti_sells)})
 
 
 def _yearly(total, days):

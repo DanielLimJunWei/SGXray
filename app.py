@@ -16,6 +16,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
+import pandas as pd
 from flask import Flask, abort, current_app, g, render_template, send_from_directory
 
 ROOT = Path(__file__).resolve().parent
@@ -25,9 +26,10 @@ import db  # noqa: E402
 import fmt  # noqa: E402
 import glossary  # noqa: E402
 from explain import (explain_forecast, explain_holdings, explain_income_by_year,  # noqa: E402
-                     explain_performance, explain_stock_chart, explain_two_returns, explain_value_chart,
-                     explain_yields)
-from history import time_weighted, value_history  # noqa: E402
+                     explain_performance, explain_periods, explain_sold, explain_stock_chart,
+                     explain_total_return, explain_two_returns, explain_value_chart, explain_worth, explain_yields)
+from history import period_returns, time_weighted, value_history  # noqa: E402
+import insights  # noqa: E402
 from importer import DEMO_EMAIL  # noqa: E402
 from income import by_year, forecast, portfolio_yield, yields  # noqa: E402
 from performance import compare, per_stock  # noqa: E402
@@ -71,9 +73,16 @@ def create_app(db_path=None):
         y = yields(conn, uid)
         f = forecast(conn, uid)
         h = _or_none(value_history, conn, uid)
+        s = summary(df)
+        day = insights.day_change(conn, uid, h) if h is not None else None
+        periods = _or_none(period_returns, conn, uid, None, h) if h is not None else None
+        sold = _records(pd.DataFrame(insights.sold_out(conn, uid)), names) if insights.sold_out(conn, uid) else []
+        w = insights.weights(df)
+        for row in holdings:
+            row["weight"] = w.get(row["ticker"], float("nan"))
         return render_template(
             "dashboard.html",
-            s=summary(df),
+            s=s,
             vs=vs,
             twr=_or_none(time_weighted, conn, uid),
             twr_ex=_or_none(explain_two_returns, conn, uid),
@@ -91,7 +100,11 @@ def create_app(db_path=None):
             chart=_monthly_chart(h),
             years=_bar_layout(by_year(conn, uid)),
             years_ex=explain_income_by_year(conn, uid),
-            stock_charts=_stock_charts(conn, uid, holdings),
+            stock_charts=_stock_charts(conn, uid, holdings, s["prices_as_of"]),
+            day=day, worth_ex=explain_worth(conn, uid, day),
+            simple=insights.simple_return(conn, uid), total_ex=explain_total_return(conn, uid),
+            periods=periods, periods_ex=explain_periods(periods) if periods else None,
+            sold=sold, sold_ex=explain_sold(sold) if sold else None,
             chart_ex=explain_value_chart(conn, uid, h) if h is not None else None,
         )
 
@@ -120,14 +133,15 @@ def _records(df, names):
     return [{**row, "name": names.get(row["ticker"], "")} for row in df.to_dict("records")]
 
 
-def _stock_charts(conn, uid, holdings):
+def _stock_charts(conn, uid, holdings, as_of):
     """One price chart per stock you hold: its data for the page's script, and its explanation."""
     charts = []
     for r in holdings:
         h = stock_history(conn, uid, r["ticker"])
         if h and h["prices"]:
             charts.append({"ticker": r["ticker"], "name": r["name"], "id": "chart-" + r["ticker"].replace(".", "-"),
-                           "data": h, "ex": explain_stock_chart(conn, uid, r["ticker"], h)})
+                           "data": h, "ex": explain_stock_chart(conn, uid, r["ticker"], h),
+                           "w52": insights.week52(conn, r["ticker"], as_of) if as_of else None})
     return charts
 
 
@@ -214,6 +228,19 @@ def _add_filters(app):
     def rawnum(x):
         """A plain number for data attributes; empty when unknown, so a page never shows 'nan'."""
         return "" if fmt.missing(x) else repr(float(x))
+
+    @app.template_filter("pct1")
+    def pct1(x):
+        """+75.7% (one decimal, for short labels) / n/a."""
+        return "n/a" if fmt.missing(x) else f"{x:+.1%}"
+
+    @app.template_filter("shortdate")
+    def shortdate(iso):
+        """'2026-11-06' -> '6 Nov 2026'."""
+        if not iso:
+            return "n/a"
+        d = date.fromisoformat(str(iso)[:10])
+        return f"{d.day} {d:%b %Y}"
 
     @app.template_filter("longdate")
     def longdate(iso):

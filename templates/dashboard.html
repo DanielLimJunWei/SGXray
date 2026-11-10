@@ -33,11 +33,19 @@
       <span class="label">{{ term("worth", "Worth now") }}</span>
       <span class="value" data-count="{{ s.value|rawnum }}">{{ s.value|money }}</span>
       <span class="note">What you hold, at the latest closing prices</span>
+      {% if day %}
+      <span class="note twr">{{ term("day-change", "Day's change") }} <b class="{{ day.change|trend }}">{{ day.change|arrow }} {{ day.change|money(signed=True) }}</b> ({{ day.pct|pct }}) on {{ day.date|shortdate }}</span>
+      {% endif %}
+      <span class="figure-explain">{{ explain_buttons(worth_ex, "worth", "Worth now", compact=True) }}</span>
     </div>
     <div class="figure">
       <span class="label">{{ term("total-profit", "Total profit") }}</span>
       <span class="value {{ s.total_profit|trend }}" data-count="{{ s.total_profit|rawnum }}" data-signed>{{ s.total_profit|arrow }} {{ s.total_profit|money(signed=True) }}</span>
       <span class="note">{{ term("unrealised", "Unrealised") }} {{ s.unrealised|money(signed=True) }} · {{ term("realised", "realised") }} {{ s.realised|money(signed=True) }} · {{ term("dividend", "dividends") }} {{ s.dividends|money(signed=True) }}</span>
+      {% if simple.pct == simple.pct %}
+      <span class="note twr"><b class="{{ simple.pct|trend }}">{{ simple.pct|pct1 }}</b> {{ term("simple-return", "on the money you put in") }} ({{ simple.put_in|money }})</span>
+      {% endif %}
+      <span class="figure-explain">{{ explain_buttons(total_ex, "total", "Total profit", compact=True) }}</span>
     </div>
     <div class="figure">
       <span class="label">{{ term("dividend", "Dividends") }} received</span>
@@ -119,6 +127,27 @@
       <li class="step" data-at="0.45"><b><span class="key" style="background:#3A73FF"></span>{{ term("price-gains", "Price gains") }} · <span class="key" style="background:#E3A35E"></span>{{ term("dividend", "dividends") }}</b><span class="muted">{{ last.gains|money(signed=True) }} from prices, {{ last.divs|money }} paid in cash.</span></li>
       {% if last.sti is not none %}<li class="step" data-at="0.8"><b><span class="key key-dash"></span>The market: {{ term("sti-etf", "STI ETF") }}</b><span class="muted">Same money in the STI ETF: {{ last.sti|money }}.</span></li>{% endif %}
     </ol>
+    {% if periods %}
+    <div class="periods" aria-labelledby="periods-title">
+      <div class="periods-head">
+        <h3 id="periods-title">{{ term("periods", "How you did over time") }}</h3>
+        {% if periods_ex %}{{ explain_buttons(periods_ex, "periods", "Period returns", compact=True) }}{% endif %}
+      </div>
+      <ul class="period-list">
+        {% for p in periods %}
+        <li>
+          <span class="period-key">{% if p.key == "YTD" %}{{ term("ytd", "YTD") }}{% else %}{{ p.key }}{% endif %}</span>
+          {% if p.available %}
+          <b class="{{ (p.you - p.sti)|trend }}">{{ p.you|pct1 }}</b>
+          <span class="period-sti">STI ETF {{ p.sti|pct1 }}</span>
+          {% else %}
+          <b class="muted">n/a</b><span class="period-sti">not enough history</span>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
     <details class="as-table">
       <summary>Show as a table</summary>
       <div class="panel table-wrap">
@@ -145,7 +174,7 @@
       <table class="data">
         <thead>
           <tr><th scope="col">{{ term("ticker", "Stock") }}</th><th scope="col">{{ term("shares", "Shares") }}</th><th scope="col">{{ term("avg-cost", "Avg cost") }}</th><th scope="col">{{ term("closing-price", "Price") }}</th>
-              <th scope="col">{{ term("cost", "Cost") }}</th><th scope="col">{{ term("worth", "Worth now") }}</th><th scope="col">{{ term("unrealised", "Unrealised") }}</th></tr>
+              <th scope="col">{{ term("cost", "Cost") }}</th><th scope="col">{{ term("worth", "Worth now") }}</th><th scope="col">{{ term("weight", "Weight") }}</th><th scope="col">{{ term("unrealised", "Unrealised") }}</th></tr>
         </thead>
         <tbody>
           {% for r in holdings %}
@@ -156,12 +185,33 @@
             <td>{{ r.price|num(".2f") }}</td>
             <td>{{ r.cost|money }}</td>
             <td>{{ r.value|money }}</td>
+            <td>{{ r.weight|pct(signed=False) }}</td>
             <td class="{{ r.unrealised|trend }}">{{ r.unrealised|arrow }} {{ r.unrealised|money(signed=True) }}<span class="sub">{{ r.unrealised_pct|pct }}</span></td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+
+    {% if sold %}
+    <details class="as-table sold">
+      <summary>{{ term("sold", "Sold") }}: {{ sold|length }} stock{{ "s" if sold|length != 1 }} you no longer hold</summary>
+      <div class="section-head" style="margin-top: var(--space-3)">{{ explain_buttons(sold_ex, "sold", "Sold", compact=True) }}</div>
+      <div class="panel table-wrap">
+        <table class="data">
+          <thead><tr><th scope="col">{{ term("ticker", "Stock") }}</th><th scope="col">Held</th><th scope="col">{{ term("cost", "Put in") }}</th>
+              <th scope="col">Got back</th><th scope="col">{{ term("realised", "Realised") }}</th><th scope="col">{{ term("dividend", "Dividends") }}</th><th scope="col">{{ term("total-profit", "Made in all") }}</th></tr></thead>
+          <tbody>
+            {% for r in sold %}
+            <tr><td><b>{{ r.ticker }}</b><span class="name">{{ r.name }}</span></td><td>{{ r.first_buy|shortdate }} to {{ r.last_sale|shortdate }}</td>
+                <td>{{ r.put_in|money }}</td><td>{{ r.got_back|money }}</td><td class="{{ r.realised|trend }}">{{ r.realised|money(signed=True) }}</td>
+                <td>{{ r.dividends|money }}</td><td class="{{ r.total|trend }}">{{ r.total|arrow }} {{ r.total|money(signed=True) }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+    {% endif %}
 
     {% for c in stock_charts %}
     <section class="stock-chart" id="{{ c.id }}" aria-labelledby="{{ c.id }}-title" hidden>
@@ -170,6 +220,15 @@
         {{ explain_buttons(c.ex, c.id, c.ticker ~ " price chart") }}
         <button class="icon-btn" type="button" data-chart-close>Close chart</button>
       </div>
+      {% if c.w52 %}
+      <div class="range52">
+        <span class="range-label">{{ term("week52", "52-week range") }}</span>
+        <span class="range-end">{{ "$%.2f"|format(c.w52.low) }}</span>
+        <span class="range-bar" role="img" aria-label="Today's {{ '$%.2f'|format(c.w52.now) }} is {{ (c.w52.position * 100)|round|int }}% of the way from the 52-week low to the high"><span class="range-dot" style="left: {{ (c.w52.position * 100)|round(1) }}%"></span></span>
+        <span class="range-end">{{ "$%.2f"|format(c.w52.high) }}</span>
+        <span class="range-now">today {{ "$%.2f"|format(c.w52.now) }}</span>
+      </div>
+      {% endif %}
       <div class="panel chart-card">
         <div class="chart-tip" role="status" aria-live="polite"><span class="idle">Point at the chart (or tap it) to see that day's numbers here. Double-click up to 3 days to compare them.</span></div>
         <svg class="stock-svg" viewBox="0 0 800 320" role="img" tabindex="0" aria-labelledby="{{ c.id }}-svg-title">
