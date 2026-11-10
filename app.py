@@ -25,8 +25,9 @@ import db  # noqa: E402
 import fmt  # noqa: E402
 import glossary  # noqa: E402
 from explain import (explain_forecast, explain_holdings, explain_income_by_year,  # noqa: E402
-                     explain_performance, explain_stock_chart, explain_value_chart, explain_yields)
-from history import value_history  # noqa: E402
+                     explain_performance, explain_stock_chart, explain_two_returns, explain_value_chart,
+                     explain_yields)
+from history import time_weighted, value_history  # noqa: E402
 from importer import DEMO_EMAIL  # noqa: E402
 from income import by_year, forecast, portfolio_yield, yields  # noqa: E402
 from performance import compare, per_stock  # noqa: E402
@@ -74,6 +75,8 @@ def create_app(db_path=None):
             "dashboard.html",
             s=summary(df),
             vs=vs,
+            twr=_or_none(time_weighted, conn, uid),
+            twr_ex=_or_none(explain_two_returns, conn, uid),
             holdings=holdings,
             holdings_ex=explain_holdings(conn, uid),
             stocks=_records(_or_none(per_stock, conn, uid), names),

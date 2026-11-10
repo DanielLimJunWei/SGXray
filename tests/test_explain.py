@@ -143,10 +143,12 @@ def test_bad_timing_gets_a_watch_out(conn, user_id):
     db.save_prices(conn, "D05.SI", [("2024-01-02", 100.0), ("2024-07-01", 150.0), ("2025-01-02", 75.0)])
     db.save_prices(conn, "ES3.SI", [("2024-01-02", 3.0), ("2024-07-01", 3.0), ("2025-01-02", 3.0)])
 
-    e = explain_performance(conn, user_id)
+    from explain import explain_two_returns
+    e = explain_two_returns(conn, user_id)          # timing is explained once, under "You vs the STI a year"
 
     assert "so your timing cost you" in e.text
-    assert "Adding money bit by bit on a regular schedule" in " ".join(e.watch_out)
+    assert "Adding money bit by bit on a schedule" in " ".join(e.watch_out)
+    assert "why SGXray shows two returns, see" in explain_performance(conn, user_id).text   # the stock table just points there
 
 
 def test_short_history_warns_about_extreme_yearly_rates(conn, user_id):
@@ -191,3 +193,14 @@ def test_income_by_year_explains_part_years(conn, user_id):
     ex = explain_income_by_year(conn, user_id)
     assert "isn't over yet: $50.00 so far, to 29 February 2024" in ex.text
     assert any("part-year" in w for w in ex.watch_out)
+
+
+def test_two_returns_explains_both_numbers(conn, user_id):
+    from explain import explain_two_returns
+    setup_two_months(conn, user_id)
+    db.save_prices(conn, "D05.SI", [("2024-03-28", 33.0)])          # long enough for a yearly rate
+    db.save_prices(conn, "ES3.SI", [("2024-03-28", 3.1)])
+    ex = explain_two_returns(conn, user_id)
+    assert "money-weighted return (XIRR)" in ex.text and "time-weighted return (TWR)" in ex.text
+    assert "Why SGXray shows two returns:" in ex.text
+    assert any("Less than a year" in w for w in ex.watch_out)

@@ -18,10 +18,10 @@
   <button class="resize" type="button" data-resize aria-label="Resize this box: arrow keys make it wider, narrower, taller or shorter" title="Drag to resize"></button>
 {% endmacro %}
 
-{% macro explain_buttons(ex, id, title) %}
-  <button class="icon-btn" type="button" popovertarget="{{ id }}-what" aria-label="What does the {{ title }} table mean?">ⓘ What does this mean?</button>
+{% macro explain_buttons(ex, id, title, compact=False) %}
+  <button class="icon-btn{{ ' compact' if compact }}" type="button" popovertarget="{{ id }}-what" aria-label="What does {{ title }} mean?">ⓘ{{ "" if compact else " What does this mean?" }}</button>
   {% if ex.watch_out %}
-  <button class="icon-btn warn" type="button" popovertarget="{{ id }}-watch" aria-label="Watch out: {{ ex.watch_out|length }} thing{{ 's' if ex.watch_out|length != 1 }} to check in {{ title }}">⚠ {{ ex.watch_out|length }}</button>
+  <button class="icon-btn warn{{ ' compact' if compact }}" type="button" popovertarget="{{ id }}-watch" aria-label="Watch out: {{ ex.watch_out|length }} thing{{ 's' if ex.watch_out|length != 1 }} to check in {{ title }}">⚠ {{ ex.watch_out|length }}</button>
   {% endif %}
 
   <div class="pop" id="{{ id }}-what" popover="manual" role="dialog" aria-label="What does this mean? {{ title }}">

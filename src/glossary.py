@@ -116,6 +116,11 @@ TERMS = {
     "price-line": ("Closing price (the line)",
                    "The stock's price at the end of each trading day. It doesn't include dividends.",
                    "DBS closed at $69.72 on 6 November 2026."),
+    "picks-alone": ("Your picks alone (TWR)",
+                    "The time-weighted return: how your investments did, ignoring WHEN you added or took out money, "
+                    "as if one dollar went in at the start and stayed. It's how funds and the STI report returns, "
+                    "so it's the fair way to judge your picks.",
+                    "A stock goes $100 -> $50 -> $100: TWR 0%, even if buying more at $50 made you money."),
     "difference": ("Difference vs the STI ETF",
                    "Your profit on a stock minus what the same money would have made in the STI ETF. "
                    "Positive = that pick helped you beat the market.",

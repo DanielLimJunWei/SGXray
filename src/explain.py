@@ -382,6 +382,36 @@ def _two_returns_section(xirr_year, twr_year):
     return lines
 
 
+def explain_two_returns(conn, user_id, as_of=None):
+    """Explains the 'You vs the STI, a year' figure: the money-weighted (XIRR) and time-weighted (TWR) returns."""
+    from history import time_weighted
+    from performance import compare
+
+    c = compare(conn, user_id, as_of)
+    t = time_weighted(conn, user_id, as_of)
+    if c["too_short"] or c["you"] != c["you"] or t["you_year"] != t["you_year"]:
+        return Explanation(["A yearly rate needs at least 30 days of history and a price for everything you hold."])
+    out = [
+        f"The big number, {c['you']:+.2%} a year, is your money-weighted return (XIRR): what actually happened to "
+        f"YOUR money, counting when each dollar went in or came out. The same dollars in the STI ETF, on the same "
+        f"days, made {c['benchmark']:+.2%} a year.",
+        f"\"Your picks alone\", {t['you_year']:+.2%} a year, is the time-weighted return (TWR): how the investments "
+        f"themselves did, as if you'd put one dollar in at the start and never added or taken out any. On the same "
+        f"measure the STI ETF made {t['sti_year']:+.2%} a year.",
+    ] + _two_returns_section(c["you"], t["you_year"])
+    watch = []
+    if c["you"] < t["you_year"] and _timing_mattered(c["you"], t["you_year"]):
+        watch.append("Your timing cost you: your money earned less than your picks did, which usually means more "
+                     "money went in just before prices fell. Adding money bit by bit on a schedule makes timing matter less.")
+    if t["you_year"] < t["sti_year"]:
+        watch.append("Your picks alone did worse than the STI ETF. Over several years, that would mean simply buying "
+                     "the STI ETF was the easier, cheaper choice.")
+    if c["days"] < 365:
+        watch.append("Less than a year of history: a yearly rate from a short stretch mostly shows luck.")
+    watch.append("Past returns don't predict future ones, whichever way they're measured.")
+    return Explanation(out, watch)
+
+
 def explain_income_by_year(conn, user_id, as_of=None):
     """Explains the dividend income by year chart, using the biggest full year as the example."""
     from income import by_year
@@ -475,8 +505,6 @@ def explain_performance(conn, user_id, as_of=None):
     """Explains 'you vs the STI ETF', for the whole portfolio and per stock."""
     from performance import compare, per_stock
 
-    from history import time_weighted
-
     c = compare(conn, user_id, as_of)
     if c["end"] is None:
         return Explanation(["You haven't made any trades yet."])
@@ -508,18 +536,11 @@ def explain_performance(conn, user_id, as_of=None):
         f"So you {'beat' if gap > 0 else 'trailed'} the market by {abs(gap):.2%} a year. Because the timing and "
         f"amounts are the same on both sides, the difference comes only from what you chose to buy.",
     ]
-    t = time_weighted(conn, user_id, as_of)
+    # The second measure (TWR) and "why two returns" are explained once, under "You vs the STI, a year"
+    # at the top of the page (explain_two_returns), so here it's just a pointer.
+    out.append("For your picks alone (the time-weighted return) and why SGXray shows two returns, see "
+               "\"What does this mean?\" under \"You vs the STI a year\" at the top of the page.")
     timing_watch = None
-    if t["you_year"] == t["you_year"]:
-        out.append(
-            f"A second measure, the time-weighted return (TWR), ignores WHEN you added money and just asks "
-            f"how your picks did: {t['you_year']:+.2%} a year for you, {t['sti_year']:+.2%} for the STI ETF."
-        )
-        out += _two_returns_section(c["you"], t["you_year"])
-        if c["you"] < t["you_year"] and _timing_mattered(c["you"], t["you_year"]):
-            timing_watch = ("Your timing cost you: you earned less than your picks did, which usually means you "
-                            "put more money in just before prices fell. Adding money bit by bit on a regular "
-                            "schedule, instead of in big lumps, makes timing matter less.")
     stocks = per_stock(conn, user_id, as_of)
     if stocks["shortfall"].any():
         out.append("Note: for " + ", ".join(stocks.loc[stocks["shortfall"], "ticker"]) + ", a sale took out "

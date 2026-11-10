@@ -55,6 +55,10 @@
       {% else %}
       <span class="value {{ (vs.you - vs.benchmark)|trend }}">{{ vs.you|pct }}</span>
       <span class="note">The STI ETF made {{ vs.benchmark|pct }} a year with the same money on the same days</span>
+      {% if twr and twr.you_year == twr.you_year %}
+      <span class="note twr">{{ term("picks-alone", "Your picks alone") }} <b class="{{ (twr.you_year - twr.sti_year)|trend }}">{{ twr.you_year|pct }}</b> vs the STI ETF's {{ twr.sti_year|pct }}</span>
+      {% endif %}
+      {% if twr_ex %}<span class="figure-explain">{{ explain_buttons(twr_ex, "returns", "You vs the STI, a year", compact=True) }}</span>{% endif %}
       {% endif %}
     </div>
   </section>
