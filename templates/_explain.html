@@ -1,24 +1,32 @@
 {#
   The ⓘ "What does this mean?" and ⚠ "Watch out" buttons for one table, with their popups.
-  Uses the browser's built-in popover: Esc or a click outside closes it, and focus returns to the button.
+  The popups stay open while you look at the chart or table (they don't close when you click elsewhere),
+  can be dragged by their title bar (or moved with the arrow keys on the ⠿ handle), and close with
+  Close or Esc. static/js/popups.js does the moving; without it they still open and close.
   `ex` is an explain.Explanation; `id` must be unique on the page.
 #}
+{% macro _head(id, title, kind) %}
+  <div class="pop-head" data-drag>
+    <button class="grip" type="button" aria-label="Move this box: use the arrow keys" title="Drag to move">⠿</button>
+    <h3>{{ title }}</h3>
+    <button class="icon-btn close" type="button" popovertarget="{{ id }}-{{ kind }}" popovertargetaction="hide">Close</button>
+  </div>
+{% endmacro %}
+
 {% macro explain_buttons(ex, id, title) %}
   <button class="icon-btn" type="button" popovertarget="{{ id }}-what" aria-label="What does the {{ title }} table mean?">ⓘ What does this mean?</button>
   {% if ex.watch_out %}
   <button class="icon-btn warn" type="button" popovertarget="{{ id }}-watch" aria-label="Watch out: {{ ex.watch_out|length }} thing{{ 's' if ex.watch_out|length != 1 }} to check in {{ title }}">⚠ {{ ex.watch_out|length }}</button>
   {% endif %}
 
-  <div class="pop" id="{{ id }}-what" popover>
-    <button class="icon-btn close" type="button" popovertarget="{{ id }}-what" popovertargetaction="hide" aria-label="Close">Close</button>
-    <h3>What does this mean?</h3>
-    {% for line in ex.lines %}<p>{{ line }}</p>{% endfor %}
+  <div class="pop" id="{{ id }}-what" popover="manual" role="dialog" aria-label="What does this mean? {{ title }}">
+    {{ _head(id, "What does this mean?", "what") }}
+    <div class="pop-body">{% for line in ex.lines %}<p>{{ line }}</p>{% endfor %}</div>
   </div>
   {% if ex.watch_out %}
-  <div class="pop warn" id="{{ id }}-watch" popover>
-    <button class="icon-btn close" type="button" popovertarget="{{ id }}-watch" popovertargetaction="hide" aria-label="Close">Close</button>
-    <h3>⚠ Watch out</h3>
-    <ul>{% for item in ex.watch_out %}<li>{{ item }}</li>{% endfor %}</ul>
+  <div class="pop warn" id="{{ id }}-watch" popover="manual" role="dialog" aria-label="Watch out: {{ title }}">
+    {{ _head(id, "⚠ Watch out", "watch") }}
+    <div class="pop-body"><ul>{% for item in ex.watch_out %}<li>{{ item }}</li>{% endfor %}</ul></div>
   </div>
   {% endif %}
 {% endmacro %}

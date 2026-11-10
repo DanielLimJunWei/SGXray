@@ -382,6 +382,47 @@ def _two_returns_section(xirr_year, twr_year):
     return lines
 
 
+def explain_income_by_year(conn, user_id, as_of=None):
+    """Explains the dividend income by year chart, using the biggest full year as the example."""
+    from income import by_year
+
+    rows = by_year(conn, user_id, as_of)
+    if not rows or not any(r["total"] for r in rows):
+        return Explanation(["No dividends received yet, so there's nothing to show by year."])
+
+    out = ["Each bar is the dividends paid to you in one calendar year, counted by ex-date: the cut-off you "
+           "had to own the shares by."]
+    full = [r for r in rows if not r["part"]]
+    best = max(full or rows, key=lambda r: r["total"])
+    parts = ", ".join(f"{t} {money(v)}" for t, v in best["by_stock"].items())
+    out.append(f"For example, {best['year']}: {money(best['total'])} in all ({parts}).")
+    for r in rows:
+        if r["part"] == "first":
+            out.append(f"{r['year']} is a part-year: you started in {r['from_month']}, so it's lower than a full year.")
+        elif r["part"] == "so far":
+            out.append(f"{r['year']} isn't over yet: {money(r['total'])} so far, to {_day(pd.Timestamp(r['to_date']))}.")
+    out.append(f"Altogether: {money(sum(r['total'] for r in rows))} of dividends since you started.")
+
+    watch = []
+    if len(full) >= 2 and full[-1]["total"] > full[0]["total"]:
+        watch.append(f"Your income grew from {money(full[0]['total'])} in {full[0]['year']} to {money(full[-1]['total'])} "
+                     f"in {full[-1]['year']}. Some of that is from buying more shares, some from companies paying more "
+                     f"per share. Only the second is the companies doing better.")
+    if any(r["part"] for r in rows):
+        watch.append("Don't compare a part-year bar with a full year: a short year always looks smaller.")
+    top_year = rows[-1] if rows[-1]["total"] else best
+    if len(top_year["by_stock"]) > 1:
+        ticker, value = next(iter(top_year["by_stock"].items()))
+        share = value / top_year["total"]
+        if share > ONE_STOCK_SHARE:
+            watch.append(f"{share:.0%} of your {top_year['year']} dividends came from one stock, {ticker}. "
+                         f"If it cuts its dividend, your income drops a lot.")
+    reits = {i["ticker"] for i in db.get_instruments(conn) if i["type"] == "reit"}
+    if any(t in reits for r in rows for t in r["by_stock"]):
+        watch.append("A REIT's one-off extra payout can make one year look unusually high. It may not repeat.")
+    return Explanation(out, watch)
+
+
 def explain_performance(conn, user_id, as_of=None):
     """Explains 'you vs the STI ETF', for the whole portfolio and per stock."""
     from performance import compare, per_stock

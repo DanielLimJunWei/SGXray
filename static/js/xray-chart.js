@@ -128,6 +128,7 @@
   motionBtn.addEventListener("click", () => {
     motionOn = !motionOn;
     try { localStorage.setItem(KEY, motionOn ? "on" : "off"); } catch (e) { /* not saved; still works now */ }
+    document.documentElement.classList.toggle("motion-off", !motionOn);    // other charts follow the same choice
     showMotionState();
     if (!motionOn) { cancelAnimationFrame(frame); render(1); }
   });

@@ -65,7 +65,7 @@ def test_demo_shows_holdings_and_totals(client, db_path):
     assert "+$680.00" in html
     assert "30 June 2025" in html                       # "prices as of"
     assert "What does this mean?" in html
-    for section in ("stock by stock", "Dividend yields", "Dividends expected"):
+    for section in ("Each stock vs the", "Dividend yields", "Dividends expected"):
         assert section in html
     assert "helped you" in html or "held you back" in html or "same as the market" in html
     assert "nan" not in html.lower().replace("financial", "").replace("finance", "")
@@ -105,6 +105,7 @@ def test_dividends_show_in_yields_and_forecast(client, db_path):
     conn.close()
     html = client.get("/demo").get_data(as_text=True)
     assert "$60.00" in html                            # 100 shares x $0.60, received and expected again
+    assert "income by year" in html and "so far" in html     # the by-year chart, 2025 not over yet
     assert "10 April 2026" in html                     # expected about a year after the last one
 
 

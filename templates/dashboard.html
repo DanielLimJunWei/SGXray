@@ -16,7 +16,7 @@
     <p class="eyebrow">Demo portfolio · sample trades, real SGX prices</p>
     <h1>Your portfolio</h1>
     {% if s %}
-    <p class="as-of">Prices as of {{ s.prices_as_of|longdate }} ({{ term("closing-price", "closing prices") }})</p>
+    <p class="as-of">Prices as of {{ s.prices_as_of|longdate }} · {{ term("closing-price", "closing prices") }}</p>
     {% endif %}
   </header>
 
@@ -45,7 +45,7 @@
       <span class="note">Cash paid to you so far</span>
     </div>
     <div class="figure">
-      <span class="label">You vs the {{ term("sti-etf", "STI") }}, {{ term("a-year", "a year") }}</span>
+      <span class="label">You vs the {{ term("sti-etf", "STI") }} {{ term("a-year", "a year") }}</span>
       {% if not vs %}
       <span class="value">n/a</span>
       <span class="note">No STI ETF prices saved yet</span>
@@ -112,7 +112,7 @@
       <li class="step" data-at="0"><b>An ordinary chart</b><span class="muted">One line going up. It doesn't say why.</span></li>
       <li class="step" data-at="0.2"><b><span class="key" style="background:#4A5B82"></span>{{ term("money-in", "Your own money") }}</b><span class="muted">{{ last.money|money }} put in. Not profit.</span></li>
       <li class="step" data-at="0.45"><b><span class="key" style="background:#3A73FF"></span>{{ term("price-gains", "Price gains") }} · <span class="key" style="background:#E3A35E"></span>{{ term("dividend", "dividends") }}</b><span class="muted">{{ last.gains|money(signed=True) }} from prices, {{ last.divs|money }} paid in cash.</span></li>
-      {% if last.sti is not none %}<li class="step" data-at="0.8"><b><span class="key key-dash"></span>The market ({{ term("sti-etf", "STI ETF") }})</b><span class="muted">Same money in the STI ETF: {{ last.sti|money }}.</span></li>{% endif %}
+      {% if last.sti is not none %}<li class="step" data-at="0.8"><b><span class="key key-dash"></span>The market: {{ term("sti-etf", "STI ETF") }}</b><span class="muted">Same money in the STI ETF: {{ last.sti|money }}.</span></li>{% endif %}
     </ol>
     <details class="as-table">
       <summary>Show as a table</summary>
@@ -161,7 +161,7 @@
 
   <section class="block" aria-labelledby="vs-title">
     <div class="section-head">
-      <h2 id="vs-title">You vs the {{ term("sti-etf", "STI ETF") }}, stock by stock</h2>
+      <h2 id="vs-title">Each stock vs the {{ term("sti-etf", "STI ETF") }}</h2>
       {% if vs_ex %}{{ explain_buttons(vs_ex, "vs", "You vs the STI ETF") }}{% endif %}
     </div>
     {% if stocks is none %}
@@ -226,9 +226,48 @@
     </div>
   </section>
 
+  {% if years %}
+  <section class="block" aria-labelledby="years-title">
+    <div class="section-head">
+      <h2 id="years-title">{{ term("dividend", "Dividend") }} income by year</h2>
+      {{ explain_buttons(years_ex, "years", "Dividend income by year") }}
+    </div>
+    <p class="muted lead">What was paid to you each calendar year. Lighter bars are part-years.</p>
+    <div class="panel chart-card">
+      <svg class="bars-chart" data-reveal viewBox="0 0 800 250" role="img" aria-labelledby="years-svg-title">
+        <title id="years-svg-title">Dividends received each year: {% for r in years %}{{ r.year }}{% if r.part == "so far" %} (so far){% elif r.part == "first" %} (from {{ r.from_month }}){% endif %} {{ r.total|money }}{{ "; " if not loop.last else "." }}{% endfor %}</title>
+        <defs><pattern id="ht-bars" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1.6" fill="#E3A35E"/></pattern></defs>
+        <line x1="64" x2="760" y1="196" y2="196" stroke="rgba(156,196,255,.24)"/>
+        {% for r in years %}
+        <g class="bar-group">
+          <title>{{ r.year }}: {{ r.total|money }}{% for t, v in r.by_stock.items() %}{{ " · " ~ t ~ " " ~ (v|money) }}{% endfor %}</title>
+          <rect class="bar" x="{{ r.x }}" y="{{ r.y }}" width="{{ r.w }}" height="{{ r.h }}" rx="2" fill="url(#ht-bars)" {% if r.part %}opacity="0.5" stroke="#E3A35E" stroke-opacity="0.6" stroke-dasharray="3 3"{% endif %}/>
+          <text class="bar-value" x="{{ r.cx }}" y="{{ r.y }}" dy="-0.6em" text-anchor="middle">{{ r.total|money }}</text>
+          <text x="{{ r.cx }}" y="{{ r.base }}" dy="1.6em" text-anchor="middle">{{ r.year }}</text>
+          {% if r.part %}<text class="bar-note" x="{{ r.cx }}" y="{{ r.base }}" dy="2.9em" text-anchor="middle">{{ "so far" if r.part == "so far" else "from " ~ r.from_month }}</text>{% endif %}
+        </g>
+        {% endfor %}
+      </svg>
+    </div>
+    <details class="as-table">
+      <summary>Show as a table</summary>
+      <div class="panel table-wrap">
+        <table class="data">
+          <thead><tr><th scope="col">Year</th><th scope="col">Stock</th><th scope="col">Dividends</th></tr></thead>
+          <tbody>
+            {% for r in years|reverse %}{% for t, v in r.by_stock.items() %}
+            <tr><td>{{ r.year }}{% if r.part == "so far" %} (so far){% elif r.part == "first" %} (from {{ r.from_month }}){% endif %}</td><td>{{ t }}</td><td>{{ v|money }}</td></tr>
+            {% endfor %}{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </section>
+  {% endif %}
+
   <section class="block" aria-labelledby="forecast-title">
     <div class="section-head">
-      <h2 id="forecast-title">{{ term("forecast", "Dividends expected") }}, next 12 months</h2>
+      <h2 id="forecast-title">{{ term("forecast", "Dividends expected") }} over the next 12 months</h2>
       {{ explain_buttons(forecast_ex, "forecast", "Dividends expected") }}
     </div>
     {% if not forecast %}
@@ -266,7 +305,9 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/reveal.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/count-up.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/xray-chart.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/terms.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/popups.js') }}" defer></script>
 {% endblock %}

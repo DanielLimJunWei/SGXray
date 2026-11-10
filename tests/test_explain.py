@@ -183,3 +183,11 @@ def test_xray_chart_explains_its_layers(conn, user_id):
 
 def test_xray_chart_with_no_history(conn, user_id):
     assert "no history" in explain_value_chart(conn, user_id).text
+
+
+def test_income_by_year_explains_part_years(conn, user_id):
+    from explain import explain_income_by_year
+    setup_two_months(conn, user_id)          # started 15 Jan 2024, newest price 29 Feb 2024
+    ex = explain_income_by_year(conn, user_id)
+    assert "isn't over yet: $50.00 so far, to 29 February 2024" in ex.text
+    assert any("part-year" in w for w in ex.watch_out)

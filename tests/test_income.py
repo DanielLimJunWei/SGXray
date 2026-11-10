@@ -88,3 +88,21 @@ def test_portfolio_yield(conn, dbs):
 def test_empty_portfolio(conn, user_id):
     assert forecast(conn, user_id).empty
     assert yields(conn, user_id).empty
+
+
+def test_dividends_by_year_marks_part_years(conn, user_id):
+    """Started in March 2024, newest price in June 2025: both years are part-years."""
+    from income import by_year
+    db.add_trade(conn, user_id, "D05.SI", "2024-03-01", "BUY", 100, 30.0, 10)
+    db.save_prices(conn, "D05.SI", [("2024-03-01", 30.0), ("2025-06-30", 35.0)])
+    db.save_dividends(conn, "D05.SI", [("2024-05-10", 0.50), ("2024-08-10", 0.50), ("2025-05-10", 0.60)])
+    rows = by_year(conn, user_id)
+    assert [(r["year"], round(r["total"], 2), r["part"]) for r in rows] == [(2024, 100.0, "first"), (2025, 60.0, "so far")]
+    assert rows[0]["from_month"] == "March"
+    assert rows[0]["by_stock"] == {"D05.SI": 100.0}
+
+
+def test_dividends_by_year_empty_without_dividends(conn, user_id):
+    from income import by_year
+    db.add_trade(conn, user_id, "D05.SI", "2024-03-01", "BUY", 100, 30.0, 10)
+    assert by_year(conn, user_id) == []

@@ -107,6 +107,44 @@ def yields(conn, user_id, as_of=None):
     return pd.DataFrame(rows, columns=["ticker", "per_share_12m", "price", "div_yield", "avg_cost", "yield_on_cost", "income_12m"])
 
 
+def by_year(conn, user_id, as_of=None):
+    """Dividends you actually received, added up per calendar year (by ex-date), with a split per stock.
+
+    Two years are usually only part-years, and each row says so:
+    - "first": the year you started, if your first trade wasn't in January;
+    - "so far": the year of the newest price, which isn't over yet.
+    Comparing a part-year with a full year makes income look like it fell or jumped when it didn't.
+    """
+    from portfolio import dividends_received, trades_frame
+
+    paid = dividends_received(conn, user_id, as_of)
+    trades = trades_frame(conn, user_id, as_of)
+    if paid.empty or trades.empty:
+        return []
+    as_of = _as_of(conn, user_id, as_of)
+    first = pd.Timestamp(trades["trade_date"].min())
+    newest = pd.Timestamp(as_of) if as_of else None
+    paid = paid.assign(year=paid["ex_date"].str[:4].astype(int))
+
+    rows = []
+    for year in range(first.year, (newest.year if newest is not None else first.year) + 1):
+        this = paid[paid["year"] == year]
+        part = None
+        if newest is not None and year == newest.year and (newest.month, newest.day) != (12, 31):
+            part = "so far"
+        elif year == first.year and first.month > 1:
+            part = "first"
+        rows.append({
+            "year": year,
+            "total": float(this["total"].sum()),
+            "by_stock": {t: float(v) for t, v in this.groupby("ticker")["total"].sum().sort_values(ascending=False).items()},
+            "part": part,
+            "from_month": first.strftime("%B") if part == "first" else None,
+            "to_date": newest.strftime("%Y-%m-%d") if part == "so far" else None,
+        })
+    return rows
+
+
 def portfolio_yield(df_yields, df_positions):
     """The whole portfolio's yield: a year's dividends on what you hold / what it's worth now.
     Unknown (NaN) if any stock you hold has no price, rather than quietly too high."""

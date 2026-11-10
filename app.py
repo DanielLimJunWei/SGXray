@@ -24,11 +24,11 @@ sys.path.insert(0, str(ROOT / "src"))      # let the app import db, portfolio, .
 import db  # noqa: E402
 import fmt  # noqa: E402
 import glossary  # noqa: E402
-from explain import (explain_forecast, explain_holdings, explain_performance,  # noqa: E402
-                     explain_value_chart, explain_yields)
+from explain import (explain_forecast, explain_holdings, explain_income_by_year,  # noqa: E402
+                     explain_performance, explain_value_chart, explain_yields)
 from history import value_history  # noqa: E402
 from importer import DEMO_EMAIL  # noqa: E402
-from income import forecast, portfolio_yield, yields  # noqa: E402
+from income import by_year, forecast, portfolio_yield, yields  # noqa: E402
 from performance import compare, per_stock  # noqa: E402
 from portfolio import positions, summary  # noqa: E402
 
@@ -85,6 +85,8 @@ def create_app(db_path=None):
             forecast_total=f["total"].sum(),
             forecast_ex=explain_forecast(conn, uid),
             chart=_monthly_chart(h),
+            years=_bar_layout(by_year(conn, uid)),
+            years_ex=explain_income_by_year(conn, uid),
             chart_ex=explain_value_chart(conn, uid, h) if h is not None else None,
         )
 
@@ -111,6 +113,22 @@ def _records(df, names):
     if df is None:
         return None
     return [{**row, "name": names.get(row["ticker"], "")} for row in df.to_dict("records")]
+
+
+def _bar_layout(rows, left=64, right=760, top=28, bottom=196):
+    """Positions for the dividends-by-year bars, worked out here so the chart is plain SVG (no script needed)."""
+    if not rows or not any(r["total"] for r in rows):
+        return []
+    top_value = max(r["total"] for r in rows)
+    slot = (right - left) / len(rows)
+    width = min(120, slot * 0.5)
+    out = []
+    for i, r in enumerate(rows):
+        h = (r["total"] / top_value) * (bottom - top) if top_value else 0
+        x = left + slot * i + (slot - width) / 2
+        out.append({**r, "x": round(x, 1), "w": round(width, 1), "y": round(bottom - h, 1), "h": round(h, 1),
+                    "cx": round(x + width / 2, 1), "base": bottom})
+    return out
 
 
 def _monthly_chart(h):
