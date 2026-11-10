@@ -11,6 +11,7 @@
   if (!DATA.length) return;
   const $ = id => document.getElementById(id);
   const svg = $("xray-chart"), card = svg.closest(".chart-card"), tip = $("xray-tip");
+  const idle = () => { tip.textContent = ""; const i = document.createElement("span"); i.className = "idle"; i.textContent = 'Point at any month (or tap it) to see its numbers here.'; tip.append(i); };
   const NS = "http://www.w3.org/2000/svg";
   const el = (tag, attrs, text) => {
     const e = document.createElementNS(NS, tag);
@@ -166,13 +167,8 @@
       const r = document.createElement("div"), a = document.createElement("span"), b = document.createElement("span");
       a.textContent = k; b.textContent = v; r.append(a, b); tip.append(r);
     });
-    tip.hidden = false;
-    const scale = svg.clientWidth / 800, px = svg.offsetLeft + cx * scale;
-    const right = px > card.clientWidth / 2;
-    tip.style.left = right ? "" : `${px + 12}px`;
-    tip.style.right = right ? `${card.clientWidth - px + 12}px` : "";
   }
-  function hide() { cursor.setAttribute("opacity", 0); tip.hidden = true; current = null; }
+  function hide() { cursor.setAttribute("opacity", 0); idle(); current = null; }
 
   svg.addEventListener("pointermove", e => {
     const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse());

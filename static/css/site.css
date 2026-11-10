@@ -155,17 +155,22 @@ footer.site p + p { margin-top: var(--space-2); }
 /* ---------- The X-ray chart ---------- */
 .chart-card { position: relative; padding: var(--space-6) var(--space-6) var(--space-4); }
 .chart-card svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
-.chart-card svg:focus-visible { outline-offset: 6px; }
+/* No outline round a chart when it's clicked: the cursor line and the readout above show where you are. */
+.chart-card svg:focus, .chart-card svg:focus-visible { outline: none; }
 .axis text { font-family: var(--font-mono); font-size: var(--svg-text, 12px); fill: var(--color-text-faint); }
 .axis line { stroke: var(--color-line); }
 .layer-label { font-family: var(--font-mono); font-weight: 500; font-size: var(--svg-text, 12px); }
 .chart-card.narrow .layer-label { display: none; }       /* phones: the steps underneath act as the key */
-.chart-tip { position: absolute; top: var(--space-6); min-width: 13rem; pointer-events: none;
-  background: var(--color-surface-raised); border: 1px solid var(--color-line-strong); border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4); font: var(--text-xs)/1.7 var(--font-mono); font-variant-numeric: tabular-nums; }
-.chart-tip b { display: block; font-family: var(--font-sans); font-weight: 500; font-size: var(--text-sm); margin-bottom: var(--space-1); }
-.chart-tip div { display: flex; justify-content: space-between; gap: var(--space-4); }
+/* The readout: a slim bar above the chart (like a trading screen's readout), never on top of the lines.
+   It keeps its height, so the chart doesn't jump when you start or stop pointing. */
+.chart-tip { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-5);
+  min-height: 3.2rem; align-content: center; margin: calc(-1 * var(--space-2)) 0 var(--space-3);
+  padding: var(--space-2) 0 var(--space-3); border-bottom: 1px solid var(--color-line);
+  font: var(--text-xs)/1.5 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--color-text); }
+.chart-tip b { font-family: var(--font-sans); font-weight: 500; font-size: var(--text-sm); margin-right: var(--space-1); }
+.chart-tip div { display: inline-flex; gap: var(--space-2); white-space: nowrap; }
 .chart-tip div span:first-child { color: var(--color-text-muted); }
+.chart-tip .idle { color: var(--color-text-faint); font-family: var(--font-sans); }
 .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: var(--space-4); list-style: none; padding: 0; margin: var(--space-6) 0 0; }
 .step { opacity: 0.35; transition: opacity var(--duration-base) var(--ease-out); border-top: 1px solid var(--color-line-strong); padding-top: var(--space-3); font-size: var(--text-sm); }
 .step.on { opacity: 1; }

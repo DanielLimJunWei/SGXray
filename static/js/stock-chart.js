@@ -24,6 +24,7 @@
     section.dataset.drawn = "1";
     const D = JSON.parse(section.querySelector(".stock-data").textContent);
     const svg = section.querySelector("svg"), card = svg.closest(".chart-card"), tip = card.querySelector(".chart-tip");
+    const idle = () => { tip.textContent = ""; const i = document.createElement("span"); i.className = "idle"; i.textContent = "Point at the chart (or tap it) to see that day's numbers here."; tip.append(i); };
     const P = D.prices, t0 = day(P[0][0]), t1 = day(P[P.length - 1][0]) || t0 + 1;
     const avgs = D.avg_steps.filter(s => s.avg !== null).map(s => s.avg);
     let lo = Math.min(...P.map(p => p[1]), ...avgs), hi = Math.max(...P.map(p => p[1]), ...avgs);
@@ -125,12 +126,8 @@
         const r = document.createElement("div"), a = document.createElement("span"), b = document.createElement("span");
         a.textContent = k; b.textContent = val; r.append(a, b); tip.append(r);
       });
-      tip.hidden = false;
-      const px = svg.offsetLeft + cx * (svg.clientWidth / 800), right = px > card.clientWidth / 2;
-      tip.style.left = right ? "" : `${px + 12}px`;
-      tip.style.right = right ? `${card.clientWidth - px + 12}px` : "";
     }
-    const hide = () => { cursor.setAttribute("opacity", 0); tip.hidden = true; current = null; };
+    const hide = () => { cursor.setAttribute("opacity", 0); idle(); current = null; };
     const nearest = vx => {                               // the point on the line closest to an x position
       let best = 0, gap = Infinity;
       P.forEach((p, i) => { const g = Math.abs(x(p[0]) - vx); if (g < gap) { gap = g; best = i; } });
