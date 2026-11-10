@@ -81,7 +81,7 @@
     </div>
     <p class="muted lead">One line, split into what's really inside it. Point at any month for its numbers.</p>
     <div class="panel chart-card">
-      <div class="chart-tip" id="xray-tip" role="status" aria-live="polite"><span class="idle">Point at any month (or tap it) to see its numbers here.</span></div>
+      <div class="chart-tip" id="xray-tip" role="status" aria-live="polite"><span class="idle">Point at any month (or tap it) to see its numbers here. Double-click up to 3 months to compare them.</span></div>
       <svg id="xray-chart" viewBox="0 0 800 340" role="img" tabindex="0" aria-labelledby="xray-svg-title xray-svg-desc">
         <title id="xray-svg-title">Your portfolio, X-rayed into its layers</title>
         <desc id="xray-svg-desc">From {{ chart[0].date|longdate }} to {{ last.date|longdate }}: {{ last.money|money }} of your own money, {{ last.gains|money(signed=True) }} of price gains and {{ last.divs|money }} of dividends, {{ (last.money + last.gains + last.divs)|money }} in all{% if last.sti is not none %}, against {{ last.sti|money }} for the same money in the STI ETF{% endif %}. Use the left and right arrow keys to step through the months.</desc>
@@ -111,6 +111,7 @@
           <circle id="xray-cursor-dot" r="4" fill="#9CC4FF" stroke="#0A0F1E" stroke-width="2"/>
         </g>
       </svg>
+      <div class="compare" id="xray-compare" hidden></div>
     </div>
     <ol class="steps" id="xray-steps">
       <li class="step" data-at="0"><b>An ordinary chart</b><span class="muted">One line going up. It doesn't say why.</span></li>
@@ -170,10 +171,11 @@
         <button class="icon-btn" type="button" data-chart-close>Close chart</button>
       </div>
       <div class="panel chart-card">
-        <div class="chart-tip" role="status" aria-live="polite"><span class="idle">Point at the chart (or tap it) to see that day's numbers here.</span></div>
+        <div class="chart-tip" role="status" aria-live="polite"><span class="idle">Point at the chart (or tap it) to see that day's numbers here. Double-click up to 3 days to compare them.</span></div>
         <svg class="stock-svg" viewBox="0 0 800 320" role="img" tabindex="0" aria-labelledby="{{ c.id }}-svg-title">
           <title id="{{ c.id }}-svg-title">{{ c.ticker }} closing price from {{ c.data.prices[0][0]|longdate }} to {{ c.data.prices[-1][0]|longdate }}, with your {{ c.data.trades|length }} trade{{ "s" if c.data.trades|length != 1 }} and {{ c.data.dividends|length }} dividend{{ "s" if c.data.dividends|length != 1 }}. Use the left and right arrow keys to step through the days.</title>
         </svg>
+        <div class="compare" hidden></div>
       </div>
       <ul class="chart-key">
         <li><span class="mk mk-buy" aria-hidden="true"></span>{{ term("buy", "Buy") }}</li>
@@ -348,6 +350,7 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/reveal.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/count-up.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/compare.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/xray-chart.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/stock-chart.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/popups.js') }}" defer></script>

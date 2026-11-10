@@ -11,7 +11,7 @@
   if (!DATA.length) return;
   const $ = id => document.getElementById(id);
   const svg = $("xray-chart"), card = svg.closest(".chart-card"), tip = $("xray-tip");
-  const idle = () => { tip.textContent = ""; const i = document.createElement("span"); i.className = "idle"; i.textContent = 'Point at any month (or tap it) to see its numbers here.'; tip.append(i); };
+  const idle = () => { tip.textContent = ""; const i = document.createElement("span"); i.className = "idle"; i.textContent = 'Point at any month (or tap it) to see its numbers here. Double-click up to 3 months to compare them.'; tip.append(i); };
   const NS = "http://www.w3.org/2000/svg";
   const el = (tag, attrs, text) => {
     const e = document.createElementNS(NS, tag);
@@ -62,6 +62,9 @@
   const ticks = DATA.length <= 4 ? DATA.map((_, i) => i)
     : [0, 1, 2, 3].map(k => Math.round(k * (DATA.length - 1) / 3));
   ticks.forEach(i => axis.append(el("text", { x: x(i), y: H + 22, "text-anchor": "middle" }, DATA[i].label)));
+  // Axis titles: what the numbers up the side and along the bottom are.
+  axis.append(el("text", { class: "axis-title", x: LEFT - 8, y: -2, "text-anchor": "end" }, "S$"));
+  axis.append(el("text", { class: "axis-title", x: (LEFT + RIGHT) / 2, y: H + 40, "text-anchor": "middle" }, "Month end"));
 
   // Layer names at the right edge, pushed apart so they never overlap.
   const last = DATA.length - 1, mid = (a, b) => y((a + b) / 2) + 4;
@@ -154,6 +157,7 @@
 
   function show(i) {
     current = Math.max(0, Math.min(last, i));
+    svg.dataset.cursor = current;
     const d = DATA[current], cx = x(current);
     cursor.setAttribute("opacity", 1);
     $("xray-cursor-line").setAttribute("x1", cx); $("xray-cursor-line").setAttribute("x2", cx);
@@ -168,7 +172,7 @@
       a.textContent = k; b.textContent = v; r.append(a, b); tip.append(r);
     });
   }
-  function hide() { cursor.setAttribute("opacity", 0); idle(); current = null; }
+  function hide() { cursor.setAttribute("opacity", 0); idle(); current = null; delete svg.dataset.cursor; }
 
   svg.addEventListener("pointermove", e => {
     const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse());
@@ -183,5 +187,28 @@
     e.preventDefault();
     const m = moves[e.key];
     show(isFinite(m) ? (current ?? last) + m : (m < 0 ? 0 : last));
+  });
+
+  // ---------- Compare up to 3 months: what grew, and how much of it was your own money ----------
+  const C = window.SGXrayCompare;
+  if (C) C({
+    svg, panel: $("xray-compare"), count: DATA.length, title: "X-ray chart", baseY: H,
+    xy: i => [x(i), y(total[i])],
+    indexAt: e => {
+      const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse());
+      return Math.max(0, Math.min(last, Math.round((pt.x - LEFT) / ((RIGHT - LEFT) / Math.max(1, last)))));
+    },
+    describe: (a, b) => {
+      const A = DATA[a], B = DATA[b];
+      const grew = total[b] - total[a], money = B.money - A.money, earned = grew - money;
+      const parts = [
+        { text: `${C.short(A.date)} to ${C.short(B.date)}` },
+        { text: `All together ${C.money(total[a])} → ${C.money(total[b])} (${C.signed(grew)})` },
+        { text: `your own money ${C.signed(money)}` },
+        { text: `earned ${C.signed(earned)}: price gains ${C.signed(B.gains - A.gains)}, dividends ${C.signed(B.divs - A.divs)}`, cls: C.trend(earned) },
+      ];
+      if (hasSti) parts.push({ text: `STI ETF version ${C.signed(B.sti - A.sti)}` });
+      return parts;
+    },
   });
 })();

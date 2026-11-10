@@ -80,6 +80,7 @@ def test_xray_chart_has_monthly_layers(client, db_path):
     assert '"money": 7520.0' in html or '"money":7520.0' in html
     assert "Show as a table" in html                    # the same numbers without the animation
     assert "Your picks alone" in html and 'popovertarget="returns-what"' in html   # TWR beside the yearly return
+    assert 'id="xray-compare"' in html and 'class="compare"' in html and "compare.js" in html   # compare up to 3 points
     assert 'id="chart-D05-SI"' in html and 'data-chart="chart-D05-SI"' in html   # per-stock price chart
     assert "Animation: on" in html                      # the switch to turn it off
 

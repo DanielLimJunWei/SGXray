@@ -129,6 +129,23 @@ footer.site p + p { margin-top: var(--space-2); }
 .reveal-js [data-reveal]:not(.in-view) .bar { transform: scaleY(0); }
 .reveal-js [data-reveal]:not(.in-view) .bar-value { opacity: 0; }
 
+/* ---------- Axis titles and comparing points (both charts) ---------- */
+.axis .axis-title { fill: var(--color-text-muted); font-size: var(--svg-text, 12px); letter-spacing: 0.04em; }
+.chart-card svg { user-select: none; -webkit-user-select: none; }      /* a double-click never highlights axis text */
+.compare-point { cursor: pointer; }
+.compare-point:hover circle, .compare-point:focus-visible circle { stroke: var(--color-down); }
+.compare-point:focus { outline: none; }
+.compare-letter { font: 600 var(--svg-text, 12px) var(--font-mono); fill: var(--color-text); }
+.compare { margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--color-line);
+  display: grid; gap: var(--space-2); font: var(--text-xs)/1.6 var(--font-mono); font-variant-numeric: tabular-nums; }
+.compare-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.compare-head b { font: 500 var(--text-sm)/1.4 var(--font-sans); }
+.compare-row { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); align-items: baseline; }
+.compare-row span { white-space: nowrap; }
+.compare-tag { font-weight: 600; color: var(--color-glow-soft); min-width: 3.5rem; }
+.compare-warn { color: var(--color-lamp); white-space: normal !important; }
+.compare-note { color: var(--color-text-faint); font-family: var(--font-sans); }
+
 /* ---------- Per-stock price charts ---------- */
 .link-btn { display: block; margin-top: var(--space-1); padding: 0; border: 0; background: none; cursor: pointer;
   font: 500 var(--text-xs)/1.4 var(--font-mono); letter-spacing: 0.04em; color: var(--color-glow-soft); text-decoration: underline;
@@ -145,7 +162,7 @@ footer.site p + p { margin-top: var(--space-2); }
 .chart-key li { display: inline-flex; align-items: center; gap: var(--space-2); }
 .mk { display: inline-block; flex: none; }
 .mk-buy { width: 0; height: 0; border: 6px solid transparent; border-bottom: 10px solid #9CC4FF; border-top: 0; }
-.mk-sell { width: 0; height: 0; border: 6px solid transparent; border-top: 10px solid #EEE7DC; border-bottom: 0; }
+.mk-sell { width: 0; height: 0; border: 6px solid transparent; border-top: 10px solid #F2C1A0; border-bottom: 0; }
 .mk-div { width: 8px; height: 8px; border-radius: 50%; background: #E3A35E; }
 .mk-avg { width: 18px; border-top: 2px dashed #E3A35E; }
 .mk-line { width: 18px; border-top: 2px solid #9CC4FF; }

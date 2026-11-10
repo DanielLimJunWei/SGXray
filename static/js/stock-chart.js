@@ -12,7 +12,7 @@
     if (text) e.textContent = text;
     return e;
   };
-  const H = 260, LEFT = 64, RIGHT = 700, TOP = 16;
+  const H = 260, LEFT = 64, RIGHT = 700, TOP = 34;            // TOP leaves room for the axis title
   const day = iso => new Date(iso + "T00:00:00").getTime();
   const fmt = v => "$" + v.toLocaleString("en-SG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const longDate = iso => new Date(iso + "T00:00:00").toLocaleDateString("en-SG", { day: "numeric", month: "long", year: "numeric" });
@@ -24,7 +24,7 @@
     section.dataset.drawn = "1";
     const D = JSON.parse(section.querySelector(".stock-data").textContent);
     const svg = section.querySelector("svg"), card = svg.closest(".chart-card"), tip = card.querySelector(".chart-tip");
-    const idle = () => { tip.textContent = ""; const i = document.createElement("span"); i.className = "idle"; i.textContent = "Point at the chart (or tap it) to see that day's numbers here."; tip.append(i); };
+    const idle = () => { tip.textContent = ""; const i = document.createElement("span"); i.className = "idle"; i.textContent = "Point at the chart (or tap it) to see that day's numbers here. Double-click up to 3 days to compare them."; tip.append(i); };
     const P = D.prices, t0 = day(P[0][0]), t1 = day(P[P.length - 1][0]) || t0 + 1;
     const avgs = D.avg_steps.filter(s => s.avg !== null).map(s => s.avg);
     let lo = Math.min(...P.map(p => p[1]), ...avgs), hi = Math.max(...P.map(p => p[1]), ...avgs);
@@ -45,6 +45,9 @@
       axis.append(el("text", { x: x(p[0]), y: H, dy: "1.7em", "text-anchor": "middle" },
         new Date(p[0] + "T00:00:00").toLocaleDateString("en-SG", { month: "short", year: "2-digit" })));
     });
+    // Axis titles: what the numbers up the side and along the bottom are.
+    axis.append(el("text", { class: "axis-title", x: LEFT - 8, y: TOP - 6, "text-anchor": "end" }, "S$ a share"));
+    axis.append(el("text", { class: "axis-title", x: (LEFT + RIGHT) / 2, y: H, dy: "3.2em", "text-anchor": "middle" }, "Date (closing price each trading day)"));
     svg.append(axis);
 
     // Bonus issues and splits: a thin dashed line on the day the price drops for that reason.
@@ -76,11 +79,14 @@
 
     // Markers: buys and sells on the line, dividends along the bottom.
     const marks = el("g", { class: "marks" });
+    // Buys sit just below the line pointing up, sales just above pointing down, each joined to the exact
+    // price by a short stem, so the marker never covers the line itself. Both are solid, with a dark edge.
     D.trades.forEach(t => {
-      const cx = x(t.date), cy = y(priceOn(t.date)), up = t.side === "BUY";
-      const pts = up ? [[cx, cy + 4], [cx - 6, cy + 14], [cx + 6, cy + 14]] : [[cx, cy - 4], [cx - 6, cy - 14], [cx + 6, cy - 14]];
-      marks.append(el("polygon", { points: pts.map(p => p.join(",")).join(" "),
-        fill: up ? "#9CC4FF" : "none", stroke: up ? "#0A0F1E" : "#EEE7DC", "stroke-width": up ? 1 : 1.5 }));
+      const cx = x(t.date), cy = y(priceOn(t.date)), up = t.side === "BUY", dir = up ? 1 : -1;
+      const tip = cy + dir * 10, base = cy + dir * 22;
+      marks.append(el("line", { x1: cx, x2: cx, y1: cy + dir * 3, y2: tip, stroke: up ? "#9CC4FF" : "#F2C1A0", "stroke-width": 1.25 }));
+      marks.append(el("polygon", { points: [[cx, tip], [cx - 7, base], [cx + 7, base]].map(p => p.join(",")).join(" "),
+        fill: up ? "#9CC4FF" : "#F2C1A0", stroke: "#0A0F1E", "stroke-width": 1.5 }));
     });
     D.dividends.forEach(d => marks.append(el("circle", { cx: x(d.date), cy: H - 6, r: 3.5, fill: "#E3A35E" })));
     svg.append(marks);
@@ -109,6 +115,7 @@
     let current = null;
     function show(i) {
       current = Math.max(0, Math.min(P.length - 1, i));
+      svg.dataset.cursor = current;
       const [d, v] = P[current], cx = x(d);
       cl.setAttribute("x1", cx); cl.setAttribute("x2", cx); cd.setAttribute("cx", cx); cd.setAttribute("cy", y(v));
       cursor.setAttribute("opacity", 1);
@@ -127,7 +134,7 @@
         a.textContent = k; b.textContent = val; r.append(a, b); tip.append(r);
       });
     }
-    const hide = () => { cursor.setAttribute("opacity", 0); idle(); current = null; };
+    const hide = () => { cursor.setAttribute("opacity", 0); idle(); current = null; delete svg.dataset.cursor; };
     const nearest = vx => {                               // the point on the line closest to an x position
       let best = 0, gap = Infinity;
       P.forEach((p, i) => { const g = Math.abs(x(p[0]) - vx); if (g < gap) { gap = g; best = i; } });
@@ -145,6 +152,27 @@
       if (m === undefined) return;
       e.preventDefault();
       show(isFinite(m) ? (current ?? P.length - 1) + m : (m < 0 ? 0 : P.length - 1));
+    });
+
+    // Compare up to 3 days: how the price moved between them, and the dividends paid in between.
+    const C = window.SGXrayCompare;
+    if (C) C({
+      svg, panel: card.querySelector(".compare"), count: P.length, title: D.ticker + " price chart", baseY: H,
+      xy: i => [x(P[i][0]), y(P[i][1])],
+      indexAt: e => nearest(new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse()).x),
+      describe: (a, b) => {
+        const [da, va] = P[a], [db, vb] = P[b], change = vb - va;
+        const paid = D.dividends.filter(d => d.date > da && d.date <= db).reduce((s, d) => s + d.amount, 0);
+        const splits = D.actions.filter(x2 => x2.date > da && x2.date <= db);
+        const parts = [
+          { text: `${C.short(da)} to ${C.short(db)} (${C.days(da, db).toLocaleString("en-SG")} days)` },
+          { text: `${fmt(va)} → ${fmt(vb)}` },
+          { text: `${C.signed(change)} (${C.pct(change / va)})`, cls: C.trend(change / va) },
+        ];
+        if (paid) parts.push({ text: `plus $${paid.toFixed(4).replace(/0+$/, "").replace(/\.$/, "")} a share in dividends` });
+        if (splits.length) parts.push({ text: "a bonus issue in between lowers the price per share, so this undersells the move", cls: "compare-warn" });
+        return parts;
+      },
     });
   }
 
