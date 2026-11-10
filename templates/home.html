@@ -4,39 +4,39 @@
 {% block backdrop %}<canvas id="scene" aria-hidden="true"></canvas>{% endblock %}
 {% block navlinks %}
   <ul>
-    <li><a href="#what">WHAT IT DOES</a></li>
-    <li><a href="#xray">THE X-RAY</a></li>
-    <li><a href="#learn">LEARN</a></li>
+    <li><a href="#what">What it does</a></li>
+    <li><a href="#xray">The X-ray</a></li>
+    <li><a href="#learn">Learn</a></li>
   </ul>
 {% endblock %}
 
 {% block content %}
   <section class="hero wrap">
-    <p class="eyebrow">For new and future investors · SGX stocks, REITs and ETFs</p>
+    <p class="eyebrow">For new and future investors in SGX stocks, REITs and ETFs</p>
     <h1>See inside your portfolio.</h1>
     <p>Learn what the numbers mean before you invest a dollar. When you're ready, track your own stocks, with every figure explained in plain English: what you put in, what you've made, and whether you're beating the market.</p>
     <div class="ctas">
       <a class="btn btn-primary" href="#learn">Start learning</a>
       <a class="btn btn-ghost" href="{{ url_for('demo') }}">Try the demo, no sign-up</a>
     </div>
-    <p class="scroll-hint" aria-hidden="true">SCROLL<span class="turn-hint"> · DRAG TO TURN THE CHART</span></p>
+    <p class="scroll-hint" aria-hidden="true">Scroll to look inside<span class="turn-hint">, or drag the chart to turn it</span></p>
   </section>
 
   <section class="panel-section wrap" id="what">
     <div class="panel">
-      <p class="eyebrow">01 · What it does</p>
-      <h2>Your numbers, made clear</h2>
+      <p class="eyebrow">What it does</p>
+      <h2>Every figure comes with its reason</h2>
       <ul class="points">
-        <li><span class="n">01</span><span><b>Track</b> <span class="muted">your SGX stocks, REITs and ETFs from your broker's trades, with real prices and dividends.</span></span></li>
-        <li><span class="n">02</span><span><b>Understand</b> <span class="muted">every figure with a "What does this mean?" note, and a "Watch out" when something needs a second look.</span></span></li>
-        <li><span class="n">03</span><span><b>Compare</b> <span class="muted">yourself with the STI: the same money, on the same days, in the whole market.</span></span></li>
+        <li><span><b>Track</b> <span class="muted">your SGX stocks, REITs and ETFs from your broker's trades, with real prices and dividends.</span></span></li>
+        <li><span><b>Understand</b> <span class="muted">every figure with a "What does this mean?" note, and a "Watch out" when something needs a second look.</span></span></li>
+        <li><span><b>Compare</b> <span class="muted">yourself with the STI: the same money, on the same days, in the whole market.</span></span></li>
       </ul>
     </div>
   </section>
 
   <section class="panel-section wrap" id="xray">
     <div class="panel right">
-      <p class="eyebrow">02 · The X-ray</p>
+      <p class="eyebrow">The X-ray</p>
       <h2>One line hides three stories</h2>
       <p class="muted">A normal chart shows a line going up. SGXray splits it into what's really inside: the money you put in, the gains from prices, and the dividends paid to you.</p>
       <p class="muted">Then it lays the market beside it, so you know whether picking stocks was worth it.</p>
@@ -45,7 +45,7 @@
 
   <section class="panel-section wrap" id="learn">
     <div class="panel">
-      <p class="eyebrow">03 · Learn before you invest</p>
+      <p class="eyebrow">Learn before you invest</p>
       <h2>No stocks yet? Start here.</h2>
       <p class="muted">What to have in place before you invest, what fees really cost, how dividends and ex-dates work, and how to read every chart: taught with a real sample portfolio, not textbook examples. Then practise with pretend trades at real SGX prices, so your first real dollar goes in with confidence.</p>
       <p class="muted">Educational, not financial advice. SGXray never tells you what to buy.</p>
@@ -54,8 +54,8 @@
 
   <section class="cta wrap">
     <div class="panel">
-      <h2>Ready to look inside?</h2>
-      <p class="muted">Learn the basics, explore a sample portfolio, or bring your own trades from a CSV.</p>
+      <h2>Open the sample portfolio</h2>
+      <p class="muted">Real SGX prices, a made-up beginner's trades, and every number explained. See what SGXray will show you before adding your own.</p>
       <div class="ctas">
         <a class="btn btn-primary" href="{{ url_for('demo') }}">Try the demo</a>
         <a class="btn btn-ghost" href="#main">Back to top</a>
