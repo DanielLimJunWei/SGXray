@@ -36,7 +36,7 @@ UNKNOWN = can only be checked on the live site; each has a Week 4 task.
 | 13 | Secrets in Git history | PASS | `git log -p --all` searched for keys, tokens, private keys and password assignments: none |
 | 14 | Secrets in frontend JavaScript | PASS | `static/js` holds no keys; nothing secret is sent to the browser |
 | 15 | Client-side-only checks | PASS | Form `minlength`/`required` are only hints; the server repeats every check (`auth.password_problem`, `email_problem`) |
-| 16 | Missing input validation | PASS | Length caps on every field, email format, password 12-128, 2 MB request cap (`MAX_CONTENT_LENGTH`). Trade forms (w308) will reuse the importer's checks |
+| 16 | Missing input validation | PASS | Length caps on every field, email format, password 12-128, 2 MB request cap (`MAX_CONTENT_LENGTH`). Trade forms reuse the importer's checks (`importer.check_fields`), each field is cut to 32 characters first, and quantity, price and fees have upper limits (`test_trades.py`) |
 | 17 | SQL injection | PASS | Every query uses `?` placeholders; the one f-string (`PRAGMA table_info`) uses fixed table names from code; `test_sql_injection_in_the_login_form_does_nothing` |
 | 18 | NoSQL injection | N/A | No NoSQL database |
 | 19 | Cross-site scripting | PASS | Jinja escapes everything; scripts build the page with `textContent`; CSP with a per-page nonce (`test_security_headers_and_a_fresh_nonce...`) |
@@ -53,7 +53,7 @@ UNKNOWN = can only be checked on the live site; each has a Week 4 task.
 | 30 | Default credentials | PASS | No default accounts; the demo account can't be logged into (`test_the_demo_account_cannot_be_logged_into`); the secret key is random per install |
 | 31 | Webhook signatures | N/A | No webhooks |
 | 32 | Frontend-only payment checks | N/A | No payments |
-| 33 | IDOR / BOLA | PASS | Same as 06; trade edit/delete (w308) will check the trade belongs to the logged-in user |
+| 33 | IDOR / BOLA | PASS | Same as 06. Trade view/edit/delete query `WHERE id = ? AND user_id = ?`, so someone else's trade id gives 404, exactly like one that doesn't exist (`test_someone_elses_trade_is_invisible_and_untouchable`) |
 | 34 | Trusting user-sent roles or IDs | PASS | Identity only from the server-side session, never from form fields or the URL |
 | 35 | Sensitive data in logs | FIXED | `security_log` never stores passwords (`test_nothing_secret...`); added retention: security events 180 days, failed-login counts 1 day, expired sessions removed (`db.prune`, `test_old_security_records_are_deleted`) |
 | 36 | Source maps / build artifacts | PASS | No build step; `static/` holds only the site's own CSS and JS |
@@ -62,7 +62,7 @@ UNKNOWN = can only be checked on the live site; each has a Week 4 task.
 | 39 | Prompt injection | N/A now | No AI yet. "What is going on?" (w412) will treat news text as data and enforce limits in code |
 | 40 | AI tools bypassing permissions | N/A now | Same: the AI feature will get no tools that touch user data |
 | 41 | Excess database privileges | N/A / Week 4 | See 07 |
-| 42 | Missing audit logs | PASS | `security_log` records actor, event, time and address for sign-up, login, failures, blocks, logout and password changes. Trade changes (w308) will be logged too |
+| 42 | Missing audit logs | PASS | `security_log` records actor, event, time and address for sign-up, login, failures, blocks, logout and password changes. Trade added / edited / deleted are logged too |
 | 43 | Security monitoring and alerts | UNKNOWN / Week 4 | Plan: alert on bursts of failed logins and on server errors (Render logs + an uptime check) |
 | 44 | Backup and restore | UNKNOWN / Week 4 | Plan: Render Postgres daily backups, and a restore actually tested before launch |
 | 45 | Public internal dashboards | N/A | None |
@@ -78,7 +78,7 @@ UNKNOWN = can only be checked on the live site; each has a Week 4 task.
 
 | 55 | No MFA on privileged accounts | UNKNOWN: your action | Can't be seen from the code (your GitHub token can't read the setting). Turn on two-factor sign-in for **GitHub**, the **Google account** for your email, and later **Render** and any database host. See "Your to-do" below |
 | 56 | Account enumeration | PASS (login) / MITIGATED (sign-up) | Login: same words, status and timing whether or not the email exists (`test_wrong_password_and_unknown_email_look_identical`). Sign-up: the reply doesn't say "taken", every valid sign-up is hashed so timing matches, and 5 sign-ups an hour per address stops mass checking. Full fix comes with email verification ("check your inbox" either way) |
-| 57 | Business-logic abuse | PASS / w308 | The importer refuses impossible trades on the server: selling more than you hold (including after bonus issues), future or weekend dates, zero or negative amounts (`importer._check_row`, `_check_sells`, the importer tests). The trade forms (w308) will reuse exactly these checks |
+| 57 | Business-logic abuse | PASS | The importer refuses impossible trades on the server: selling more than you hold (including after bonus issues), future or weekend dates, zero or negative amounts (`importer._check_row`, `_check_sells`, the importer tests). The trade forms reuse exactly these checks, and also refuse an edit or delete that would leave a later sale with too few shares |
 | 58 | Race conditions | FIXED | `users.email` is UNIQUE in the database; two sign-ups for one email at the same instant now give the calm message instead of a crash (`test_two_signups_for_one_email_at_the_same_moment`). Each write runs inside a transaction (`with conn:`) |
 | 59 | Webhook replay | N/A | No webhooks |
 | 60 | Overpowered CI/CD credentials | N/A now / w402 | No CI yet. When added: the workflow's token limited to `contents: read`, no deploy keys in CI, Render deploys from its own GitHub link |

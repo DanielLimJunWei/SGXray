@@ -40,9 +40,9 @@ section[tabindex="-1"]:focus, main[tabindex="-1"]:focus { outline: none; }   /* 
    The grain on top stops the gradients from banding. */
 .ambient { position: fixed; inset: -20vh 0; z-index: -1; pointer-events: none;   /* behind the 3D chart and everything else */
   background:
-    radial-gradient(48rem 34rem at 10% calc(78% - var(--scroll, 0) * 30%), rgba(58, 115, 255, 0.08), transparent 70%),
-    radial-gradient(40rem 32rem at calc(78% - var(--scroll, 0) * 14%) calc(80% - var(--scroll, 0) * 20%), rgba(84, 70, 190, 0.06), transparent 70%),
-    radial-gradient(80rem 26rem at 50% 108%, rgba(22, 58, 134, 0.16), transparent 72%); }   /* indigo kept low-right, clear of the lamp's top-right corner */
+    radial-gradient(48rem 34rem at 10% calc(78% - var(--scroll, 0) * 30%), rgba(58, 115, 255, 0.06), transparent 70%),
+    radial-gradient(40rem 32rem at calc(78% - var(--scroll, 0) * 14%) calc(80% - var(--scroll, 0) * 20%), rgba(84, 70, 190, 0.045), transparent 70%),
+    radial-gradient(80rem 26rem at 50% 108%, rgba(22, 58, 134, 0.12), transparent 72%); }   /* indigo kept low-right, clear of the lamp's top-right corner */
 .content { position: relative; z-index: 2; }
 
 /* ---------- Nav ---------- */
@@ -389,4 +389,63 @@ table.data .sub { display: block; font-size: var(--text-xs); }
   .pop { max-height: 45vh; }                 /* phones: the chart stays visible above the box */
   .panel.figures { grid-template-columns: 1fr; }
   .figure + .figure { border-left: 0; border-top: 1px solid var(--color-line); }
+}
+
+/* ---------- Your trades (add, change, delete) ----------
+   The form copies a broker's contract note: stock, side, date, then the numbers. Fields share the
+   log-in form's look (4px corners, dark wells), and Bought / Sold is one two-way switch, not a dropdown. */
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.trades .page-head .muted { max-width: 40rem; }
+.trades .eyebrow a { color: inherit; }
+.trade-add, .trade-delete { display: grid; gap: var(--space-4); }
+.trade-add h2 { margin: 0; font-size: var(--text-xl); }
+.trade-form { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--space-4); align-items: end; margin-top: var(--space-2); }
+.trade-form .field { grid-column: span 3; display: grid; gap: var(--space-2); min-width: 0; margin: 0; padding: 0; border: 0; }
+.trade-form .field-stock { grid-column: span 6; }
+.trade-form label, .trade-form legend { font-size: var(--text-sm); color: var(--color-text-muted); padding: 0; }
+.trade-form legend { float: left; width: 100%; }   /* a legend otherwise sits lower than the labels beside it */
+.trade-form legend + * { clear: both; }
+.trade-form .optional { color: var(--color-text-faint); font-size: var(--text-xs); }
+.trade-form input[type="text"], .trade-form input[type="date"], .trade-form select {
+  width: 100%; font: var(--text-base)/1.4 var(--font-sans); color: var(--color-text); color-scheme: dark;
+  background: rgba(5, 8, 16, 0.72); border: 1px solid rgba(156, 196, 255, 0.18); border-radius: 4px; padding: var(--space-3); }
+.trade-form input[inputmode] { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.trade-form input:focus, .trade-form select:focus { outline: none; border-color: var(--color-glow-soft); box-shadow: 0 0 0 3px rgba(156, 196, 255, 0.2); }
+.side-toggle { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid rgba(156, 196, 255, 0.18); border-radius: 4px; overflow: hidden; }
+.side-toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.side-toggle label { text-align: center; padding: var(--space-3) 0; font: 500 var(--text-base)/1.4 var(--font-sans);
+  color: var(--color-text-muted); background: rgba(5, 8, 16, 0.72); cursor: pointer; }
+.side-toggle label + input + label { border-left: 1px solid rgba(156, 196, 255, 0.18); }
+.side-toggle input:checked + label { color: var(--color-text); background: rgba(156, 196, 255, 0.14); }
+.side-toggle input:focus-visible + label { outline: 2px solid var(--color-glow-soft); outline-offset: -2px; }
+.trade-form .trade-actions { grid-column: span 3; }
+.trade-actions { display: flex; align-items: center; gap: var(--space-4); }
+.trade-actions .btn { flex: 1; justify-content: center; border-radius: 4px; padding-block: var(--space-3); font-size: var(--text-base); }
+.trade-delete .trade-actions .btn { flex: 0 0 auto; }
+.quiet-link { font: 500 var(--text-sm)/1 var(--font-sans); color: var(--color-text-muted); }
+.quiet-link:hover { color: var(--color-text); }
+.btn-danger { color: var(--color-night); background: var(--color-down); border: 0; }
+.btn-danger:hover { background: #E59A9A; }
+.form-note { color: var(--color-lamp); background: rgba(227, 163, 94, 0.08); border: 1px solid rgba(227, 163, 94, 0.3);
+  border-radius: var(--radius-md); padding: var(--space-3); font-size: var(--text-sm); margin-bottom: var(--space-4); }
+.trades .form-ok { margin-bottom: var(--space-4); }
+.form-error ul { margin: 0; padding-left: var(--space-5); }
+.trade-summary { font-size: var(--text-lg); }
+.trades-table th:nth-child(-n+3), .trades-table td:nth-child(-n+3) { text-align: left; }   /* words left, numbers right */
+.trades-table td:nth-child(2) { font-family: var(--font-sans); }
+.trade-form input::placeholder { color: var(--color-text-faint); opacity: 0.6; }   /* an example, not a value */
+.trades-table .side { font-family: var(--font-sans); }
+.trades-table .side-buy { color: var(--color-glow-soft); }
+.trades-table .side-sell { color: var(--color-lamp); }
+.trades-table tr.just-saved td { background: rgba(156, 196, 255, 0.06); }
+.row-actions { white-space: nowrap; font-family: var(--font-sans); }
+.row-actions a + a { margin-left: var(--space-4); }
+.row-actions a[href$="/delete"] { color: var(--color-text-muted); }
+.row-actions a[href$="/delete"]:hover { color: var(--color-down); }
+@media (max-width: 860px) {
+  .trade-form .field, .trade-form .trade-actions { grid-column: span 6; }
+  .trade-form .field-stock { grid-column: span 12; }
+}
+@media (max-width: 560px) {
+  .trade-form .field, .trade-form .field-stock, .trade-form .trade-actions { grid-column: span 12; }
 }

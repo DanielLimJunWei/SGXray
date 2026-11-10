@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_trade_form.html" import trade_form, problems_box with context %}
+{% block title %}Change a trade · SGXray{% endblock %}
+
+{% block content %}
+<div class="page wrap trades">
+  <header class="page-head">
+    <p class="eyebrow"><a href="{{ url_for('trades_page') }}">Your trades</a> · change one</p>
+    <h1>Change this trade</h1>
+  </header>
+  <section class="panel trade-add" aria-label="Change the trade">
+    {{ problems_box(problems) }}
+    {{ trade_form(url_for('edit_trade', trade_id=trade.id), values, tickers, "Save changes", cancel=url_for('trades_page')) }}
+  </section>
+</div>
+{% endblock %}

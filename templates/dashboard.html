@@ -18,6 +18,7 @@
     {% if s %}
     <p class="as-of">Prices as of {{ s.prices_as_of|longdate }} · {{ term("closing-price", "closing prices") }}</p>
     {% endif %}
+    {% if s and mode == "own" %}<p><a href="{{ url_for('trades_page') }}">Add or change trades</a></p>{% endif %}
   </header>
 
   {% if not s %}
@@ -28,8 +29,8 @@
     <p><code>python src/importer.py data/demo_trades.csv</code><br><code>python src/market.py</code></p>
     {% else %}
     <h2>No trades yet</h2>
-    <p class="muted">Adding your trades, by hand or from your broker's file, is coming next. Meanwhile, explore the demo to see what SGXray will show you.</p>
-    <p><a class="btn btn-primary" href="{{ url_for('demo') }}">Explore the demo</a></p>
+    <p class="muted">Add the buys and sells from your broker's contract notes, and SGXray works out the rest. Not sure what you'll see? Explore the demo first.</p>
+    <p><a class="btn btn-primary" href="{{ url_for('trades_page') }}">Add your first trade</a> <a class="btn btn-ghost" href="{{ url_for('demo') }}">Explore the demo</a></p>
     {% endif %}
   </div>
   {% else %}

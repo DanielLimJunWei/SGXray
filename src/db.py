@@ -319,6 +319,40 @@ def add_trades(conn, user_id, trades):
     return len(trades)
 
 
+def get_trade(conn, user_id, trade_id):
+    """One trade, only if it belongs to this user. Someone else's trade id gives None, exactly like
+    a trade that doesn't exist, so changing the number in the address shows nothing (no IDOR)."""
+    return conn.execute(
+        "SELECT id, ticker, trade_date, side, quantity, price, fees FROM trades WHERE id = ? AND user_id = ?",
+        (trade_id, user_id),
+    ).fetchone()
+
+
+def update_trade(conn, user_id, trade_id, t):
+    """Changes one of this user's trades. Returns True if a trade was changed.
+    user_id is in the WHERE, so the database itself refuses to touch another user's trade."""
+    with conn:
+        cur = conn.execute(
+            """
+            UPDATE trades SET ticker = ?, trade_date = ?, side = ?, quantity = ?, price = ?, fees = ?
+            WHERE id = ? AND user_id = ?
+            """,
+            (t["ticker"], t["trade_date"], t["side"], t["quantity"], t["price"], t["fees"], trade_id, user_id),
+        )
+    return cur.rowcount == 1
+
+
+def delete_trade(conn, user_id, trade_id):
+    """Deletes one of this user's trades. Returns True if one was deleted."""
+    with conn:
+        cur = conn.execute("DELETE FROM trades WHERE id = ? AND user_id = ?", (trade_id, user_id))
+    return cur.rowcount == 1
+
+
+def count_trades(conn, user_id):
+    return conn.execute("SELECT COUNT(*) AS n FROM trades WHERE user_id = ?", (user_id,)).fetchone()["n"]
+
+
 def get_holdings(conn, user_id):
     """Buys minus sells per ticker, in plain SQL. It doesn't include splits or bonus issues:
     for real holdings use portfolio.positions()."""

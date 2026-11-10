@@ -41,6 +41,7 @@ from income import by_year, forecast, portfolio_yield, yields  # noqa: E402
 from performance import compare, per_stock  # noqa: E402
 from portfolio import positions, summary  # noqa: E402
 from stocks import stock_history  # noqa: E402
+import trades  # noqa: E402
 
 
 def create_app(db_path=None):
@@ -54,6 +55,7 @@ def create_app(db_path=None):
         SESSION_COOKIE_SECURE=os.environ.get("SGXRAY_HTTPS") == "1",   # HTTPS only, on the live site
         PERMANENT_SESSION_LIFETIME=timedelta(days=7),
         MAX_CONTENT_LENGTH=2 * 1024 * 1024,          # refuse uploads over 2 MB
+        MARKET_DOWNLOAD=trades.download_market_data, # tests swap in a fake, so they never use the internet
     )
 
     conn = db.get_connection(db_path)       # make sure the tables exist once, at start-up
@@ -67,7 +69,7 @@ def create_app(db_path=None):
     app.before_request(_load_user_and_check_csrf)
     app.after_request(_security_headers)
     app.context_processor(lambda: {"current_user": g.get("user"), "csrf_token": _csrf_token,
-                                   "csp_nonce": g.get("csp_nonce", "")})
+                                   "csp_nonce": g.get("csp_nonce", ""), "today": date.today().isoformat()})
 
     @app.get("/")
     def home():
@@ -84,6 +86,75 @@ def create_app(db_path=None):
     def portfolio():
         """Your own portfolio. Only ever g.user's trades: the id comes from the signed session, never the URL."""
         return _portfolio_page(g.user["id"], mode="own")
+
+    # ---------- Your trades: add, change, delete ----------
+    # Every query below has the logged-in user's id in it, taken from the session. A trade id in the
+    # address that isn't yours is treated exactly like one that doesn't exist (404), so nobody can
+    # see or change someone else's trades by editing the number.
+
+    @app.route("/trades", methods=["GET", "POST"])
+    @login_required
+    def trades_page():
+        conn, uid = get_db(), g.user["id"]
+        if request.method == "GET":
+            return _trades_page(conn, uid, values={"side": "BUY", "date": date.today().isoformat()})
+        values = trades.form_values(request.form)
+        trade, problems = trades.check(conn, uid, values)
+        if problems:
+            return _trades_page(conn, uid, values=values, problems=problems), 422
+        tid = db.add_trade(conn, uid, trade["ticker"], trade["trade_date"], trade["side"],
+                           trade["quantity"], trade["price"], trade["fees"])
+        db.log_security_event(conn, "trade_added", uid, request.remote_addr)
+        return redirect(url_for("trades_page", saved=tid, **_market_note(conn, trade)))
+
+    @app.route("/trades/<int:trade_id>/edit", methods=["GET", "POST"])
+    @login_required
+    def edit_trade(trade_id):
+        conn, uid = get_db(), g.user["id"]
+        old = db.get_trade(conn, uid, trade_id) or abort(404)
+        if request.method == "GET":
+            return render_template("trade_edit.html", trade=old, values=trades.trade_values(old), tickers=_tickers(conn))
+        values = trades.form_values(request.form)
+        trade, problems = trades.check(conn, uid, values, replacing=trade_id)
+        if problems:
+            return render_template("trade_edit.html", trade=old, values=values, tickers=_tickers(conn),
+                                   problems=problems), 422
+        db.update_trade(conn, uid, trade_id, trade)
+        db.log_security_event(conn, "trade_edited", uid, request.remote_addr)
+        return redirect(url_for("trades_page", saved=trade_id, **_market_note(conn, trade)))
+
+    @app.route("/trades/<int:trade_id>/delete", methods=["GET", "POST"])
+    @login_required
+    def delete_trade(trade_id):
+        """GET asks "are you sure?"; only the POST from that page deletes. No script needed."""
+        conn, uid = get_db(), g.user["id"]
+        trade = db.get_trade(conn, uid, trade_id) or abort(404)
+        names = {r["ticker"]: r["name"] for r in db.get_instruments(conn)}
+        problems = trades.check_delete(conn, uid, trade_id)
+        if request.method == "GET" or problems:
+            return render_template("trade_delete.html", trade=trade, name=names.get(trade["ticker"], ""),
+                                   problems=problems), (422 if problems and request.method == "POST" else 200)
+        db.delete_trade(conn, uid, trade_id)
+        db.log_security_event(conn, "trade_deleted", uid, request.remote_addr)
+        return redirect(url_for("trades_page", deleted=1))
+
+    def _market_note(conn, trade):
+        """Downloads prices first if this trade needs some (a new stock, or an earlier date).
+        If the download fails the trade is still saved; the page says prices come with the next update."""
+        needed = trades.needs_market_data(conn, trade["ticker"], trade["trade_date"])
+        if not needed:
+            return {}
+        ok = current_app.config["MARKET_DOWNLOAD"](conn, needed)
+        return {} if ok else {"prices": "later"}
+
+    def _trades_page(conn, uid, values, problems=None):
+        names = {r["ticker"]: r["name"] for r in db.get_instruments(conn)}
+        rows = [{**dict(t), "name": names.get(t["ticker"], "")} for t in db.get_trades(conn, uid)]
+        rows.reverse()                                          # newest first: the one you just added is on top
+        saved = request.args.get("saved", type=int)
+        return render_template("trades.html", trades=rows, values=values, tickers=_tickers(conn), problems=problems,
+                               saved=saved, deleted=request.args.get("deleted") == "1",
+                               prices_later=request.args.get("prices") == "later")
 
     # ---------- Accounts ----------
 
@@ -252,6 +323,12 @@ def create_app(db_path=None):
     return app
 
 
+def _tickers(conn):
+    """The starter list for the form's stock picker, by name."""
+    return sorted(({"ticker": r["ticker"], "name": r["name"], "type": r["type"]} for r in db.get_instruments(conn)),
+                  key=lambda r: r["name"].lower())
+
+
 def _or_none(fn, *args):
     """Runs fn; if it can't (ValueError, e.g. no STI ETF prices yet), the page shows n/a instead of crashing."""
     try:
@@ -408,7 +485,7 @@ def _security_headers(response):
     ])
     if os.environ.get("SGXRAY_HTTPS") == "1":                    # the live site: always HTTPS from now on
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    if request.endpoint in ("login", "signup", "account", "portfolio"):
+    if request.endpoint in ("login", "signup", "account", "portfolio", "trades_page", "edit_trade", "delete_trade"):
         response.headers["Cache-Control"] = "no-store"            # private pages aren't kept in the browser cache
     return response
 

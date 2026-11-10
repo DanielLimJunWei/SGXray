@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Delete a trade · SGXray{% endblock %}
+
+{% block content %}
+<div class="page wrap trades">
+  <header class="page-head">
+    <p class="eyebrow"><a href="{{ url_for('trades_page') }}">Your trades</a> · delete one</p>
+    <h1>Delete this trade?</h1>
+  </header>
+  <section class="panel trade-delete" aria-label="Delete the trade">
+    <p class="trade-summary">{{ "Bought" if trade.side == "BUY" else "Sold" }} {{ "{:,}".format(trade.quantity) }} <b>{{ name or trade.ticker }}</b> ({{ trade.ticker }})
+      at S${{ trade.price|num(".3f") }} on {{ trade.trade_date|longdate }}.</p>
+    {% if problems %}
+    <div class="form-error" role="alert">{% for p in problems %}{{ p }} {% endfor %}</div>
+    <p><a class="btn btn-ghost" href="{{ url_for('trades_page') }}">Back to your trades</a></p>
+    {% else %}
+    <p class="muted">This can't be undone. Your portfolio will be worked out again without it.</p>
+    <form method="post" action="{{ url_for('delete_trade', trade_id=trade.id) }}" class="trade-actions">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <button class="btn btn-danger" type="submit">Delete trade</button>
+      <a class="quiet-link" href="{{ url_for('trades_page') }}">Keep it</a>
+    </form>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% from "_trade_form.html" import trade_form, problems_box with context %}
+{% block title %}Your trades · SGXray{% endblock %}
+
+{% block content %}
+<div class="page wrap trades">
+  <header class="page-head">
+    <p class="eyebrow"><a href="{{ url_for('portfolio') }}">Your portfolio</a> · trades</p>
+    <h1>Your trades</h1>
+    <p class="muted">Every buy and sell you've made. SGXray works out everything else from these: what you hold, what you've made, and your dividends.</p>
+  </header>
+
+  {% if saved %}<p class="form-ok" role="status">Trade saved. <a href="{{ url_for('portfolio') }}">See your portfolio</a></p>{% endif %}
+  {% if prices_later %}<p class="form-note" role="status">Prices for that stock couldn't be downloaded just now. The trade is saved; its prices will appear after the next price update.</p>{% endif %}
+  {% if deleted %}<p class="form-ok" role="status">Trade deleted.</p>{% endif %}
+
+  <section class="panel trade-add" aria-labelledby="add-title">
+    <h2 id="add-title">Add a trade</h2>
+    <p class="muted">Copy it from your broker's contract note: the date, how many shares, and the price per share.</p>
+    {{ problems_box(problems) }}
+    {{ trade_form(url_for('trades_page'), values, tickers, "Save trade") }}
+  </section>
+
+  <section class="block" aria-labelledby="list-title">
+    <div class="section-head"><h2 id="list-title">{{ trades|length }} trade{{ "s" if trades|length != 1 }}</h2></div>
+    {% if trades %}
+    <div class="panel table-wrap">
+      <table class="data trades-table">
+        <thead>
+          <tr><th scope="col">Date</th><th scope="col">Stock</th><th scope="col">Side</th><th scope="col">Shares</th>
+              <th scope="col">Price</th><th scope="col">Fees</th><th scope="col">Total</th><th scope="col"><span class="visually-hidden">Change</span></th></tr>
+        </thead>
+        <tbody>
+          {% for t in trades %}
+          {% set amount = t.quantity * t.price %}
+          <tr{% if saved == t.id %} class="just-saved"{% endif %}>
+            <td>{{ t.trade_date|shortdate }}</td>
+            <td><b>{{ t.ticker }}</b><span class="name">{{ t.name }}</span></td>
+            <td><span class="side side-{{ t.side|lower }}">{{ "Bought" if t.side == "BUY" else "Sold" }}</span></td>
+            <td>{{ "{:,}".format(t.quantity) }}</td>
+            <td>{{ t.price|num(".3f") }}</td>
+            <td>{{ t.fees|money }}</td>
+            <td>{{ (amount + t.fees if t.side == "BUY" else amount - t.fees)|money }}<span class="sub">{{ "paid" if t.side == "BUY" else "received" }}</span></td>
+            <td class="row-actions">
+              <a href="{{ url_for('edit_trade', trade_id=t.id) }}" aria-label="Change the {{ t.trade_date|shortdate }} {{ t.ticker }} trade">Change</a>
+              <a href="{{ url_for('delete_trade', trade_id=t.id) }}" aria-label="Delete the {{ t.trade_date|shortdate }} {{ t.ticker }} trade">Delete</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="muted">No trades yet. Add your first one above, and your portfolio fills in from it.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

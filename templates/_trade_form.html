@@ -1,0 +1,63 @@
+{# The add / change trade form. Plain HTML fields, so the browser helps too (date picker, number keyboard on
+   phones), but every value is checked again on the server: the browser's checks are only a convenience. #}
+{% macro trade_form(action, values, tickers, submit, cancel=None) %}
+<form class="trade-form" method="post" action="{{ action }}" novalidate>
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+
+  <div class="field field-stock">
+    <label for="tf-ticker">Stock, REIT or ETF</label>
+    <select id="tf-ticker" name="ticker" required>
+      <option value="" {% if not values.ticker %}selected{% endif %} disabled>Choose one</option>
+      {% for group, label in [("stock", "Stocks"), ("reit", "REITs"), ("etf", "ETFs")] %}
+      <optgroup label="{{ label }}">
+        {% for t in tickers if t.type == group %}
+        <option value="{{ t.ticker }}" {% if values.ticker == t.ticker %}selected{% endif %}>{{ t.name }} ({{ t.ticker }})</option>
+        {% endfor %}
+      </optgroup>
+      {% endfor %}
+    </select>
+  </div>
+
+  <fieldset class="field field-side">
+    <legend>Bought or sold</legend>
+    <div class="side-toggle">
+      <input type="radio" id="tf-buy" name="side" value="BUY" {% if values.side != "SELL" %}checked{% endif %}><label for="tf-buy">Bought</label>
+      <input type="radio" id="tf-sell" name="side" value="SELL" {% if values.side == "SELL" %}checked{% endif %}><label for="tf-sell">Sold</label>
+    </div>
+  </fieldset>
+
+  <div class="field field-date">
+    <label for="tf-date">Date</label>
+    <input id="tf-date" name="date" type="date" value="{{ values.date or '' }}" max="{{ today }}" required>
+  </div>
+
+  <div class="field">
+    <label for="tf-qty">Shares</label>
+    <input id="tf-qty" name="quantity" type="text" inputmode="numeric" autocomplete="off" value="{{ values.quantity or '' }}" placeholder="100" required>
+  </div>
+
+  <div class="field">
+    <label for="tf-price">Price per share (S$)</label>
+    <input id="tf-price" name="price" type="text" inputmode="decimal" autocomplete="off" value="{{ values.price or '' }}" placeholder="35.20" required>
+  </div>
+
+  <div class="field">
+    <label for="tf-fees">Fees (S$) <span class="optional">optional</span></label>
+    <input id="tf-fees" name="fees" type="text" inputmode="decimal" autocomplete="off" value="{{ values.fees or '' }}" placeholder="0.00">
+  </div>
+
+  <div class="trade-actions">
+    <button class="btn btn-primary" type="submit">{{ submit }}</button>
+    {% if cancel %}<a class="quiet-link" href="{{ cancel }}">Cancel</a>{% endif %}
+  </div>
+</form>
+{% endmacro %}
+
+{% macro problems_box(problems) %}
+{% if problems %}
+<div class="form-error" role="alert">
+  {% if problems|length == 1 %}{{ problems[0] }}{% else %}
+  <ul>{% for p in problems %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}
+</div>
+{% endif %}
+{% endmacro %}

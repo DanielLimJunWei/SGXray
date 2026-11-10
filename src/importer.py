@@ -25,6 +25,11 @@ from instruments import seed_instruments
 REQUIRED_COLUMNS = ["ticker", "date", "side", "quantity", "price"]
 OPTIONAL_COLUMNS = ["fees"]
 DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+# Upper limits, far above anything real (SGX's priciest share is under S$100), so a slip like
+# an extra row of zeros, or a number made to break the sums, is refused instead of saved.
+MAX_QUANTITY = 100_000_000
+MAX_PRICE = 100_000
+MAX_FEES = 100_000
 
 
 @dataclass
@@ -60,6 +65,19 @@ def _parse_number(text):
 
 def _check_row(row, row_no, known_tickers, today):
     """Checks one CSV row. Returns (trade, errors). trade is None if the row has errors."""
+    trade, errors = check_fields(row, known_tickers, today)
+    if errors:
+        return None, [f"Row {row_no}: {e}" for e in errors]
+    trade["row"] = row_no
+    return trade, []
+
+
+def check_fields(row, known_tickers, today):
+    """Checks one trade's fields: from a CSV row, or from the add/edit trade form (trades.py).
+
+    row is a dict of text: ticker, date, side, quantity, price and (optional) fees.
+    Returns (trade, errors). trade is None if anything is wrong; errors are plain sentences.
+    """
     errors = []
 
     ticker = row["ticker"].strip().upper()
@@ -93,20 +111,25 @@ def _check_row(row, row_no, known_tickers, today):
     quantity = int(qty_text) if qty_text.isascii() and qty_text.isdigit() else None
     if quantity is None or quantity == 0:
         errors.append(f"quantity '{qty_text}' must be a whole number above 0")
+    elif quantity > MAX_QUANTITY:
+        errors.append(f"quantity {quantity:,} is more than {MAX_QUANTITY:,} shares. Is there an extra zero?")
 
     price = _parse_number(row["price"].strip())
     if price is None or price <= 0:
         errors.append(f"price '{row['price'].strip()}' must be a number above 0")
+    elif price > MAX_PRICE:
+        errors.append(f"price is more than S${MAX_PRICE:,} a share. Is there an extra zero?")
 
     fees_text = row.get("fees", "").strip()
     fees = 0.0 if fees_text == "" else _parse_number(fees_text)
     if fees is None or fees < 0:
         errors.append(f"fees '{fees_text}' must be a number, 0 or more")
+    elif fees > MAX_FEES:
+        errors.append(f"fees are more than S${MAX_FEES:,}. Is there an extra zero?")
 
     if errors:
-        return None, [f"Row {row_no}: {e}" for e in errors]
+        return None, errors
     trade = {
-        "row": row_no,
         "ticker": ticker,
         "trade_date": trade_date.isoformat(),
         "side": side,
@@ -119,11 +142,12 @@ def _check_row(row, row_no, known_tickers, today):
 
 # ---------- Checking the file as a whole ----------
 
-def _check_sells(existing, new_trades, actions=()):
+def _check_sells(existing, new_trades, actions=(), form=False):
     """Goes through every trade in date order and reports any SELL of more shares than held.
 
     Splits and bonus issues (actions) change holdings on their ex-date, before that day's trades.
     Saved trades come next on the same day; new trades keep their order in the file.
+    form=True words the problems for the add/edit/delete trade pages instead of a CSV file.
     """
     events = [(a["ex_date"], -1, a, False) for a in actions]
     events += [(t["trade_date"], 0, t, False) for t in existing]
@@ -143,9 +167,11 @@ def _check_sells(existing, new_trades, actions=()):
         have = held.get(ticker, 0)
         if qty > have:
             if is_new:
-                errors.append(
-                    f"Row {t['row']}: sells {qty} {ticker} on {trade_date}, but only {have} are held then"
-                )
+                where = f"Row {t['row']}: sells" if t.get("row") else "This sells"   # no row: the trade form
+                errors.append(f"{where} {qty} {ticker} on {trade_date}, but only {have} are held then")
+            elif form:
+                errors.append(f"That would leave too few {ticker} shares for your sale of {qty} on {trade_date}. "
+                              "Change or delete that sale first.")
             else:
                 errors.append(
                     f"{ticker}: these trades leave too few shares for the sale of {qty} already saved on {trade_date}"
