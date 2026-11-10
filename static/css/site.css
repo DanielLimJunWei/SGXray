@@ -73,9 +73,10 @@ footer.site p + p { margin-top: var(--space-2); }
 .ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); }
 .scroll-hint { font: var(--text-xs)/1 var(--font-mono); color: var(--color-text-faint); letter-spacing: 0.08em; margin-top: var(--space-12); }
 /* Drag to turn the home chart (mouse and trackpad only; touch keeps scrolling the page). */
-.can-turn .content section { cursor: grab; }
-.can-turn .content section :is(.panel, h1, h2, h3, p, li) { cursor: default; }   /* plain arrow: nothing to click here */
-.can-turn .content section :is(a, button, summary, .term) { cursor: pointer; }   /* pointing hand: only where a click does something */
+/* home-scene.js says what's under the pointer: letters, something clickable, or space to turn. */
+.can-turn .content, .can-turn .content * { cursor: grab; }
+.can-turn[data-over="text"] .content, .can-turn[data-over="text"] .content * { cursor: default; }
+.can-turn .content :is(a, button, summary, .term), .can-turn .content :is(a, button) * { cursor: pointer; }
 .turning, .turning * { cursor: grabbing !important; user-select: none; }
 .turn-hint { display: none; }
 .can-turn .turn-hint { display: inline; }

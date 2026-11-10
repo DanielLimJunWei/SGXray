@@ -270,13 +270,47 @@ function easeTurn(now) {
   turn.pitch += (turn.toPitch - turn.pitch) * k;
 }
 // Only empty space starts a drag: text, buttons, links and the panels keep working as normal.
-const NOT_DRAGGABLE = "a, button, nav, .panel, h1, h2, h3, p, li, input, textarea, select, label, footer";
+// Only the letters themselves and clickable things stop a turn: the empty space beside a short line,
+// or the padding inside a panel, still turns the chart. That makes turning smooth almost anywhere.
+const CLICKABLE = "a, button, summary, input, textarea, select, label, nav, footer";
+function onLetters(x, y) {
+  // Find the character nearest the point, then check the point is really inside that character's box.
+  let node, offset;
+  if (document.caretPositionFromPoint) {
+    const c = document.caretPositionFromPoint(x, y); if (!c) return false;
+    node = c.offsetNode; offset = c.offset;
+  } else if (document.caretRangeFromPoint) {
+    const r = document.caretRangeFromPoint(x, y); if (!r) return false;
+    node = r.startContainer; offset = r.startOffset;
+  }
+  if (!node || node.nodeType !== Node.TEXT_NODE || !node.textContent.trim()) return false;
+  const range = document.createRange();
+  for (const i of [offset - 1, offset]) {
+    if (i < 0 || i >= node.length) continue;
+    range.setStart(node, i); range.setEnd(node, i + 1);
+    for (const b of range.getClientRects()) {
+      if (x >= b.left - 2 && x <= b.right + 2 && y >= b.top - 2 && y <= b.bottom + 2) return true;
+    }
+  }
+  return false;
+}
+// What's under the pointer: "click" (a link or button), "text" (letters), or "turn" (anything else).
+function under(x, y, target) {
+  if (target && target.closest && target.closest(CLICKABLE)) return "click";
+  return onLetters(x, y) ? "text" : "turn";
+}
 const finePointer = matchMedia("(hover: hover) and (pointer: fine)").matches;   // mouse or trackpad, not touch
 if (finePointer) {
   document.documentElement.classList.add("can-turn");
   let last = null;
   const speed = () => Math.PI / Math.max(innerWidth, 600);    // a full-width drag turns it half way round
-  const startsTurn = e => e.button === 0 && e.pointerType !== "touch" && !e.target.closest(NOT_DRAGGABLE);
+  const startsTurn = e => e.button === 0 && e.pointerType !== "touch" && under(e.clientX, e.clientY, e.target) === "turn";
+  // The cursor follows the same rule: open hand to turn, arrow on letters, pointing hand on clickable things.
+  addEventListener("pointermove", e => {
+    if (turn.dragging || e.pointerType === "touch") return;
+    const over = under(e.clientX, e.clientY, e.target);
+    if (document.documentElement.dataset.over !== over) document.documentElement.dataset.over = over;
+  }, { passive: true });
   const clearSelection = () => { const sel = getSelection(); if (sel && sel.rangeCount) sel.removeAllRanges(); };
   // Text selection starts on mousedown, a separate event from pointerdown, so stop it there too.
   addEventListener("mousedown", e => { if (startsTurn(e)) e.preventDefault(); });
@@ -325,7 +359,7 @@ if (finePointer) {
   addEventListener("pointercancel", stop);
   addEventListener("blur", () => stop());
   addEventListener("dblclick", e => {
-    if (e.target.closest(NOT_DRAGGABLE)) return;
+    if (under(e.clientX, e.clientY, e.target) !== "turn") return;
     // Back to the start the short way round (after three full spins, don't unwind all three).
     const full = Math.PI * 2;
     turn.yaw -= Math.round(turn.yaw / full) * full;
