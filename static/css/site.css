@@ -151,12 +151,10 @@ footer.site p + p { margin-top: var(--space-2); }
 .term { display: inline; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; background: none; border: 0; padding: 0;
   cursor: pointer; text-decoration: underline dotted; text-decoration-color: var(--color-text-faint); text-underline-offset: 0.22em; }
 .term:hover { text-decoration-color: var(--color-glow-soft); }
-.term-pop { width: min(20rem, calc(100vw - 24px)); margin: auto; padding: var(--space-4); color: var(--color-text);
-  background: var(--color-surface-raised); border: 1px solid var(--color-line-strong); border-radius: var(--radius-md);
-  font: var(--text-sm)/1.55 var(--font-sans); text-transform: none; letter-spacing: 0; text-align: left; }
-.terms-js .term-pop { position: fixed; inset: auto; margin: 0; }      /* placed next to the word by terms.js */
-.term-pop b { display: block; font-weight: 600; margin-bottom: var(--space-1); }
-.term-pop p + p { margin-top: var(--space-2); }
+/* The meaning box is an ordinary movable, resizable box (.pop), just narrower, opening under its word. */
+.pop.term-pop { width: min(22rem, calc(100vw - 24px)); line-height: 1.55; text-transform: none; letter-spacing: 0; text-align: left; }
+.pop.term-pop .pop-body { padding: var(--space-3) var(--space-4) var(--space-4); }
+.pop.term-pop .pop-head h3 { font-size: var(--text-sm); font-family: var(--font-sans); font-weight: 600; }
 .term-eg { color: var(--color-text-muted); font-size: var(--text-xs); }
 .term-eg span { color: var(--color-text-faint); }
 

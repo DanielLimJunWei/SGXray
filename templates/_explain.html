@@ -5,7 +5,7 @@
   Close or Esc. static/js/popups.js does the moving; without it they still open and close.
   `ex` is an explain.Explanation; `id` must be unique on the page.
 #}
-{% macro _head(id, title, kind) %}
+{% macro pop_head(id, title, kind) %}
   <div class="pop-head" data-drag>
     <button class="grip" type="button" aria-label="Move this box: use the arrow keys" title="Drag to move">⠿</button>
     <h3>{{ title }}</h3>
@@ -14,7 +14,7 @@
 {% endmacro %}
 
 {# Bottom-right corner: drag to make the box bigger or smaller, or use the arrow keys on it. #}
-{% macro _resize() %}
+{% macro pop_resize() %}
   <button class="resize" type="button" data-resize aria-label="Resize this box: arrow keys make it wider, narrower, taller or shorter" title="Drag to resize"></button>
 {% endmacro %}
 
@@ -25,15 +25,15 @@
   {% endif %}
 
   <div class="pop" id="{{ id }}-what" popover="manual" role="dialog" aria-label="What does this mean? {{ title }}">
-    {{ _head(id, "What does this mean?", "what") }}
+    {{ pop_head(id, "What does this mean?", "what") }}
     <div class="pop-body">{% for line in ex.lines %}<p>{{ line }}</p>{% endfor %}</div>
-    {{ _resize() }}
+    {{ pop_resize() }}
   </div>
   {% if ex.watch_out %}
   <div class="pop warn" id="{{ id }}-watch" popover="manual" role="dialog" aria-label="Watch out: {{ title }}">
-    {{ _head(id, "⚠ Watch out", "watch") }}
+    {{ pop_head(id, "⚠ Watch out", "watch") }}
     <div class="pop-body"><ul>{% for item in ex.watch_out %}<li>{{ item }}</li>{% endfor %}</ul></div>
-    {{ _resize() }}
+    {{ pop_resize() }}
   </div>
   {% endif %}
 {% endmacro %}
