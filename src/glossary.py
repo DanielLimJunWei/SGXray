@@ -69,6 +69,39 @@ TERMS = {
                  "An estimate: last year's dividends, assumed to come again on the shares you hold now. "
                  "Companies can raise, cut or skip them.",
                  "About $973 expected over the next 12 months."),
+    "ticker": ("Stock code (ticker)",
+               "The short code a stock trades under. \".SI\" at the end means it's listed on the Singapore Exchange.",
+               "D05.SI = DBS; C38U.SI = CapitaLand Integrated Commercial Trust; ES3.SI = the STI ETF."),
+    "per-share": ("Per share",
+                  "The dividend paid for EACH share (or unit) you own. Multiply it by your shares to get your cash.",
+                  "$0.75 per share x 210 DBS shares = $157.50."),
+    "per-share-12m": ("Paid a share, 12 months",
+                      "All the dividends one share paid over the last 12 months, added up. Many SGX stocks pay "
+                      "two or four times a year.",
+                      "DBS paid four times: about $3.18 a share in total."),
+    "income-12m": ("A year's income",
+                   "What the last 12 months of dividends would pay on the shares you hold now: paid a share x your shares.",
+                   "$3.18 a share x 210 DBS shares = $667.80."),
+    "expected": ("Expected (dividend)",
+                 "The cash you'd get if the stock pays the same as last time: per share x the shares you hold now. "
+                 "An estimate, not a promise.",
+                 "$0.75 x 210 shares = about $157.50."),
+    "expected-date": ("Expected around",
+                      "A guess at the next ex-date: one year after the last one. The company announces the real "
+                      "date shortly before.",
+                      "Last ex-date 13 November 2025, so expected around 13 November 2026."),
+    "your-profit": ("Your profit (one stock)",
+                    "Everything that stock has given you: what it's worth now + money from selling it + its "
+                    "dividends - what you paid for it.",
+                    "DBS: +$8,075 so far."),
+    "same-money-sti": ("Same money in the STI ETF",
+                       "What you'd have made if every dollar you put into that stock had gone into the STI ETF "
+                       "instead, on the same days, with the same fees.",
+                       "The money you put into DBS would have made +$4,660 in the STI ETF."),
+    "all-together": ("All together",
+                     "Your own money + price gains + dividends: everything your investing has given you so far, "
+                     "the top edge of the X-ray chart.",
+                     "$13,361 + $9,334 + $2,183 = $24,878."),
     "difference": ("Difference vs the STI ETF",
                    "Your profit on a stock minus what the same money would have made in the STI ETF. "
                    "Positive = that pick helped you beat the market.",

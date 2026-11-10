@@ -118,7 +118,7 @@
       <summary>Show as a table</summary>
       <div class="panel table-wrap">
         <table class="data">
-          <thead><tr><th scope="col">Month end</th><th scope="col">Your money</th><th scope="col">Price gains</th><th scope="col">Dividends</th><th scope="col">All together</th><th scope="col">STI ETF</th></tr></thead>
+          <thead><tr><th scope="col">Month end</th><th scope="col">{{ term("money-in", "Your money") }}</th><th scope="col">{{ term("price-gains", "Price gains") }}</th><th scope="col">{{ term("dividend", "Dividends") }}</th><th scope="col">{{ term("all-together", "All together") }}</th><th scope="col">{{ term("sti-etf", "STI ETF") }}</th></tr></thead>
           <tbody>
             {% for m in chart|reverse %}
             <tr><td>{{ m.date|longdate }}</td><td>{{ m.money|money }}</td><td class="{{ m.gains|trend }}">{{ m.gains|money(signed=True) }}</td><td>{{ m.divs|money }}</td><td>{{ (m.money + m.gains + m.divs)|money }}</td><td>{{ m.sti|money }}</td></tr>
@@ -139,7 +139,7 @@
     <div class="panel table-wrap">
       <table class="data">
         <thead>
-          <tr><th scope="col">Stock</th><th scope="col">{{ term("shares", "Shares") }}</th><th scope="col">{{ term("avg-cost", "Avg cost") }}</th><th scope="col">{{ term("closing-price", "Price") }}</th>
+          <tr><th scope="col">{{ term("ticker", "Stock") }}</th><th scope="col">{{ term("shares", "Shares") }}</th><th scope="col">{{ term("avg-cost", "Avg cost") }}</th><th scope="col">{{ term("closing-price", "Price") }}</th>
               <th scope="col">{{ term("cost", "Cost") }}</th><th scope="col">{{ term("worth", "Worth now") }}</th><th scope="col">{{ term("unrealised", "Unrealised") }}</th></tr>
         </thead>
         <tbody>
@@ -171,8 +171,8 @@
     <div class="panel table-wrap">
       <table class="data">
         <thead>
-          <tr><th scope="col">Stock</th><th scope="col">You, {{ term("a-year", "a year") }}</th><th scope="col">STI ETF, a year</th>
-              <th scope="col">Your profit</th><th scope="col">Same money in the STI ETF</th><th scope="col">{{ term("difference", "Difference") }}</th></tr>
+          <tr><th scope="col">{{ term("ticker", "Stock") }}</th><th scope="col">You {{ term("a-year", "a year") }}</th><th scope="col">{{ term("sti-etf", "STI ETF") }} {{ term("a-year", "a year") }}</th>
+              <th scope="col">{{ term("your-profit", "Your profit") }}</th><th scope="col">{{ term("same-money-sti", "Same money in the STI ETF") }}</th><th scope="col">{{ term("difference", "Difference") }}</th></tr>
         </thead>
         <tbody>
           {% for r in stocks %}
@@ -203,8 +203,8 @@
     <div class="panel table-wrap">
       <table class="data">
         <thead>
-          <tr><th scope="col">Stock</th><th scope="col">Paid a share, 12 months</th><th scope="col">Price</th>
-              <th scope="col">{{ term("yield", "Yield") }}</th><th scope="col">Your {{ term("avg-cost", "avg cost") }}</th><th scope="col">{{ term("yield-on-cost", "On cost") }}</th><th scope="col">A year's income</th></tr>
+          <tr><th scope="col">{{ term("ticker", "Stock") }}</th><th scope="col">{{ term("per-share-12m", "Paid a share, 12 months") }}</th><th scope="col">{{ term("closing-price", "Price") }}</th>
+              <th scope="col">{{ term("yield", "Yield") }}</th><th scope="col">Your {{ term("avg-cost", "avg cost") }}</th><th scope="col">{{ term("yield-on-cost", "On cost") }}</th><th scope="col">{{ term("income-12m", "A year's income") }}</th></tr>
         </thead>
         <tbody>
           {% for r in yields %}
@@ -253,7 +253,7 @@
       <summary>Show as a table</summary>
       <div class="panel table-wrap">
         <table class="data">
-          <thead><tr><th scope="col">Year</th><th scope="col">Stock</th><th scope="col">Dividends</th></tr></thead>
+          <thead><tr><th scope="col">Year</th><th scope="col">{{ term("ticker", "Stock") }}</th><th scope="col">{{ term("dividend", "Dividends") }}</th></tr></thead>
           <tbody>
             {% for r in years|reverse %}{% for t, v in r.by_stock.items() %}
             <tr><td>{{ r.year }}{% if r.part == "so far" %} (so far){% elif r.part == "first" %} (from {{ r.from_month }}){% endif %}</td><td>{{ t }}</td><td>{{ v|money }}</td></tr>
@@ -277,8 +277,8 @@
     <div class="panel table-wrap">
       <table class="data">
         <thead>
-          <tr><th scope="col">Around</th><th scope="col">Stock</th><th scope="col">Shares</th>
-              <th scope="col">A share</th><th scope="col">Expected</th><th scope="col">Last {{ term("ex-date", "ex-date") }}</th></tr>
+          <tr><th scope="col">{{ term("expected-date", "Expected around") }}</th><th scope="col">{{ term("ticker", "Stock") }}</th><th scope="col">{{ term("shares", "Shares") }}</th>
+              <th scope="col">{{ term("per-share", "Per share") }}</th><th scope="col">{{ term("expected", "Expected") }}</th><th scope="col">Last {{ term("ex-date", "ex-date") }}</th></tr>
         </thead>
         <tbody>
           {% for r in forecast %}

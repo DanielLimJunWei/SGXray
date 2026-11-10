@@ -145,3 +145,17 @@ def test_tap_a_term_every_word_has_a_meaning(client, db_path):
         assert f'id="term-{key}"' in html
     for name, meaning, example in glossary.TERMS.values():
         assert name and meaning.endswith(".") and example
+
+
+def test_every_table_column_explains_itself(client, db_path):
+    """Each column heading opens a meaning, apart from plain words like 'Year' and 'Month end'."""
+    import re
+    load_demo(db_path)
+    conn = db.get_connection(db_path)
+    db.save_dividends(conn, "D05.SI", [("2025-04-10", 0.60)])          # so the dividend tables show too
+    conn.close()
+    html = client.get("/demo").get_data(as_text=True)
+    plain = {"Year", "Month end"}
+    for th in re.findall(r'<th scope="col">(.*?)</th>', html, flags=re.S):
+        text = re.sub(r"<[^>]+>", "", th).strip()
+        assert text in plain or 'class="term"' in th, f"column '{text}' has no tap-a-term meaning"

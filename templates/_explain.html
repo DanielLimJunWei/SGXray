@@ -13,6 +13,11 @@
   </div>
 {% endmacro %}
 
+{# Bottom-right corner: drag to make the box bigger or smaller, or use the arrow keys on it. #}
+{% macro _resize() %}
+  <button class="resize" type="button" data-resize aria-label="Resize this box: arrow keys make it wider, narrower, taller or shorter" title="Drag to resize"></button>
+{% endmacro %}
+
 {% macro explain_buttons(ex, id, title) %}
   <button class="icon-btn" type="button" popovertarget="{{ id }}-what" aria-label="What does the {{ title }} table mean?">ⓘ What does this mean?</button>
   {% if ex.watch_out %}
@@ -22,11 +27,13 @@
   <div class="pop" id="{{ id }}-what" popover="manual" role="dialog" aria-label="What does this mean? {{ title }}">
     {{ _head(id, "What does this mean?", "what") }}
     <div class="pop-body">{% for line in ex.lines %}<p>{{ line }}</p>{% endfor %}</div>
+    {{ _resize() }}
   </div>
   {% if ex.watch_out %}
   <div class="pop warn" id="{{ id }}-watch" popover="manual" role="dialog" aria-label="Watch out: {{ title }}">
     {{ _head(id, "⚠ Watch out", "watch") }}
     <div class="pop-body"><ul>{% for item in ex.watch_out %}<li>{{ item }}</li>{% endfor %}</ul></div>
+    {{ _resize() }}
   </div>
   {% endif %}
 {% endmacro %}

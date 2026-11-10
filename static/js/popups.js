@@ -17,7 +17,8 @@
   }
 
   function openAtDefault(pop) {
-    if (pop.dataset.moved) { clamp(pop, parseFloat(pop.style.left), parseFloat(pop.style.top)); return; }
+    const left = parseFloat(pop.style.left), top = parseFloat(pop.style.top);
+    if (pop.dataset.moved && !isNaN(left) && !isNaN(top)) { clamp(pop, left, top); return; }
     const w = pop.offsetWidth, h = pop.offsetHeight;
     // Bottom-right on wide screens; along the bottom on phones. A second open box sits a little higher.
     const others = pops.filter(p => p !== pop && p.matches(":popover-open")).length;
@@ -33,7 +34,7 @@
       if (e.target.closest(".close")) return;
       e.preventDefault();
       const start = { x: e.clientX, y: e.clientY, left: pop.offsetLeft, top: pop.offsetTop };
-      head.setPointerCapture(e.pointerId);
+      try { head.setPointerCapture(e.pointerId); } catch (err) { /* keep dragging without capture */ }
       head.classList.add("dragging");
       const move = ev => {
         clamp(pop, start.left + ev.clientX - start.x, start.top + ev.clientY - start.y);
@@ -49,6 +50,37 @@
       head.addEventListener("pointerup", up);
       head.addEventListener("pointercancel", up);
     });
+
+    // Resize from the bottom-right corner: drag it, or use the arrow keys on it.
+    const grip = pop.querySelector("[data-resize]");
+    const MIN_W = 240, MIN_H = 140;
+    function size(w, h) {
+      w = Math.min(Math.max(MIN_W, w), innerWidth - pop.offsetLeft - PAD);
+      h = Math.min(Math.max(MIN_H, h), innerHeight - pop.offsetTop - PAD);
+      pop.style.width = w + "px";
+      pop.style.height = h + "px";
+      pop.style.maxHeight = "none";                    // the size you chose wins over the default cap
+      pop.dataset.moved = "1";                         // keep this spot and size when it reopens
+    }
+    if (grip) {
+      grip.addEventListener("pointerdown", e => {
+        e.preventDefault();
+        const start = { x: e.clientX, y: e.clientY, w: pop.offsetWidth, h: pop.offsetHeight };
+        try { grip.setPointerCapture(e.pointerId); } catch (err) { /* keep resizing without capture */ }
+        const move = ev => size(start.w + ev.clientX - start.x, start.h + ev.clientY - start.y);
+        const up = () => { grip.removeEventListener("pointermove", move); grip.removeEventListener("pointerup", up); grip.removeEventListener("pointercancel", up); };
+        grip.addEventListener("pointermove", move);
+        grip.addEventListener("pointerup", up);
+        grip.addEventListener("pointercancel", up);
+      });
+      grip.addEventListener("keydown", e => {
+        const step = e.shiftKey ? 80 : 20;
+        const d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+        if (!d) return;
+        e.preventDefault();
+        size(pop.offsetWidth + d[0], pop.offsetHeight + d[1]);
+      });
+    }
 
     // Move with the arrow keys from the ⠿ handle.
     pop.querySelector(".grip").addEventListener("keydown", e => {
