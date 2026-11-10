@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ code }} · SGXray{% endblock %}
+{% block content %}
+<div class="page wrap auth-page">
+  <div class="panel auth-card">
+    <p class="eyebrow">Error {{ code }}</p>
+    <h1>{{ "Page not found" if code == 404 else "Sorry, that didn't work" }}</h1>
+    <p class="muted">{{ message }}</p>
+    <p><a class="btn btn-primary" href="{{ url_for('home') }}">Back to the start</a></p>
+  </div>
+</div>
+{% endblock %}

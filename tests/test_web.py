@@ -122,7 +122,8 @@ def test_missing_prices_show_na_not_nan(client, db_path):
 
 
 def test_demo_is_read_only(client):
-    assert client.post("/demo").status_code == 405     # 405 = "this page doesn't accept changes"
+    # Refused either way: 400 = no valid form token (CSRF check runs first), 405 = page takes no changes.
+    assert client.post("/demo").status_code in (400, 405)
 
 
 def test_safety_headers(client):

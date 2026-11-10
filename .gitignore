@@ -6,6 +6,8 @@ venv/
 
 # Secrets
 .env
+# instance/ holds secret_key, which signs login cookies: never upload it
+instance/
 
 # Databases (made by running the app, never uploaded)
 *.db

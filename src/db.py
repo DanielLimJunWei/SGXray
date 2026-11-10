@@ -27,6 +27,34 @@ CREATE TABLE IF NOT EXISTS users (
     created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Failed logins, so password guessing can be slowed down. 'key' is 'email:<address>' or 'ip:<address>'.
+-- Kept in the database (not in memory) so the limit still works with several server processes.
+CREATE TABLE IF NOT EXISTS login_attempts (
+    id           INTEGER PRIMARY KEY,
+    key          TEXT NOT NULL,
+    attempted_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
+);
+CREATE INDEX IF NOT EXISTS login_attempts_key ON login_attempts (key, attempted_at);
+
+-- Logged-in sessions, kept on the server so logging out really ends a session (a copied cookie stops
+-- working). Only a SHA-256 hash of each session id is stored: a leaked database can't be used to log in.
+CREATE TABLE IF NOT EXISTS sessions (
+    id_hash    TEXT PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now')),
+    last_seen  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
+);
+CREATE INDEX IF NOT EXISTS sessions_user ON sessions (user_id);
+
+-- Security events (sign-ups, logins, failed logins, password changes). NEVER passwords or tokens.
+CREATE TABLE IF NOT EXISTS security_log (
+    id      INTEGER PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    event   TEXT NOT NULL,
+    ip      TEXT,
+    at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
+);
+
 -- Every stock, REIT or ETF the app knows about. Shared by all users.
 CREATE TABLE IF NOT EXISTS instruments (
     ticker  TEXT PRIMARY KEY,             -- e.g. 'D05.SI'
@@ -105,6 +133,7 @@ def init_db(conn):
 # Add to the end of this list only; never edit or remove a line once it's been released.
 MIGRATIONS = [
     ("dividends", "ignored", "ALTER TABLE dividends ADD COLUMN ignored INTEGER NOT NULL DEFAULT 0"),
+    ("users", "session_version", "ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 1"),
 ]
 
 
@@ -130,9 +159,107 @@ def create_user(conn, email, password_hash):
 def get_user_by_email(conn, email):
     """Returns the user's row, or None if there's no such user."""
     return conn.execute(
-        "SELECT id, email, password_hash, created_at FROM users WHERE email = ?",
+        "SELECT id, email, password_hash, created_at, session_version FROM users WHERE email = ?",
         (email.strip().lower(),),
     ).fetchone()
+
+
+def get_user(conn, user_id):
+    """The user's row by id (for the logged-in session), or None."""
+    return conn.execute(
+        "SELECT id, email, password_hash, created_at, session_version FROM users WHERE id = ?", (user_id,)
+    ).fetchone()
+
+
+def set_password_hash(conn, user_id, password_hash):
+    """Saves a new password hash and bumps session_version, which logs out every other session."""
+    with conn:
+        conn.execute(
+            "UPDATE users SET password_hash = ?, session_version = session_version + 1 WHERE id = ?",
+            (password_hash, user_id),
+        )
+
+
+def add_login_attempt(conn, key):
+    with conn:
+        conn.execute("INSERT INTO login_attempts (key) VALUES (?)", (key,))
+
+
+def count_login_attempts(conn, key, minutes):
+    """Failed logins for a key in the last `minutes` minutes."""
+    return conn.execute(
+        "SELECT COUNT(*) FROM login_attempts WHERE key = ? AND attempted_at >= strftime('%Y-%m-%dT%H:%M:%S', 'now', ?)",
+        (key, f"-{int(minutes)} minutes"),
+    ).fetchone()[0]
+
+
+def clear_login_attempts(conn, key):
+    with conn:
+        conn.execute("DELETE FROM login_attempts WHERE key = ?", (key,))
+
+
+SESSION_DAYS = 7               # a session ends 7 days after login, however active it is
+SECURITY_LOG_DAYS = 180        # security events are kept for 6 months, then deleted (they hold network addresses)
+ATTEMPT_DAYS = 1               # failed-login counts only matter for minutes; keep them a day at most
+
+
+def _sid_hash(sid):
+    import hashlib
+    return hashlib.sha256(sid.encode()).hexdigest()
+
+
+def create_session(conn, user_id):
+    """Starts a server-side session and returns its random id (only its hash is stored)."""
+    import secrets
+    sid = secrets.token_urlsafe(32)
+    with conn:
+        conn.execute("INSERT INTO sessions (id_hash, user_id) VALUES (?, ?)", (_sid_hash(sid), user_id))
+    return sid
+
+
+def session_user(conn, sid):
+    """The user for a session id, or None if it doesn't exist, was ended, or is older than SESSION_DAYS."""
+    if not sid:
+        return None
+    row = conn.execute(
+        """SELECT u.id, u.email, u.password_hash, u.created_at, u.session_version
+           FROM sessions s JOIN users u ON u.id = s.user_id
+           WHERE s.id_hash = ? AND s.created_at >= strftime('%Y-%m-%dT%H:%M:%S', 'now', ?)""",
+        (_sid_hash(sid), f"-{SESSION_DAYS} days"),
+    ).fetchone()
+    if row:
+        with conn:
+            conn.execute("UPDATE sessions SET last_seen = strftime('%Y-%m-%dT%H:%M:%S', 'now') WHERE id_hash = ?",
+                         (_sid_hash(sid),))
+    return row
+
+
+def end_session(conn, sid):
+    with conn:
+        conn.execute("DELETE FROM sessions WHERE id_hash = ?", (_sid_hash(sid or ""),))
+
+
+def end_other_sessions(conn, user_id, keep_sid):
+    """Logs out every other device (used after a password change)."""
+    with conn:
+        conn.execute("DELETE FROM sessions WHERE user_id = ? AND id_hash != ?", (user_id, _sid_hash(keep_sid or "")))
+
+
+def prune(conn):
+    """Deletes what SGXray no longer needs: expired sessions, old failed-login counts and old security events."""
+    with conn:
+        conn.execute("DELETE FROM sessions WHERE created_at < strftime('%Y-%m-%dT%H:%M:%S', 'now', ?)",
+                     (f"-{SESSION_DAYS} days",))
+        conn.execute("DELETE FROM login_attempts WHERE attempted_at < strftime('%Y-%m-%dT%H:%M:%S', 'now', ?)",
+                     (f"-{ATTEMPT_DAYS} days",))
+        conn.execute("DELETE FROM security_log WHERE at < strftime('%Y-%m-%dT%H:%M:%S', 'now', ?)",
+                     (f"-{SECURITY_LOG_DAYS} days",))
+
+
+def log_security_event(conn, event, user_id=None, ip=None):
+    """Records a security event. Callers must never pass passwords, hashes or tokens."""
+    with conn:
+        conn.execute("INSERT INTO security_log (user_id, event, ip) VALUES (?, ?, ?)", (user_id, event, ip))
 
 
 # ---------- Instruments ----------

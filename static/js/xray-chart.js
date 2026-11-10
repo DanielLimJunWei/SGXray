@@ -165,7 +165,7 @@
     const rows = [["Your money", fmt(d.money)], ["Price gains", signed(d.gains)], ["Dividends", fmt(d.divs)],
                   ["All together", fmt(total[current])]];
     if (hasSti) rows.push(["STI ETF", fmt(d.sti)]);
-    tip.innerHTML = "";                                   // built with text nodes only: never HTML from data
+    tip.textContent = "";                                 // built with text nodes only: never HTML from data
     const head = document.createElement("b"); head.textContent = longDate(d.date); tip.append(head);
     rows.forEach(([k, v]) => {
       const r = document.createElement("div"), a = document.createElement("span"), b = document.createElement("span");

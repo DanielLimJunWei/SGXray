@@ -47,6 +47,30 @@ nav.site ul { display: flex; gap: var(--space-6); list-style: none; margin: 0; p
 nav.site ul a { font: 500 var(--text-xs)/1 var(--font-mono); letter-spacing: 0.08em; color: var(--color-text-muted); text-decoration: none; }
 nav.site ul a:hover, nav.site ul a[aria-current="page"] { color: var(--color-text); }
 
+.nav-actions { display: flex; align-items: center; gap: var(--space-4); }
+.nav-actions form { margin: 0; }
+.nav-link { font: 500 var(--text-sm)/1 var(--font-sans); color: var(--color-text-muted); text-decoration: none; }
+.nav-link:hover { color: var(--color-text); }
+.nav-actions .btn { padding: var(--space-2) var(--space-4); }
+
+/* ---------- Log in, sign up, account ---------- */
+.auth-page { display: grid; justify-items: center; }
+.auth-card { width: min(28rem, 100%); display: grid; gap: var(--space-4); }
+.auth-card h1 { font-size: var(--text-2xl); }
+.auth-form { display: grid; gap: var(--space-2); }
+.auth-form label { font-size: var(--text-sm); color: var(--color-text-muted); margin-top: var(--space-2); }
+.auth-form .hint { color: var(--color-text-faint); font-size: var(--text-xs); }
+.auth-form input { font: var(--text-base)/1.4 var(--font-sans); color: var(--color-text); background: var(--color-night);
+  border: 1px solid var(--color-line-strong); border-radius: var(--radius-md); padding: var(--space-3); }
+.auth-form input:focus { outline: none; border-color: var(--color-glow-soft); box-shadow: 0 0 0 3px rgba(156, 196, 255, 0.2); }
+.auth-form .btn { margin-top: var(--space-4); justify-content: center; }
+.form-error { color: var(--color-down); background: rgba(217, 130, 130, 0.08); border: 1px solid rgba(217, 130, 130, 0.35);
+  border-radius: var(--radius-md); padding: var(--space-3); font-size: var(--text-sm); }
+.form-ok { color: var(--color-up); background: rgba(123, 196, 160, 0.08); border: 1px solid rgba(123, 196, 160, 0.35);
+  border-radius: var(--radius-md); padding: var(--space-3); font-size: var(--text-sm); }
+.auth-alt { font-size: var(--text-sm); }
+@media (max-width: 720px) { .nav-link { display: none; } .nav-actions .nav-link[href$="/portfolio"] { display: inline; } }
+
 /* ---------- Buttons ---------- */
 .btn { display: inline-flex; align-items: center; gap: var(--space-2); font: 500 var(--text-sm)/1 var(--font-sans);
   text-decoration: none; border-radius: var(--radius-md); padding: var(--space-3) var(--space-5); cursor: pointer;

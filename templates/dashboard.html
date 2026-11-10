@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 {% from "_explain.html" import explain_buttons %}
 {% from "_term.html" import term, term_popups %}
-{% block title %}Demo portfolio · SGXray{% endblock %}
+{% block title %}{{ "Demo portfolio" if mode == "demo" else "Your portfolio" }} · SGXray{% endblock %}
 {% block navlinks %}
   <ul>
     <li><a href="{{ url_for('home') }}">HOME</a></li>
-    <li><a href="{{ url_for('demo') }}" aria-current="page">DEMO</a></li>
+    <li><a href="{{ url_for('demo') }}"{% if mode == "demo" %} aria-current="page"{% endif %}>DEMO</a></li>
   </ul>
 {% endblock %}
-{% block navaction %}{% endblock %}
+
 
 {% block content %}
 <div class="page wrap">
   <header class="page-head">
-    <p class="eyebrow">Demo portfolio · sample trades, real SGX prices</p>
+    <p class="eyebrow">{% if mode == "demo" %}Demo portfolio · sample trades, real SGX prices{% else %}Your portfolio · {{ current_user.email }}{% endif %}</p>
     <h1>Your portfolio</h1>
     {% if s %}
     <p class="as-of">Prices as of {{ s.prices_as_of|longdate }} · {{ term("closing-price", "closing prices") }}</p>
@@ -22,9 +22,15 @@
 
   {% if not s %}
   <div class="panel empty">
+    {% if mode == "demo" %}
     <h2>The demo portfolio isn't loaded yet</h2>
     <p class="muted">Load the sample trades, then download their prices:</p>
     <p><code>python src/importer.py data/demo_trades.csv</code><br><code>python src/market.py</code></p>
+    {% else %}
+    <h2>No trades yet</h2>
+    <p class="muted">Adding your trades, by hand or from your broker's file, is coming next. Meanwhile, explore the demo to see what SGXray will show you.</p>
+    <p><a class="btn btn-primary" href="{{ url_for('demo') }}">Explore the demo</a></p>
+    {% endif %}
   </div>
   {% else %}
 

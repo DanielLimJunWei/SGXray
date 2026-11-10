@@ -193,6 +193,42 @@ What investors value in trackers (Financial Horse, Seedly, PortfolioTrackr, The 
 
 Added because of it: Week 3 gets allocation and concentration (moved up from stretch), a Learn page, regular savings plans, a Simple/Detailed switch, a fees insight, dividend income by year, and "why I bought" notes. Stretch gets a monthly check-in, a "what if" calculator, alerts, a watchlist, Savings Bonds/T-bills/FDs, goals, REIT and bank health numbers, a PWA and dark mode.
 
+## Accounts and security (src/auth.py, app.py)
+
+Built with the security-and-hardening skill. No new libraries: Werkzeug (comes with Flask) does the hashing.
+
+| Protection | How | What it stops |
+|---|---|---|
+| Salted, slow password hashes | scrypt via `generate_password_hash`, a fresh random salt per password, stored with the hash | Stolen databases giving away passwords; rainbow tables |
+| Password rules | 12-128 characters, not on the built-in common list, not your email name | Easily guessed passwords; huge inputs that tie up scrypt |
+| Login rate limit | 10 failures per 15 minutes per email AND per network address, counted in the `login_attempts` table (shared by every server process) | Robots guessing passwords. While locked, even the right password is refused |
+| No account enumeration | Same message, status and timing for "wrong password" and "no such email" (a dummy hash is checked); sign-up doesn't say "email taken" | Finding out who has an account |
+| Server-side sessions | A `sessions` table holds a SHA-256 of each session id; logout and password changes delete rows; 7-day limit | A copied cookie staying valid after logout (found in the 54-check audit) |
+| Safe session cookie | Signed with a secret from `SGXRAY_SECRET_KEY` (or `instance/secret_key`, Git-ignored); HttpOnly, SameSite=Lax, Secure on the live site (`SGXRAY_HTTPS=1`), 7 days | Cookie theft by scripts, forged sessions, other sites riding your login |
+| New session at login; session_version | `session.clear()` at login; changing your password bumps `users.session_version`, so other devices are logged out | Session fixation; a stolen session outliving a password change |
+| CSRF tokens | A random token in the session and in every form, compared in constant time; logout is POST-only | Other websites submitting forms as you |
+| Ownership | The user id comes only from the signed session, never the URL; every query filters by it | Reading or changing someone else's portfolio (IDOR) |
+| Safe redirects | `next=` must be a path inside SGXray | Login links that bounce you to a fake site |
+| Security headers | CSP (scripts only from SGXray, the jsDelivr CDN, or an inline script with this page's random nonce), X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, HSTS on the live site, no-store on private pages | Injected scripts, clickjacking, downgrade to HTTP, private pages left in the browser cache |
+| Security log | `security_log` table: signup, login, login_failed, login_blocked, logout, password_changed, with time and network address. Never passwords | Spotting attacks; an audit trail |
+| Data minimisation | Only email + password hash are stored | Holding personal data with no purpose (PDPA) |
+
+The 54-check audit (results and evidence) is in `SECURITY.md`. It found and fixed: server-side session invalidation, rate limits on sign-up and password changes, retention for security records (180 days) and failed-login counts (1 day), generic error pages, and pinned versions in `requirements.txt`.
+
+`tests/test_auth.py` attacks all of this: same-password users get different hashes, weak passwords are refused, wrong-password and unknown-email answers are identical, the 11th guess is locked out, the demo account can't be logged into, cookie flags, a new session at login, password change logs out the other device, logout can't be triggered by a link, forms without a token are rejected, users can't see each other's trades, SQL injection in the login form does nothing, four kinds of evil redirect are refused, a fresh CSP nonce every page, and nothing secret reaches the log.
+
+**For the live site (Week 4):** set `SGXRAY_SECRET_KEY` (a long random value) and `SGXRAY_HTTPS=1` in Render's settings; add Werkzeug's `ProxyFix` so the rate limit sees each visitor's real address behind Render's proxy; never run with `--debug`.
+
+**Future security features** (not built yet):
+- Email verification and "forgot password" with single-use, short-lived reset links (needs an email service).
+- Two-factor sign-in with an authenticator app (TOTP), and backup codes.
+- Checking new passwords against known breaches (Have I Been Pwned's private range lookup; it never sends the password itself, but it's an outside service).
+- "Your devices": see and log out individual sessions; an email when there's a login from a new device.
+- Delete my account and export my data (w411), including the security log.
+- A dependency audit (`pip-audit`) and GitHub's secret scanning and Dependabot in CI (w402).
+- An automated penetration test with Strix against a staging copy (Week 4), plus Content-Security-Policy violation reports.
+- Encrypted, regularly tested database backups on the live host.
+
 ## Who SGXray is for (10 Nov 2026)
 
 Two groups: people who already invest and want to understand their numbers, and people with **no stocks yet** who want to learn before using their own money. For the second group, the app must be fully useful without a portfolio:
