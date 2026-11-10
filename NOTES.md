@@ -153,6 +153,17 @@ What investors value in trackers (Financial Horse, Seedly, PortfolioTrackr, The 
 
 Added because of it: Week 3 gets allocation and concentration (moved up from stretch), a Learn page, regular savings plans, a Simple/Detailed switch, a fees insight, dividend income by year, and "why I bought" notes. Stretch gets a monthly check-in, a "what if" calculator, alerts, a watchlist, Savings Bonds/T-bills/FDs, goals, REIT and bank health numbers, a PWA and dark mode.
 
+## Who SGXray is for (10 Nov 2026)
+
+Two groups: people who already invest and want to understand their numbers, and people with **no stocks yet** who want to learn before using their own money. For the second group, the app must be fully useful without a portfolio:
+- a "Before you invest" lesson path, taught with the demo portfolio's real numbers (w313);
+- a practice portfolio: pretend trades at real SGX prices, with the same tables, explainers and STI comparison (w320);
+- an "Am I ready to start?" self-check (w321);
+- tap any term in a table for a one-line meaning (w322);
+- a home page that speaks to learners too, with "Start learning" beside "Try the demo" (w323).
+
+Rules: education, never advice (no "buy this"); calm, not gamified (no points or streaks; progress at most "3 of 8 lessons read").
+
 ## Audit (8 Nov 2026)
 
 Checked against official sources: DBS bonus issue (1-for-10, ex-date 22 Apr 2024, on SGX), DBS dividends 2024–26 (54c quarterly in 2024; 60c in Apr 2025; 60c + 15c capital return from May 2025; 66c + 15c from Apr 2026), CICT distributions (2.16c advanced Sep 2024, 3.29c Feb 2025, 5.62c + 1.35c on one Aug 2025 ex-date, 4.61c Feb 2026), SGX close (closing auction 5:00–5:06pm, trade-at-close until 5:16pm, so 5:30pm is safe), IRAS (one-tier dividends and S-REIT distributions are tax-free for individuals). Demo totals re-added by hand: cost 13,639, value 22,695.20, dividends 2,183.28.

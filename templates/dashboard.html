@@ -92,6 +92,108 @@
       </table>
     </div>
   </section>
+
+  <section class="block" aria-labelledby="vs-title">
+    <div class="section-head">
+      <h2 id="vs-title">You vs the STI ETF, stock by stock</h2>
+      {% if vs_ex %}{{ explain_buttons(vs_ex, "vs", "You vs the STI ETF") }}{% endif %}
+    </div>
+    {% if stocks is none %}
+    <p class="muted">No STI ETF prices saved yet, so there's nothing to compare with. Run <code>python src/market.py</code>.</p>
+    {% else %}
+    <p class="muted lead">Each stock's own money in and out, replayed into the STI ETF on the same days with the same fees.</p>
+    <div class="panel table-wrap">
+      <table class="data">
+        <thead>
+          <tr><th scope="col">Stock</th><th scope="col">You, a year</th><th scope="col">STI ETF, a year</th>
+              <th scope="col">Your profit</th><th scope="col">Same money in the STI ETF</th><th scope="col">Difference</th></tr>
+        </thead>
+        <tbody>
+          {% for r in stocks %}
+          <tr>
+            <td><b>{{ r.ticker }}</b><span class="name">{{ r.name }}</span></td>
+            <td>{{ r.you|pct }}</td>
+            <td>{{ r.sti|pct }}</td>
+            <td>{{ r.your_profit|money(signed=True) }}</td>
+            <td>{{ r.sti_profit|money(signed=True) }}</td>
+            <td class="{{ '' if r.verdict == 'about level' else r.difference|trend }}">
+              {% if r.verdict == "about level" %}about level{% else %}{{ r.difference|arrow }} {{ r.difference|money(signed=True) }}{% endif %}
+              <span class="sub">{{ {"helped": "helped you", "held back": "held you back", "about level": "same as the market"}[r.verdict] }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="block" aria-labelledby="yields-title">
+    <div class="section-head">
+      <h2 id="yields-title">Dividend yields</h2>
+      {{ explain_buttons(yields_ex, "yields", "Dividend yields") }}
+    </div>
+    <p class="muted lead">Dividends paid over the last 12 months, against today's price and against what you paid.</p>
+    <div class="panel table-wrap">
+      <table class="data">
+        <thead>
+          <tr><th scope="col">Stock</th><th scope="col">Paid a share, 12 months</th><th scope="col">Price</th>
+              <th scope="col">Yield</th><th scope="col">Your avg cost</th><th scope="col">On cost</th><th scope="col">A year's income</th></tr>
+        </thead>
+        <tbody>
+          {% for r in yields %}
+          <tr>
+            <td><b>{{ r.ticker }}</b><span class="name">{{ r.name }}</span></td>
+            <td>{{ r.per_share_12m|num(".4f") }}</td>
+            <td>{{ r.price|num(".2f") }}</td>
+            <td>{{ r.div_yield|pct(signed=False) }}</td>
+            <td>{{ r.avg_cost|num(".3f") }}</td>
+            <td>{{ r.yield_on_cost|pct(signed=False) }}</td>
+            <td>{{ r.income_12m|money }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr><th scope="row">Whole portfolio</th><td colspan="2"></td><td>{{ total_yield|pct(signed=False) }}</td><td colspan="2"></td><td>{{ income_12m|money }}</td></tr>
+        </tfoot>
+      </table>
+    </div>
+  </section>
+
+  <section class="block" aria-labelledby="forecast-title">
+    <div class="section-head">
+      <h2 id="forecast-title">Dividends expected, next 12 months</h2>
+      {{ explain_buttons(forecast_ex, "forecast", "Dividends expected") }}
+    </div>
+    {% if not forecast %}
+    <p class="muted">Nothing you hold paid a dividend in the last 12 months, so none are expected.</p>
+    {% else %}
+    <p class="muted lead">An estimate: last year's dividends, assumed to come again on the shares you hold now.</p>
+    <div class="panel table-wrap">
+      <table class="data">
+        <thead>
+          <tr><th scope="col">Around</th><th scope="col">Stock</th><th scope="col">Shares</th>
+              <th scope="col">A share</th><th scope="col">Expected</th><th scope="col">Based on</th></tr>
+        </thead>
+        <tbody>
+          {% for r in forecast %}
+          <tr>
+            <td>{{ r.expected|longdate }}</td>
+            <td><b>{{ r.ticker }}</b></td>
+            <td>{{ "{:,}".format(r.shares|int) }}</td>
+            <td>{{ r.amount|num(".4f") }}</td>
+            <td>{{ r.total|money }}</td>
+            <td>{{ r.based_on|longdate }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr><th scope="row">Total, about</th><td colspan="3"></td><td>{{ forecast_total|money }}</td><td></td></tr>
+        </tfoot>
+      </table>
+    </div>
+    {% endif %}
+  </section>
   {% endif %}
 </div>
 {% endblock %}

@@ -46,6 +46,7 @@ def test_home_page_loads(client):
     r = client.get("/")
     assert r.status_code == 200
     assert b"See inside your portfolio." in r.data
+    assert b"Start learning" in r.data                 # speaks to people with no stocks yet too
     assert b'href="/demo"' in r.data
 
 
@@ -64,7 +65,20 @@ def test_demo_shows_holdings_and_totals(client, db_path):
     assert "+$680.00" in html
     assert "30 June 2025" in html                       # "prices as of"
     assert "What does this mean?" in html
+    for section in ("stock by stock", "Dividend yields", "Dividends expected"):
+        assert section in html
+    assert "helped you" in html or "held you back" in html or "same as the market" in html
     assert "nan" not in html.lower().replace("financial", "").replace("finance", "")
+
+
+def test_dividends_show_in_yields_and_forecast(client, db_path):
+    load_demo(db_path)
+    conn = db.get_connection(db_path)
+    db.save_dividends(conn, "D05.SI", [("2025-04-10", 0.60)])
+    conn.close()
+    html = client.get("/demo").get_data(as_text=True)
+    assert "$60.00" in html                            # 100 shares x $0.60, received and expected again
+    assert "10 April 2026" in html                     # expected about a year after the last one
 
 
 def test_missing_prices_show_na_not_nan(client, db_path):
@@ -72,6 +86,7 @@ def test_missing_prices_show_na_not_nan(client, db_path):
     html = client.get("/demo").get_data(as_text=True)
     assert "No price yet" in html
     assert "n/a" in html
+    assert "No STI ETF prices saved yet" in html
     assert "nan" not in html.lower().replace("financial", "").replace("finance", "")
 
 

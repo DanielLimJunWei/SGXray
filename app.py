@@ -23,9 +23,10 @@ sys.path.insert(0, str(ROOT / "src"))      # let the app import db, portfolio, .
 
 import db  # noqa: E402
 import fmt  # noqa: E402
-from explain import explain_holdings  # noqa: E402
+from explain import explain_forecast, explain_holdings, explain_performance, explain_yields  # noqa: E402
 from importer import DEMO_EMAIL  # noqa: E402
-from performance import compare  # noqa: E402
+from income import forecast, portfolio_yield, yields  # noqa: E402
+from performance import compare, per_stock  # noqa: E402
 from portfolio import positions, summary  # noqa: E402
 
 
@@ -58,16 +59,26 @@ def create_app(db_path=None):
         names = {r["ticker"]: r["name"] for r in db.get_instruments(conn)}
         held = df[df["shares"] > 0].sort_values("value", ascending=False)
         holdings = [{**row, "name": names.get(row["ticker"], "")} for row in held.to_dict("records")]
-        try:
-            vs = compare(conn, user["id"])
-        except ValueError:                  # no STI ETF prices saved yet: show n/a, don't crash the page
-            vs = None
+        uid = user["id"]
+        # The STI comparisons need STI ETF prices; without them they raise ValueError -> None ("n/a").
+        vs = _or_none(compare, conn, uid)
+        y = yields(conn, uid)
+        f = forecast(conn, uid)
         return render_template(
             "dashboard.html",
             s=summary(df),
             vs=vs,
             holdings=holdings,
-            holdings_ex=explain_holdings(conn, user["id"]),
+            holdings_ex=explain_holdings(conn, uid),
+            stocks=_records(_or_none(per_stock, conn, uid), names),
+            vs_ex=_or_none(explain_performance, conn, uid),
+            yields=_records(y, names),
+            total_yield=portfolio_yield(y, df),
+            income_12m=y["income_12m"].sum(),
+            yields_ex=explain_yields(conn, uid),
+            forecast=_records(f, names),
+            forecast_total=f["total"].sum(),
+            forecast_ex=explain_forecast(conn, uid),
         )
 
     @app.get("/design-system/<path:name>")
@@ -78,6 +89,21 @@ def create_app(db_path=None):
         return send_from_directory(ROOT / "design-system", name)
 
     return app
+
+
+def _or_none(fn, *args):
+    """Runs fn; if it can't (ValueError, e.g. no STI ETF prices yet), the page shows n/a instead of crashing."""
+    try:
+        return fn(*args)
+    except ValueError:
+        return None
+
+
+def _records(df, names):
+    """A table as a list of dicts for the template, each with the stock's full name."""
+    if df is None:
+        return None
+    return [{**row, "name": names.get(row["ticker"], "")} for row in df.to_dict("records")]
 
 
 # ---------- Database: one connection per page view, closed afterwards ----------
