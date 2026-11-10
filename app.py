@@ -23,7 +23,9 @@ sys.path.insert(0, str(ROOT / "src"))      # let the app import db, portfolio, .
 
 import db  # noqa: E402
 import fmt  # noqa: E402
-from explain import explain_forecast, explain_holdings, explain_performance, explain_yields  # noqa: E402
+from explain import (explain_forecast, explain_holdings, explain_performance,  # noqa: E402
+                     explain_value_chart, explain_yields)
+from history import value_history  # noqa: E402
 from importer import DEMO_EMAIL  # noqa: E402
 from income import forecast, portfolio_yield, yields  # noqa: E402
 from performance import compare, per_stock  # noqa: E402
@@ -64,6 +66,7 @@ def create_app(db_path=None):
         vs = _or_none(compare, conn, uid)
         y = yields(conn, uid)
         f = forecast(conn, uid)
+        h = _or_none(value_history, conn, uid)
         return render_template(
             "dashboard.html",
             s=summary(df),
@@ -79,6 +82,8 @@ def create_app(db_path=None):
             forecast=_records(f, names),
             forecast_total=f["total"].sum(),
             forecast_ex=explain_forecast(conn, uid),
+            chart=_monthly_chart(h),
+            chart_ex=explain_value_chart(conn, uid, h) if h is not None else None,
         )
 
     @app.get("/design-system/<path:name>")
@@ -104,6 +109,26 @@ def _records(df, names):
     if df is None:
         return None
     return [{**row, "name": names.get(row["ticker"], "")} for row in df.to_dict("records")]
+
+
+def _monthly_chart(h):
+    """The X-ray chart's data: the last trading day of each month, as plain numbers for the page's script.
+
+    Layers stack from the bottom: your money, then price gains (worth - money in), then dividends.
+    A month with an unknown value (a held stock had no price) is left out rather than drawn as a dip.
+    """
+    if h is None or h.empty:
+        return []
+    h = h.dropna(subset=["value"])
+    months = h.groupby(h.index.to_period("M")).tail(1)
+    return [{
+        "date": day.strftime("%Y-%m-%d"),
+        "label": day.strftime("%b %y"),
+        "money": round(float(r.net_invested), 2),
+        "gains": round(float(r.value - r.net_invested), 2),
+        "divs": round(float(r.dividends), 2),
+        "sti": round(float(r.sti_value + r.sti_dividends), 2) if r.sti_value == r.sti_value else None,
+    } for day, r in months.iterrows()]
 
 
 # ---------- Database: one connection per page view, closed afterwards ----------

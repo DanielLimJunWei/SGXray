@@ -97,6 +97,32 @@ footer.site p + p { margin-top: var(--space-2); }
 .down { color: var(--color-down); }
 
 .block { margin-top: var(--space-16); }
+.panel.figures + .block, .xray-block { margin-top: var(--space-12); }
+
+/* ---------- The X-ray chart ---------- */
+.chart-card { position: relative; padding: var(--space-6) var(--space-6) var(--space-4); }
+.chart-card svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
+.chart-card svg:focus-visible { outline-offset: 6px; }
+.axis text { font-family: var(--font-mono); font-size: var(--svg-text, 12px); fill: var(--color-text-faint); }
+.axis line { stroke: var(--color-line); }
+.layer-label { font-family: var(--font-mono); font-weight: 500; font-size: var(--svg-text, 12px); }
+.chart-card.narrow .layer-label { display: none; }       /* phones: the steps underneath act as the key */
+.chart-tip { position: absolute; top: var(--space-6); min-width: 13rem; pointer-events: none;
+  background: var(--color-surface-raised); border: 1px solid var(--color-line-strong); border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4); font: var(--text-xs)/1.7 var(--font-mono); font-variant-numeric: tabular-nums; }
+.chart-tip b { display: block; font-family: var(--font-sans); font-weight: 500; font-size: var(--text-sm); margin-bottom: var(--space-1); }
+.chart-tip div { display: flex; justify-content: space-between; gap: var(--space-4); }
+.chart-tip div span:first-child { color: var(--color-text-muted); }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: var(--space-4); list-style: none; padding: 0; margin: var(--space-6) 0 0; }
+.step { opacity: 0.35; transition: opacity var(--duration-base) var(--ease-out); border-top: 1px solid var(--color-line-strong); padding-top: var(--space-3); font-size: var(--text-sm); }
+.step.on { opacity: 1; }
+.step b { display: block; font-weight: 500; margin-bottom: var(--space-1); }
+.key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: var(--space-2); }
+.key-dash { width: 14px; height: 0; border-top: 2px dashed var(--color-text); border-radius: 0; vertical-align: middle; }
+.as-table { margin-top: var(--space-6); }
+.as-table summary { cursor: pointer; font: 500 var(--text-xs)/1 var(--font-mono); letter-spacing: 0.04em; color: var(--color-text-muted); padding: var(--space-2) 0; }
+.as-table summary:hover { color: var(--color-text); }
+.as-table .panel { margin-top: var(--space-3); max-height: 24rem; overflow-y: auto; }
 .lead { font-size: var(--text-sm); margin: calc(-1 * var(--space-2)) 0 var(--space-4); }
 table.data tfoot th, table.data tfoot td { border-top: 1px solid var(--color-line-strong); border-bottom: 0;
   color: var(--color-text); font-weight: 500; text-transform: none; letter-spacing: 0; font-size: var(--text-sm); }

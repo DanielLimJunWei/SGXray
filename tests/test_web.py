@@ -71,6 +71,33 @@ def test_demo_shows_holdings_and_totals(client, db_path):
     assert "nan" not in html.lower().replace("financial", "").replace("finance", "")
 
 
+def test_xray_chart_has_monthly_layers(client, db_path):
+    load_demo(db_path)
+    html = client.get("/demo").get_data(as_text=True)
+    assert "Your portfolio, X-rayed" in html
+    assert 'id="xray-data"' in html
+    # Jan 2025 month end: $7,520 put in; the last day saved that month is the buy day, at cost price.
+    assert '"money": 7520.0' in html or '"money":7520.0' in html
+    assert "Show as a table" in html                    # the same numbers without the animation
+    assert "Animation: on" in html                      # the switch to turn it off
+
+
+def test_chart_data_layers_add_up(db_path):
+    """Your money + price gains + dividends = worth + dividends, every month."""
+    import app as web
+    from history import value_history
+    load_demo(db_path)
+    conn = db.get_connection(db_path)
+    user = db.get_user_by_email(conn, DEMO_EMAIL)
+    h = value_history(conn, user["id"])
+    rows = web._monthly_chart(h)
+    conn.close()
+    assert [r["label"] for r in rows] == ["Jan 25", "Jun 25"]
+    last = rows[-1]
+    assert round(last["money"] + last["gains"], 2) == 8200.00    # worth now
+    assert last["divs"] == 0
+
+
 def test_dividends_show_in_yields_and_forecast(client, db_path):
     load_demo(db_path)
     conn = db.get_connection(db_path)

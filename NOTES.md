@@ -103,6 +103,11 @@ Important things to remember about how SGXray works and the data it uses. Newest
 | Yields and forecasts aren't promises | yields, forecast | always |
 | Most income from one stock | forecast | one stock gives over 50% of expected income |
 | Buying before the ex-date isn't free money | forecast | always |
+| A rising line isn't all profit: much of it is your own money | X-ray chart | always |
+| Price gains are on paper; dividends are cash you have | X-ray chart | price gains are positive |
+| Prices below what you paid: a loss on paper | X-ray chart | price gains are negative |
+| Below the dashed STI line | X-ray chart | worth + dividends below the STI ETF version |
+| A short stretch of chart shows luck, not skill | X-ray chart | under a year of history |
 
 ## Database changes (migrations)
 
@@ -144,6 +149,7 @@ Important things to remember about how SGXray works and the data it uses. Newest
 - `static/` holds files sent as they are: `css/tokens.css`, `css/site.css`, `js/home-scene.js` and `js/count-up.js`.
 - Numbers on pages use fmt.py through template filters (`money`, `pct`, `num`), plus `trend` and `arrow`: colour is never the only signal, so up/down also get ▲/▼.
 - Jinja escapes everything it fills in, so text from a CSV can't become HTML or a script. Every response says "don't put me in a frame" and "trust my file types".
+- The X-ray chart (`static/js/xray-chart.js`, hand-drawn SVG, no chart library): month-end snapshots from history.py stacked as your money (solid), price gains (blue halftone) and dividends (amber halftone), with the STI ETF as a dashed line. The scan reveal plays ONCE when the chart first comes into view, then it stays still. "Animation: on/off" is remembered on the device (localStorage) and starts off when the system's "reduce motion" is on. Point, tap or use the arrow keys for any month's numbers; "Show as a table" lists every month for screen readers and anyone who prefers numbers.
 - `tests/test_web.py` opens each page with Flask's test client: no crash, the right totals, no "nan", the demo is read-only.
 - Found while building it: the dashboard crashed when the STI ETF had no prices yet (compare() raises). The page now shows "n/a: no STI ETF prices saved yet".
 

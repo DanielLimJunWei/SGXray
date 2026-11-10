@@ -165,6 +165,46 @@ def explain_month(conn, user_id, month, history=None):
     return Explanation(out, watch)
 
 
+def explain_value_chart(conn, user_id, history=None):
+    """Explains the X-ray chart: one line (worth + dividends) split into money in, price gains and dividends."""
+    h = history if history is not None else value_history(conn, user_id)
+    h = h.dropna(subset=["value"]) if not h.empty else h
+    if h.empty:
+        return Explanation(["There's no history to chart yet: add trades and update prices first."])
+    day, r = h.index[-1], h.iloc[-1]
+    gains = r.value - r.net_invested
+    total, sti_total = r.value + r.dividends, r.sti_value + r.sti_dividends
+
+    out = [
+        f"The top edge of the chart is everything your investing has given you so far: what your shares are "
+        f"worth plus the dividends paid to you, {money(total)} on {_day(day)}. An ordinary chart stops there. "
+        f"SGXray X-rays it into three layers, so you can see where that number came from.",
+        f"Your own money (solid layer): {money(r.net_invested)}, what you paid for buys minus what you got back "
+        f"from sales. It's the bottom layer because it was yours to begin with. It isn't profit.",
+        f"Price gains (blue dots): {up_down(gains)}, what price changes have added on top of your money "
+        f"(or taken away, if prices fell).",
+        f"Dividends (amber dots): {money(r.dividends)} paid to you in cash so far.",
+        f"The dashed line is the market: the same money, put into the STI ETF on the same days, would be "
+        f"{money(sti_total)} now, dividends included. Where your top edge is above the dashed line, your picks "
+        f"were doing better than the market; below it, worse.",
+        "Point at (or tap) any month to see its numbers, or open \"Show as a table\" for every month.",
+    ]
+    watch = ["A line going up isn't all profit. Much of the climb in a chart like this is your own money going "
+             "in, not growth. That's why SGXray splits the line: only the dotted layers are what you earned."]
+    if gains > 0:
+        watch.append(f"The {money(gains)} of price gains is on paper until you sell. A market drop can shrink it; "
+                     f"the dividends layer is cash you already have.")
+    elif gains < 0:
+        watch.append(f"Prices are below what you paid: the price-gains layer is {up_down(gains)}. That's a loss "
+                     f"on paper, and it only becomes real if you sell at these prices.")
+    if total < sti_total:
+        watch.append(f"Your top edge is below the dashed STI ETF line: {money(sti_total - total)} behind the "
+                     f"market. If that lasts for years, buying the STI ETF would have been simpler.")
+    if (day - h.index[0]).days < 365:
+        watch.append("Less than a year of history. A short stretch of chart mostly shows luck, not skill.")
+    return Explanation(out, watch)
+
+
 def explain_yields(conn, user_id, as_of=None):
     """Explains the dividend yields table, one stock at a time, using its own numbers."""
     from income import portfolio_yield, yields

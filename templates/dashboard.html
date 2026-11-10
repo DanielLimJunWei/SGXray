@@ -65,7 +65,72 @@
   </p>
   {% endif %}
 
-  <section aria-labelledby="holdings-title">
+  {% if chart %}
+  {% set last = chart[-1] %}
+  <section class="block xray-block" aria-labelledby="xray-title">
+    <div class="section-head">
+      <h2 id="xray-title">Your portfolio, X-rayed</h2>
+      <button class="icon-btn" type="button" id="xray-replay" hidden>↺ Replay</button>
+      <button class="icon-btn" type="button" id="xray-motion" aria-pressed="true" hidden>Animation: on</button>
+      {% if chart_ex %}{{ explain_buttons(chart_ex, "xray", "X-ray chart") }}{% endif %}
+    </div>
+    <p class="muted lead">One line, split into what's really inside it. Point at any month for its numbers.</p>
+    <div class="panel chart-card">
+      <svg id="xray-chart" viewBox="0 0 800 340" role="img" tabindex="0" aria-labelledby="xray-svg-title xray-svg-desc">
+        <title id="xray-svg-title">Your portfolio, X-rayed into its layers</title>
+        <desc id="xray-svg-desc">From {{ chart[0].date|longdate }} to {{ last.date|longdate }}: {{ last.money|money }} of your own money, {{ last.gains|money(signed=True) }} of price gains and {{ last.divs|money }} of dividends, {{ (last.money + last.gains + last.divs)|money }} in all{% if last.sti is not none %}, against {{ last.sti|money }} for the same money in the STI ETF{% endif %}. Use the left and right arrow keys to step through the months.</desc>
+        <defs>
+          <pattern id="ht-gains" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1.35" fill="#3A73FF"/></pattern>
+          <pattern id="ht-divs" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1.6" fill="#E3A35E"/></pattern>
+          <clipPath id="xray-reveal"><rect id="xray-reveal-rect" x="0" y="0" width="800" height="340"/></clipPath>
+          <linearGradient id="xray-scan" x1="0" x2="1"><stop offset="0" stop-color="#9CC4FF" stop-opacity="0"/><stop offset="1" stop-color="#9CC4FF" stop-opacity="0.35"/></linearGradient>
+        </defs>
+        <g class="axis" id="xray-axis"></g>
+        <path id="xray-plain" fill="none" stroke="#EEE7DC" stroke-width="2" stroke-linejoin="round" opacity="0"/>
+        <g clip-path="url(#xray-reveal)">
+          <path id="xray-money" fill="#4A5B82" fill-opacity="0.55"/>
+          <path id="xray-gains" fill="url(#ht-gains)"/>
+          <path id="xray-divs" fill="url(#ht-divs)"/>
+          <path id="xray-top" fill="none" stroke="#9CC4FF" stroke-width="1.5" stroke-linejoin="round"/>
+        </g>
+        <path id="xray-sti-halo" fill="none" stroke="#0A0F1E" stroke-width="5" stroke-linejoin="round"/>
+        <path id="xray-sti" fill="none" stroke="#EEE7DC" stroke-width="1.75" stroke-dasharray="6 5" stroke-linejoin="round"/>
+        <g id="xray-labels" class="layer-label"></g>
+        <g id="xray-scanline" opacity="0">
+          <rect x="-40" y="0" width="40" height="300" fill="url(#xray-scan)"/>
+          <line x1="0" x2="0" y1="0" y2="300" stroke="#9CC4FF" stroke-width="1.5"/>
+        </g>
+        <g id="xray-cursor" opacity="0" pointer-events="none">
+          <line id="xray-cursor-line" y1="0" y2="300" stroke="#9AA3B5" stroke-width="1"/>
+          <circle id="xray-cursor-dot" r="4" fill="#9CC4FF" stroke="#0A0F1E" stroke-width="2"/>
+        </g>
+      </svg>
+      <div class="chart-tip" id="xray-tip" role="status" aria-live="polite" hidden></div>
+    </div>
+    <ol class="steps" id="xray-steps">
+      <li class="step" data-at="0"><b>An ordinary chart</b><span class="muted">One line going up. It doesn't say why.</span></li>
+      <li class="step" data-at="0.2"><b><span class="key" style="background:#4A5B82"></span>Your own money</b><span class="muted">{{ last.money|money }} put in. Not profit.</span></li>
+      <li class="step" data-at="0.45"><b><span class="key" style="background:#3A73FF"></span>Price gains · <span class="key" style="background:#E3A35E"></span>dividends</b><span class="muted">{{ last.gains|money(signed=True) }} from prices, {{ last.divs|money }} paid in cash.</span></li>
+      {% if last.sti is not none %}<li class="step" data-at="0.8"><b><span class="key key-dash"></span>The market</b><span class="muted">Same money in the STI ETF: {{ last.sti|money }}.</span></li>{% endif %}
+    </ol>
+    <details class="as-table">
+      <summary>Show as a table</summary>
+      <div class="panel table-wrap">
+        <table class="data">
+          <thead><tr><th scope="col">Month end</th><th scope="col">Your money</th><th scope="col">Price gains</th><th scope="col">Dividends</th><th scope="col">All together</th><th scope="col">STI ETF</th></tr></thead>
+          <tbody>
+            {% for m in chart|reverse %}
+            <tr><td>{{ m.date|longdate }}</td><td>{{ m.money|money }}</td><td class="{{ m.gains|trend }}">{{ m.gains|money(signed=True) }}</td><td>{{ m.divs|money }}</td><td>{{ (m.money + m.gains + m.divs)|money }}</td><td>{{ m.sti|money }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+    <script type="application/json" id="xray-data">{{ chart|tojson }}</script>
+  </section>
+  {% endif %}
+
+  <section class="block" aria-labelledby="holdings-title">
     <div class="section-head">
       <h2 id="holdings-title">Holdings</h2>
       {{ explain_buttons(holdings_ex, "holdings", "Holdings") }}
@@ -200,4 +265,5 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/count-up.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/xray-chart.js') }}" defer></script>
 {% endblock %}

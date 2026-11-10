@@ -2,7 +2,7 @@
 
 import db
 from explain import (_reason, explain_forecast, explain_holdings, explain_month,
-                     explain_performance, explain_yields)
+                     explain_performance, explain_value_chart, explain_yields)
 
 
 def setup_two_months(conn, user_id):
@@ -166,3 +166,20 @@ def test_month_without_a_snapshot(conn, user_id):
     setup_two_months(conn, user_id)
 
     assert "There's no snapshot for 2030-01" in explain_month(conn, user_id, "2030-01").lines[0]
+
+
+def test_xray_chart_explains_its_layers(conn, user_id):
+    setup_two_months(conn, user_id)
+    ex = explain_value_chart(conn, user_id)
+    text = ex.text
+    # End of February: $3,010 put in; worth 100 x $29 = $2,900 (-$110 from prices); $50 of dividends.
+    assert "Your own money (solid layer): $3,010.00" in text
+    assert "Price gains (blue dots): $110.00 down" in text
+    assert "Dividends (amber dots): $50.00" in text
+    assert any("isn't all profit" in w for w in ex.watch_out)
+    assert any("loss on paper" in w for w in ex.watch_out)        # prices are below what was paid
+    assert any("Less than a year" in w for w in ex.watch_out)
+
+
+def test_xray_chart_with_no_history(conn, user_id):
+    assert "no history" in explain_value_chart(conn, user_id).text
