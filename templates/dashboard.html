@@ -145,7 +145,7 @@
         <tbody>
           {% for r in holdings %}
           <tr>
-            <td><b>{{ r.ticker }}</b><span class="name">{{ r.name }}</span></td>
+            <td><b>{{ r.ticker }}</b><span class="name">{{ r.name }}</span><button class="link-btn" type="button" data-chart="chart-{{ r.ticker|replace('.', '-') }}" aria-controls="chart-{{ r.ticker|replace('.', '-') }}" aria-expanded="false" hidden>Price chart</button></td>
             <td>{{ "{:,}".format(r.shares|int) }}</td>
             <td>{{ r.avg_cost|num(".3f") }}</td>
             <td>{{ r.price|num(".2f") }}</td>
@@ -157,6 +157,43 @@
         </tbody>
       </table>
     </div>
+
+    {% for c in stock_charts %}
+    <section class="stock-chart" id="{{ c.id }}" aria-labelledby="{{ c.id }}-title" hidden>
+      <div class="section-head">
+        <h3 id="{{ c.id }}-title">{{ c.ticker }} · {{ c.name }}</h3>
+        {{ explain_buttons(c.ex, c.id, c.ticker ~ " price chart") }}
+        <button class="icon-btn" type="button" data-chart-close>Close chart</button>
+      </div>
+      <div class="panel chart-card">
+        <svg class="stock-svg" viewBox="0 0 800 320" role="img" tabindex="0" aria-labelledby="{{ c.id }}-svg-title">
+          <title id="{{ c.id }}-svg-title">{{ c.ticker }} closing price from {{ c.data.prices[0][0]|longdate }} to {{ c.data.prices[-1][0]|longdate }}, with your {{ c.data.trades|length }} trade{{ "s" if c.data.trades|length != 1 }} and {{ c.data.dividends|length }} dividend{{ "s" if c.data.dividends|length != 1 }}. Use the left and right arrow keys to step through the days.</title>
+        </svg>
+        <div class="chart-tip" role="status" aria-live="polite" hidden></div>
+      </div>
+      <ul class="chart-key">
+        <li><span class="mk mk-buy" aria-hidden="true"></span>{{ term("buy", "Buy") }}</li>
+        {% if c.data.trades|selectattr("side", "equalto", "SELL")|list %}<li><span class="mk mk-sell" aria-hidden="true"></span>{{ term("sell", "Sell") }}</li>{% endif %}
+        {% if c.data.dividends %}<li><span class="mk mk-div" aria-hidden="true"></span>{{ term("ex-date", "Dividend ex-date") }}</li>{% endif %}
+        <li><span class="mk mk-avg" aria-hidden="true"></span>{{ term("avg-cost-line", "Your average cost") }}</li>
+        <li><span class="mk mk-line" aria-hidden="true"></span>{{ term("price-line", "Closing price") }}</li>
+      </ul>
+      <details class="as-table">
+        <summary>Show as a table</summary>
+        <div class="panel table-wrap">
+          <table class="data">
+            <thead><tr><th scope="col">Date</th><th scope="col">What happened</th></tr></thead>
+            <tbody>
+              {% for t in c.data.trades %}<tr><td>{{ t.date|longdate }}</td><td>{{ "Bought" if t.side == "BUY" else "Sold" }} {{ "{:,}".format(t.qty) }} at ${{ "%.2f"|format(t.price) }} ({{ t.fees|money }} fees)</td></tr>{% endfor %}
+              {% for d in c.data.dividends %}<tr><td>{{ d.date|longdate }}</td><td>Dividend: {{ "{:,}".format(d.shares) }} shares x ${{ "%g"|format(d.amount) }} = {{ d.total|money }}</td></tr>{% endfor %}
+              {% for a in c.data.actions %}<tr><td>{{ a.date|longdate }}</td><td>{{ "Bonus issue" if a.factor > 1 else "Consolidation" }} (x{{ "%g"|format(a.factor) }})</td></tr>{% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </details>
+      <script type="application/json" class="stock-data">{{ c.data|tojson }}</script>
+    </section>
+    {% endfor %}
   </section>
 
   <section class="block" aria-labelledby="vs-title">
@@ -308,6 +345,7 @@
 <script src="{{ url_for('static', filename='js/reveal.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/count-up.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/xray-chart.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/stock-chart.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/terms.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/popups.js') }}" defer></script>
 {% endblock %}

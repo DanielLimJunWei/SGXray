@@ -117,6 +117,27 @@ footer.site p + p { margin-top: var(--space-2); }
 .reveal-js [data-reveal]:not(.in-view) .bar { transform: scaleY(0); }
 .reveal-js [data-reveal]:not(.in-view) .bar-value { opacity: 0; }
 
+/* ---------- Per-stock price charts ---------- */
+.link-btn { display: block; margin-top: var(--space-1); padding: 0; border: 0; background: none; cursor: pointer;
+  font: 500 var(--text-xs)/1.4 var(--font-mono); letter-spacing: 0.04em; color: var(--color-glow-soft); text-decoration: underline;
+  text-decoration-color: rgba(156, 196, 255, 0.35); text-underline-offset: 0.2em; }
+.link-btn:hover { text-decoration-color: var(--color-glow-soft); }
+.link-btn[aria-expanded="true"] { color: var(--color-text); }
+.stock-chart { margin-top: var(--space-8); }
+.stock-chart h3 { font-size: var(--text-lg); margin-right: auto; }
+.stock-chart h3:focus { outline: none; }
+.stock-svg { overflow: visible; }
+.chart-note { font-family: var(--font-mono); font-size: var(--svg-text, 12px); fill: var(--color-text-faint); }
+.chart-key { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-6); list-style: none; padding: 0; margin: var(--space-4) 0 0;
+  font-size: var(--text-sm); color: var(--color-text-muted); }
+.chart-key li { display: inline-flex; align-items: center; gap: var(--space-2); }
+.mk { display: inline-block; flex: none; }
+.mk-buy { width: 0; height: 0; border: 6px solid transparent; border-bottom: 10px solid #9CC4FF; border-top: 0; }
+.mk-sell { width: 0; height: 0; border: 6px solid transparent; border-top: 10px solid #EEE7DC; border-bottom: 0; }
+.mk-div { width: 8px; height: 8px; border-radius: 50%; background: #E3A35E; }
+.mk-avg { width: 18px; border-top: 2px dashed #E3A35E; }
+.mk-line { width: 18px; border-top: 2px solid #9CC4FF; }
+
 /* ---------- Tap a term ---------- */
 /* Looks like the words around it, with a quiet dotted underline: a hint, not a link to chase. */
 .term { display: inline; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; background: none; border: 0; padding: 0;

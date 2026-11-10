@@ -102,6 +102,20 @@ TERMS = {
                      "Your own money + price gains + dividends: everything your investing has given you so far, "
                      "the top edge of the X-ray chart.",
                      "$13,361 + $9,334 + $2,183 = $24,878."),
+    "buy": ("Buy",
+            "A day you bought shares. On the chart it sits on that day's closing price; what you actually paid "
+            "can be a little different, because you bought during the day.",
+            "Bought 100 DBS at $34.62 on 15 March 2024; it closed at $34.67."),
+    "sell": ("Sell",
+             "A day you sold shares. Selling locks in (realises) the profit or loss on those shares.",
+             "Sold 800 C38U units at $2.32 on 14 November 2025."),
+    "avg-cost-line": ("Your average cost (dashed line)",
+                      "What each share has cost you on average, fees included, over time. It steps when you buy, "
+                      "sell or get bonus shares. Price above it = a profit on paper; below it = a loss on paper.",
+                      "DBS: $34.72 after the first buy, $31.56 after the 1-for-10 bonus issue, $37.65 after the second buy."),
+    "price-line": ("Closing price (the line)",
+                   "The stock's price at the end of each trading day. It doesn't include dividends.",
+                   "DBS closed at $69.72 on 6 November 2026."),
     "difference": ("Difference vs the STI ETF",
                    "Your profit on a stock minus what the same money would have made in the STI ETF. "
                    "Positive = that pick helped you beat the market.",

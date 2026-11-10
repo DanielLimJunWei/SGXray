@@ -79,6 +79,7 @@ def test_xray_chart_has_monthly_layers(client, db_path):
     # Jan 2025 month end: $7,520 put in; the last day saved that month is the buy day, at cost price.
     assert '"money": 7520.0' in html or '"money":7520.0' in html
     assert "Show as a table" in html                    # the same numbers without the animation
+    assert 'id="chart-D05-SI"' in html and 'data-chart="chart-D05-SI"' in html   # per-stock price chart
     assert "Animation: on" in html                      # the switch to turn it off
 
 
@@ -155,7 +156,7 @@ def test_every_table_column_explains_itself(client, db_path):
     db.save_dividends(conn, "D05.SI", [("2025-04-10", 0.60)])          # so the dividend tables show too
     conn.close()
     html = client.get("/demo").get_data(as_text=True)
-    plain = {"Year", "Month end"}
+    plain = {"Year", "Month end", "Date", "What happened"}
     for th in re.findall(r'<th scope="col">(.*?)</th>', html, flags=re.S):
         text = re.sub(r"<[^>]+>", "", th).strip()
         assert text in plain or 'class="term"' in th, f"column '{text}' has no tap-a-term meaning"

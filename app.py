@@ -25,12 +25,13 @@ import db  # noqa: E402
 import fmt  # noqa: E402
 import glossary  # noqa: E402
 from explain import (explain_forecast, explain_holdings, explain_income_by_year,  # noqa: E402
-                     explain_performance, explain_value_chart, explain_yields)
+                     explain_performance, explain_stock_chart, explain_value_chart, explain_yields)
 from history import value_history  # noqa: E402
 from importer import DEMO_EMAIL  # noqa: E402
 from income import by_year, forecast, portfolio_yield, yields  # noqa: E402
 from performance import compare, per_stock  # noqa: E402
 from portfolio import positions, summary  # noqa: E402
+from stocks import stock_history  # noqa: E402
 
 
 def create_app(db_path=None):
@@ -87,6 +88,7 @@ def create_app(db_path=None):
             chart=_monthly_chart(h),
             years=_bar_layout(by_year(conn, uid)),
             years_ex=explain_income_by_year(conn, uid),
+            stock_charts=_stock_charts(conn, uid, holdings),
             chart_ex=explain_value_chart(conn, uid, h) if h is not None else None,
         )
 
@@ -113,6 +115,17 @@ def _records(df, names):
     if df is None:
         return None
     return [{**row, "name": names.get(row["ticker"], "")} for row in df.to_dict("records")]
+
+
+def _stock_charts(conn, uid, holdings):
+    """One price chart per stock you hold: its data for the page's script, and its explanation."""
+    charts = []
+    for r in holdings:
+        h = stock_history(conn, uid, r["ticker"])
+        if h and h["prices"]:
+            charts.append({"ticker": r["ticker"], "name": r["name"], "id": "chart-" + r["ticker"].replace(".", "-"),
+                           "data": h, "ex": explain_stock_chart(conn, uid, r["ticker"], h)})
+    return charts
 
 
 def _bar_layout(rows, left=64, right=760, top=28, bottom=196):

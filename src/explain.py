@@ -423,6 +423,54 @@ def explain_income_by_year(conn, user_id, as_of=None):
     return Explanation(out, watch)
 
 
+def explain_stock_chart(conn, user_id, ticker, history=None, as_of=None):
+    """Explains one stock's price chart: the line, your buys and sells, dividends and your average cost."""
+    from stocks import last_avg, stock_history
+
+    h = history if history is not None else stock_history(conn, user_id, ticker, as_of)
+    if h is None or not h["prices"]:
+        return Explanation([f"There are no saved prices for {ticker} yet."])
+    last_day, last_price = h["prices"][-1]
+    out = [f"The line is {ticker}'s closing price each trading day since you first bought it."]
+    buys = [t for t in h["trades"] if t["side"] == "BUY"]
+    sells = [t for t in h["trades"] if t["side"] == "SELL"]
+    if buys:
+        b = buys[0]
+        out.append(f"Each triangle pointing up is a buy. Your first: {b['qty']:,} shares at ${b['price']:.2f} on "
+                   f"{_day(pd.Timestamp(b['date']))}." + (f" You bought {len(buys)} times in all." if len(buys) > 1 else ""))
+    if sells:
+        s = sells[-1]
+        out.append(f"Triangles pointing down are sales. Your latest: {s['qty']:,} shares at ${s['price']:.2f} on "
+                   f"{_day(pd.Timestamp(s['date']))}.")
+    if h["dividends"]:
+        total = sum(d["total"] for d in h["dividends"])
+        out.append(f"Each dot is a dividend ex-date: {len(h['dividends'])} so far, {money(total)} paid to you in all.")
+    avg = last_avg(h)
+    watch = []
+    if avg:
+        gap = last_price / avg - 1
+        out.append(f"The dashed line is your average cost: what each share cost you, fees included. It only moves when "
+                   f"you buy, sell, or get bonus shares. It's ${avg:.2f} now; the price on {_day(pd.Timestamp(last_day))} "
+                   f"was ${last_price:.2f}, {abs(gap):.1%} {'above' if gap >= 0 else 'below'} it.")
+        if gap < 0:
+            watch.append(f"The price is below your average cost, so this stock is at a loss on paper ({gap:.1%}). "
+                         f"It only becomes a real loss if you sell at this price.")
+    for a in h["actions"]:
+        watch.append(f"The price drops on {_day(pd.Timestamp(a['date']))} because of a "
+                     f"{'bonus issue' if a['factor'] > 1 else 'consolidation'} (x{a['factor']:g}), not a fall in value: "
+                     f"you got more shares, so your average cost dropped with it.")
+    for t in h["trades"]:
+        earlier = [s for s in h["avg_steps"] if s["date"] < t["date"] and s["avg"]]
+        previous = earlier[-1]["avg"] if earlier else None
+        if t["side"] == "BUY" and previous and t["price"] < previous * 0.95:
+            watch.append(f"On {_day(pd.Timestamp(t['date']))} you bought below your average cost ('averaging down'). "
+                         f"It lowers your average, but only helps if the price recovers: it also puts more money in one stock.")
+            break
+    watch.append("The line shows the price only. Dividends aren't in it, so the line alone undersells what a "
+                 "dividend stock has paid you.")
+    return Explanation(out, watch)
+
+
 def explain_performance(conn, user_id, as_of=None):
     """Explains 'you vs the STI ETF', for the whole portfolio and per stock."""
     from performance import compare, per_stock
