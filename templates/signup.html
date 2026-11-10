@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page wrap lightbox-page">
   {% call lightbox("new", "First scan") %}
-    <h1>Start your own film</h1>
+    <h1>Ready for your first scan?</h1>
     {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
     <form method="post" action="{{ url_for('signup') }}" class="auth-form" data-login-form>
       <input type="hidden" name="csrf" value="{{ csrf_token() }}">
@@ -16,7 +16,7 @@
       <input id="password2" name="password2" type="password" autocomplete="new-password" required minlength="12" maxlength="128" data-private>
       <button class="btn btn-primary" type="submit">Create account</button>
     </form>
-    <p class="film-foot">SGXray keeps only your email and a scrambled (hashed) copy of your password, never the password itself. Have an account? <a href="{{ url_for('login') }}">Log in</a></p>
+    <p class="film-foot">Already have an account? <a href="{{ url_for('login') }}">Log in instead</a></p>
   {% endcall %}
 </div>
 {% endblock %}

@@ -153,15 +153,12 @@ footer.site p + p { margin-top: var(--space-2); }
 .hero h1 { font-size: clamp(2.75rem, 8vw, 6rem); letter-spacing: -0.04em; font-weight: 500; }
 .hero p { font-size: var(--text-lg); color: var(--color-text-muted); }
 .ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); }
-.scroll-hint { font: 400 var(--text-base)/1.6 var(--font-mono); color: rgba(238, 231, 220, 0.6); margin-top: var(--space-12); }   /* set like Conoid's body line: JetBrains Mono, 60% white */
 /* Drag to turn the home chart (mouse and trackpad only; touch keeps scrolling the page). */
 /* home-scene.js says what's under the pointer: letters, something clickable, or space to turn. */
 .can-turn .content, .can-turn .content * { cursor: grab; }
 .can-turn[data-over="text"] .content, .can-turn[data-over="text"] .content * { cursor: default; }
 .can-turn .content :is(a, button, summary, .term), .can-turn .content :is(a, button) * { cursor: pointer; }
 .turning, .turning * { cursor: grabbing !important; user-select: none; }
-.turn-hint { display: none; }
-.can-turn .turn-hint { display: inline; }
 .panel-section { min-height: 110vh; display: grid; align-content: center; padding-block: var(--space-24); }
 .panel-section .panel { max-width: 34rem; }
 .panel h2 { font-size: var(--text-2xl); margin: var(--space-3) 0 var(--space-4); }
