@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SGXray home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.css">
+<link rel="stylesheet" href="tokens.css">
+<style>
+* { box-sizing: border-box; }
+html { background: var(--color-night); }
+body {
+  margin: 0; color: var(--color-text);
+  font: var(--text-base)/var(--leading-body) var(--font-sans);
+  background:
+    radial-gradient(60rem 40rem at 100% 0%, var(--color-lamp-wash), transparent 60%),
+    var(--color-night);
+  -webkit-font-smoothing: antialiased;
+}
+/* The 3D scene: fixed behind everything. Purely decorative. */
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; display: block; }
+/* Felt grain on top of the scene, under the text. */
+.grain { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: var(--grain-opacity); mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+/* Warm lamp glow over the scene's top-right corner. */
+.lamp { position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  background: radial-gradient(45rem 30rem at 100% 0%, var(--color-lamp-wash), transparent 70%); }
+
+.content { position: relative; z-index: 2; }
+.wrap { max-width: var(--page-width); margin: 0 auto; padding-inline: var(--space-6); }
+h1, h2, h3 { font-family: var(--font-serif); font-weight: 400; line-height: var(--leading-tight); margin: 0; text-wrap: balance; }
+p { margin: 0; max-width: 60ch; }
+.eyebrow { font: 500 var(--text-xs)/1 var(--font-mono); color: var(--color-text-muted); letter-spacing: 0.08em; }
+:focus-visible { outline: 2px solid var(--color-glow-soft); outline-offset: 3px; border-radius: var(--radius-sm); }
+
+/* Nav: a floating bar that stays readable over the scene. */
+nav { position: fixed; top: var(--space-4); left: 50%; transform: translateX(-50%); z-index: 10;
+  width: min(var(--page-width), calc(100% - 2 * var(--space-4)));
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
+  padding: var(--space-3) var(--space-4); border: 1px solid var(--color-line); border-radius: var(--radius-lg);
+  background: rgba(10, 15, 30, 0.72); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.brand { display: flex; align-items: center; gap: var(--space-3); font: 500 var(--text-lg)/1 var(--font-serif); color: var(--color-text); text-decoration: none; }
+.brand svg { width: 24px; height: 24px; }
+nav ul { display: flex; gap: var(--space-6); list-style: none; margin: 0; padding: 0; }
+nav ul a { font: 500 var(--text-xs)/1 var(--font-mono); letter-spacing: 0.08em; color: var(--color-text-muted); text-decoration: none; }
+nav ul a:hover { color: var(--color-text); }
+.btn { display: inline-flex; align-items: center; gap: var(--space-2); font: 500 var(--text-sm)/1 var(--font-sans);
+  text-decoration: none; border-radius: var(--radius-md); padding: var(--space-3) var(--space-5);
+  transition: background var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out); }
+.btn-primary { color: var(--color-night); background: var(--color-text); }
+.btn-primary:hover { background: #FFFFFF; }
+.btn-ghost { color: var(--color-text); border: 1px solid var(--color-line-strong); }
+.btn-ghost:hover { border-color: var(--color-glow-soft); }
+
+/* Sections: tall, so scrolling has room to move the scene. Text sits on solid panels. */
+.hero { position: relative; min-height: 100vh; display: grid; align-content: center; justify-items: center; text-align: center; gap: var(--space-6); padding-block: var(--space-24); }
+/* A soft haze behind the hero text: the lines dim exactly where you read, and stay bright around it. */
+.hero::before { content: ""; position: absolute; inset: 15% 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse 50% 45% at 50% 50%, rgba(10, 15, 30, 0.82), rgba(10, 15, 30, 0.45) 60%, transparent 85%); }
+.hero h1 { font-size: clamp(3rem, 9vw, 6.5rem); letter-spacing: -0.02em; }
+.hero p { font-size: var(--text-lg); color: var(--color-text-muted); }
+.hero .ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); }
+.scroll-hint { font: var(--text-xs)/1 var(--font-mono); color: var(--color-text-faint); letter-spacing: 0.08em; margin-top: var(--space-12); }
+
+.panel-section { min-height: 110vh; display: grid; align-content: center; padding-block: var(--space-24); }
+.panel { background: rgba(18, 28, 51, 0.92); border: 1px solid var(--color-line); border-radius: var(--radius-lg); padding: var(--space-8); max-width: 34rem; }
+.panel h2 { font-size: var(--text-2xl); margin: var(--space-3) 0 var(--space-4); }
+.panel p + p { margin-top: var(--space-3); }
+.muted { color: var(--color-text-muted); }
+.right { margin-left: auto; }
+.points { display: grid; gap: var(--space-4); margin-top: var(--space-6); padding: 0; list-style: none; }
+.points li { display: grid; grid-template-columns: 2.5rem 1fr; gap: var(--space-3); }
+.points .n { font: 500 var(--text-sm)/1.6 var(--font-mono); color: var(--color-glow-soft); }
+.points b { font-weight: 500; }
+
+.cta { min-height: 90vh; display: grid; align-content: center; justify-items: center; text-align: center; gap: var(--space-6); padding-block: var(--space-24); }
+.cta .panel { max-width: 40rem; text-align: center; }
+.cta .ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); margin-top: var(--space-6); }
+
+footer { position: relative; z-index: 2; padding: var(--space-8) 0; border-top: 1px solid var(--color-line);
+  font-size: var(--text-sm); color: var(--color-text-muted); background: var(--color-night); }
+
+@media (max-width: 720px) {
+  nav ul { display: none; }
+  .panel { padding: var(--space-6); }
+}
+</style>
+</head>
+<body>
+<canvas id="scene" aria-hidden="true"></canvas>
+<div class="lamp" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<nav aria-label="Main">
+  <a class="brand" href="#top">
+    <svg viewBox="0 0 7 7" aria-hidden="true" shape-rendering="crispEdges">
+      <g fill="#9CC4FF"><rect x="0" y="0" width="1" height="1"/><rect x="6" y="0" width="1" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="5" y="1" width="1" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="4" y="2" width="1" height="1"/><rect x="2" y="4" width="1" height="1"/><rect x="4" y="4" width="1" height="1"/><rect x="1" y="5" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/><rect x="0" y="6" width="1" height="1"/><rect x="6" y="6" width="1" height="1"/></g>
+      <rect x="3" y="3" width="1" height="1" fill="#E3A35E"/>
+    </svg>
+    SGXray
+  </a>
+  <ul>
+    <li><a href="#what">WHAT IT DOES</a></li>
+    <li><a href="#xray">THE X-RAY</a></li>
+    <li><a href="#learn">LEARN</a></li>
+  </ul>
+  <a class="btn btn-primary" href="preview.html">Try the demo</a>
+</nav>
+
+<main class="content" id="top">
+  <section class="hero wrap">
+    <p class="eyebrow">FOR SINGAPORE INVESTORS · SGX STOCKS, REITS AND ETFS</p>
+    <h1>See inside your portfolio.</h1>
+    <p>SGXray tracks what you own and explains every number in plain English: what you put in, what you've made, and whether you're beating the market.</p>
+    <div class="ctas">
+      <a class="btn btn-primary" href="preview.html">Try the demo, no sign-up</a>
+      <a class="btn btn-ghost" href="#what">How it works</a>
+    </div>
+    <p class="scroll-hint">SCROLL</p>
+  </section>
+
+  <section class="panel-section wrap" id="what">
+    <div class="panel">
+      <p class="eyebrow">01 · WHAT IT DOES</p>
+      <h2>Your numbers, made clear</h2>
+      <ul class="points">
+        <li><span class="n">01</span><span><b>Track</b> <span class="muted">your SGX stocks, REITs and ETFs from your broker's trades, with real prices and dividends.</span></span></li>
+        <li><span class="n">02</span><span><b>Understand</b> <span class="muted">every figure with a "What does this mean?" note, and a "Watch out" when something needs a second look.</span></span></li>
+        <li><span class="n">03</span><span><b>Compare</b> <span class="muted">yourself with the STI: the same money, on the same days, in the whole market.</span></span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="panel-section wrap" id="xray">
+    <div class="panel right">
+      <p class="eyebrow">02 · THE X-RAY</p>
+      <h2>One line hides three stories</h2>
+      <p class="muted">A normal chart shows a line going up. SGXray splits it into what's really inside: the money you put in, the gains from prices, and the dividends paid to you.</p>
+      <p class="muted">Then it lays the market beside it, so you know whether picking stocks was worth it.</p>
+    </div>
+  </section>
+
+  <section class="panel-section wrap" id="learn">
+    <div class="panel">
+      <p class="eyebrow">03 · LEARN AS YOU GO</p>
+      <h2>Built for beginners, honest with everyone</h2>
+      <p class="muted">Ex-dates, yields, bonus issues, why dividends aren't free money: explained with your own numbers, not textbook examples.</p>
+      <p class="muted">Educational, not financial advice. SGXray never tells you what to buy.</p>
+    </div>
+  </section>
+
+  <section class="cta wrap">
+    <div class="panel">
+      <h2>Ready to look inside?</h2>
+      <p class="muted" style="margin: var(--space-4) auto 0">Start with a sample portfolio, or bring your own trades from a CSV.</p>
+      <div class="ctas">
+        <a class="btn btn-primary" href="preview.html">Try the demo</a>
+        <a class="btn btn-ghost" href="#top">Back to top</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer><div class="wrap">SGXray · educational, not financial advice · not affiliated with Singapore Exchange Limited.</div></footer>
+
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.min.js"></script>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/" } }</script>
+<script type="module">
+import * as THREE from "three";
+import { Line2 } from "three/addons/lines/Line2.js";
+import { LineMaterial } from "three/addons/lines/LineMaterial.js";
+import { LineGeometry } from "three/addons/lines/LineGeometry.js";
+
+// ============================================================
+// SGXray home scene: ONE stock chart, built as a 3D object.
+// Like Conoid's single wire form, the chart keeps its shape;
+// scrolling moves the camera: wide view -> zoom in while a scan
+// line reveals the numbers -> the line splits into its three
+// layers (the X-ray) -> pull back. Pure decoration: made-up data.
+// ============================================================
+
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const small = innerWidth < 720;
+const N = small ? 150 : 220;            // trading days on the chart
+const W = 16;                           // chart width in scene units (x from -8 to 8)
+const BASE = -3.0;                      // floor of the price area
+const xAt = j => (j / (N - 1) - 0.5) * W;
+
+if (!reduceMotion && window.Lenis) new window.Lenis({ autoRaf: true });
+
+// ---------- Renderer, scene, camera ----------
+const canvas = document.getElementById("scene");
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "low-power" });
+} catch (e) { canvas.remove(); throw e; }
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x0A0F1E, 12, 34);
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+const chart = new THREE.Group();
+scene.add(chart);
+
+const C = { glow: 0x3A73FF, soft: 0x9CC4FF, lamp: 0xE3A35E, up: 0x7BC4A0, down: 0xD98282, text: 0xEEE7DC, slate: 0x7F93C2 };
+
+// ---------- The made-up price history (same every visit) ----------
+let seed = 11;
+const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const bump = (u, at, w) => Math.exp(-((u - at) ** 2) / (2 * w * w));
+const price = [];
+let noise = 0;
+for (let j = 0; j < N; j++) {
+  const u = j / (N - 1);
+  noise = noise * 0.9 + (rand() - 0.5) * 0.2;
+  // An uptrend with two pullbacks (a gentle one, then a sharp one) and a recovery.
+  price.push(-1.9 + 3.5 * u - 0.75 * bump(u, 0.38, 0.045) - 1.35 * bump(u, 0.69, 0.03) + 0.25 * Math.sin(u * 11) + noise);
+}
+const ma = price.map((_, j) => { const a = price.slice(Math.max(0, j - 17), j + 1); return a.reduce((s, v) => s + v, 0) / a.length; });
+const toPrice = y => 2.4 + y * 0.32;                       // scene height -> a dollar price, for the labels
+const money = n => "$" + n.toFixed(2);
+
+// ---------- Helpers ----------
+const lineMats = [];
+function fatLine(ys, color, width, opacity, z = 0) {
+  const pts = [];
+  ys.forEach((y, j) => pts.push(xAt(j), y, z));
+  const g = new LineGeometry(); g.setPositions(pts);
+  const m = new LineMaterial({ color, linewidth: width, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending });
+  lineMats.push(m);
+  const l = new Line2(g, m); l.computeLineDistances(); return l;
+}
+function segments(pts, color, opacity) {
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+  return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending }));
+}
+function area(ys, color, z) {                              // soft glass sheet under a line, fading downward
+  const pos = [], col = [], idx = [], c = new THREE.Color(color);
+  ys.forEach((y, j) => {
+    pos.push(xAt(j), y, z, xAt(j), BASE, z);
+    col.push(c.r, c.g, c.b, 0.22, c.r, c.g, c.b, 0);
+    if (j) { const a = (j - 1) * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute("color", new THREE.Float32BufferAttribute(col, 4));
+  g.setIndex(idx);
+  return new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+}
+
+// ---------- The chart itself ----------
+// Grid: faint price levels and time columns.
+const grid = [];
+for (let y = -2.5; y <= 2.6; y += 1) grid.push(-W / 2, y, -0.4, W / 2, y, -0.4);
+for (let x = -W / 2; x <= W / 2 + 0.01; x += 2) grid.push(x, BASE - 0.9, -0.4, x, 2.8, -0.4);
+const gridLines = segments(grid, C.soft, 0.07);
+chart.add(gridLines);
+
+// Price bars: a high-low stick with small ticks for the open (left) and close (right), like a trading screen.
+const bars = [], dx = W / N * 0.38;
+for (let j = 1; j < N; j++) {
+  const o = price[j - 1], c = price[j], x = xAt(j);
+  const hi = Math.max(o, c) + rand() * 0.1, lo = Math.min(o, c) - rand() * 0.1;
+  bars.push(x, lo, 0, x, hi, 0, x - dx, o, 0, x, o, 0, x, c, 0, x + dx, c, 0);
+}
+const barLines = segments(bars, C.glow, 0.6);
+chart.add(barLines);
+
+// Volume: thin bars along the bottom; taller on big price moves.
+const vol = [];
+for (let j = 1; j < N; j++) {
+  const h = Math.min(0.85, 0.08 + rand() * 0.22 + Math.abs(price[j] - price[j - 1]) * 2.6);
+  vol.push(xAt(j), BASE - 0.9, 0.2, xAt(j), BASE - 0.9 + h, 0.2);
+}
+const volLines = segments(vol, C.glow, 0.35);
+chart.add(volLines);
+
+const priceLine = fatLine(price, C.soft, 1.6, 0.9);      // the closing price
+const maLine = fatLine(ma, C.lamp, 1.3, 0.75, 0.05);     // the moving average: the one warm line
+chart.add(priceLine, maLine);
+
+// ---------- The X-ray layers: the same line, split into what's inside ----------
+const moneyIn = price.map((_, j) => { const u = j / (N - 1); return -2.5 + 0.5 * [0, 0.18, 0.42, 0.66].filter(s => u >= s).length; });
+const divs = price.map((_, j) => price[j] + 0.32 * Math.floor((j / (N - 1)) * 6) / 6 + 0.06);
+const layers = [
+  { ys: moneyIn, color: C.slate, z: 1.8, name: "MONEY IN", fill: 0.3 },
+  { ys: price, color: C.soft, z: 0, name: "+ PRICE GAINS" },
+  { ys: divs, color: C.lamp, z: -1.8, name: "+ DIVIDENDS" },
+].map(L => {
+  L.line = fatLine(L.ys, L.color, 1.8, 0, 0); L.sheet = area(L.ys, L.color, 0);
+  chart.add(L.line, L.sheet); return L;
+});
+const dollars = y => (y + 3.2) * 2400;
+layers[0].value = "$" + Math.round(dollars(moneyIn[N - 1])).toLocaleString("en-SG");
+layers[1].value = "+$" + Math.round(dollars(price[N - 1]) - dollars(moneyIn[N - 1])).toLocaleString("en-SG");
+layers[2].value = "+$" + Math.round(dollars(divs[N - 1]) - dollars(price[N - 1])).toLocaleString("en-SG");
+
+// ---------- Scan line: sweeps across as you zoom in, revealing the numbers ----------
+const scanGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, BASE - 0.9, 0.3), new THREE.Vector3(0, 2.9, 0.3)]);
+const scan = new THREE.Line(scanGeo, new THREE.LineBasicMaterial({ color: C.soft, transparent: true, opacity: 0, blending: THREE.AdditiveBlending }));
+const scanBand = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 6.7), new THREE.MeshBasicMaterial({ color: C.glow, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+scanBand.position.set(0, -0.45, 0.28);
+chart.add(scan, scanBand);
+
+// ---------- Text labels (drawn once into small canvases) ----------
+function label(text, color, size = 0.24, weight = 500) {
+  const cv = document.createElement("canvas"), g = cv.getContext("2d"), px = 40;
+  g.font = `${weight} ${px}px "JetBrains Mono", monospace`;
+  cv.width = Math.ceil(g.measureText(text).width) + 8; cv.height = px + 16;
+  g.font = `${weight} ${px}px "JetBrains Mono", monospace`;
+  g.fillStyle = "#" + new THREE.Color(color).getHexString(); g.textBaseline = "middle"; g.fillText(text, 4, cv.height / 2);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, depthTest: false, fog: false }));
+  s.scale.set(size * cv.width / cv.height, size, 1);
+  return s;
+}
+function dot(color) {
+  const cv = document.createElement("canvas"); cv.width = cv.height = 32;
+  const g = cv.getContext("2d"); g.fillStyle = "#" + new THREE.Color(color).getHexString();
+  g.beginPath(); g.arc(16, 16, 9, 0, Math.PI * 2); g.fill();
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, opacity: 0, depthWrite: false, depthTest: false, fog: false }));
+  s.scale.setScalar(0.11); return s;
+}
+const idxOf = (a, b, pick) => { let best = Math.round(a * (N - 1)); for (let j = Math.round(a * (N - 1)); j <= Math.round(b * (N - 1)); j++) if (pick(price[j], price[best])) best = j; return best; };
+const notes = [];                                          // { sprite, dot, x }: revealed when the scan passes x
+let axis = [], layerLabels = [];
+document.fonts.load('500 40px "JetBrains Mono"').finally(() => {
+  const pkA = idxOf(0.26, 0.37, (a, b) => a > b), trA = idxOf(0.36, 0.46, (a, b) => a < b);
+  const pkC = idxOf(0.55, 0.68, (a, b) => a > b), trC = idxOf(0.66, 0.74, (a, b) => a < b), end = N - 1;
+  const pct = (a, b) => ((toPrice(price[b]) / toPrice(price[a]) - 1) * 100);
+  const sign = v => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1) + "%";
+  const add = (j, text, color, above, y = price[j]) => {
+    const s = label(text, color), d = dot(color), x = xAt(j);
+    s.position.set(x, y + (above ? 0.42 : -0.42), 0.3); d.position.set(x, y, 0.3);
+    chart.add(s, d); notes.push({ sprite: s, dot: d, x });
+  };
+  add(pkA, money(toPrice(price[pkA])), C.text, true);
+  add(trA, sign(pct(pkA, trA)), C.down, false);
+  add(pkC, money(toPrice(price[pkC])) + "  " + sign(pct(trA, pkC)), C.up, true);
+  add(trC, sign(pct(pkC, trC)), C.down, false);
+  const ex = Math.round(0.52 * (N - 1)); add(ex, "EX-DATE · $0.06", C.lamp, false, BASE - 0.15);
+  const mj = Math.round(0.86 * (N - 1)); add(mj, "MA 18", C.lamp, false, ma[mj]);
+  add(end, "LAST " + money(toPrice(price[end])), C.text, true);
+  add(Math.round(0.03 * (N - 1)), "VOL", C.soft, true, BASE - 0.75);
+  // Price axis on the right: always there, faint.
+  for (let y = -2.5; y <= 2.6; y += 1) { const s = label(toPrice(y).toFixed(2), C.soft, 0.2, 400); s.position.set(W / 2 + 0.75, y, -0.4); chart.add(s); axis.push(s); }
+  // The X-ray layer names, shown when the layers split apart.
+  layerLabels = layers.map(L => { const s = label(L.name + "  " + L.value, L.color, 0.26); chart.add(s); return s; });
+});
+
+// ---------- Up/down arrows that fade in and out on the price line ----------
+function arrowTexture(up, color) {
+  const c = document.createElement("canvas"); c.width = c.height = 64;
+  const g = c.getContext("2d"); g.fillStyle = color; g.beginPath();
+  if (up) { g.moveTo(32, 12); g.lineTo(54, 50); g.lineTo(10, 50); } else { g.moveTo(32, 52); g.lineTo(54, 14); g.lineTo(10, 14); }
+  g.closePath(); g.fill();
+  return new THREE.CanvasTexture(c);
+}
+const upTex = arrowTexture(true, "#7BC4A0"), downTex = arrowTexture(false, "#D98282");
+const arrows = Array.from({ length: small ? 4 : 6 }, () => {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: upTex, transparent: true, opacity: 0, depthWrite: false, fog: true }));
+  s.scale.setScalar(0.3); s.userData = { born: -99, life: 2 }; chart.add(s); return s;
+});
+let nextArrow = 0;
+
+// ---------- The "live" end of the line: the last few days ripple gently ----------
+const liveFrom = N - 12;
+function setPoint(line, j, y) {                            // move one point of a Line2 without rebuilding it
+  const arr = line.geometry.attributes.instanceStart.data;
+  if (j > 0) arr.array[(j - 1) * 6 + 4] = y;
+  if (j < N - 1) arr.array[j * 6 + 1] = y;
+  arr.needsUpdate = true;
+}
+const liveY = (j, t) => price[j] + Math.sin(t * 1.1 + j * 0.9) * 0.07 * ((j - liveFrom) / 11);
+
+// ---------- Camera path: the chart stays put, the camera travels ----------
+const KEYS = [
+  { p: 0.00, pos: [-1.2, 1.6, 15.5], look: [0, -0.4, 0] },     // the whole chart, behind the headline
+  { p: 0.28, pos: [1.6, 0.7, 7.2], look: [-0.4, -0.1, 0] },    // zoomed in: the scan reveals the numbers
+  { p: 0.55, pos: [7, 0.6, 15.5], look: [2.6, 1.2, 0] },      // side view: the layers split apart (the X-ray)
+  { p: 0.80, pos: [-8.5, 2.2, 10], look: [-2.4, -0.4, 0] },    // round the other side
+  { p: 1.00, pos: [0, 0.8, 16.5], look: [0, -0.4, 0] },        // back to the whole chart, calm
+];
+const smooth = x => x * x * (3 - 2 * x);
+const clamp01 = x => Math.min(1, Math.max(0, x));
+const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), va = new THREE.Vector3(), vb = new THREE.Vector3();
+let fit = 1;
+function cameraAt(p) {
+  let i = 0; while (i < KEYS.length - 2 && p > KEYS[i + 1].p) i++;
+  const a = KEYS[i], b = KEYS[i + 1], s = smooth(clamp01((p - a.p) / (b.p - a.p)));
+  camLook.fromArray(a.look).lerp(vb.fromArray(b.look), s);
+  camPos.fromArray(a.pos).lerp(va.fromArray(b.pos), s);
+  camPos.sub(camLook).multiplyScalar(fit).add(camLook);        // phones: stand further back
+  camera.position.copy(camPos); camera.lookAt(camLook);
+}
+
+function scrollProgress() {
+  const max = document.documentElement.scrollHeight - innerHeight;
+  return max > 0 ? clamp01(scrollY / max) : 0;
+}
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  fit = camera.aspect < 1.2 ? 1 + (1.2 - camera.aspect) * 1.1 : 1;
+  for (const m of lineMats) m.resolution.set(w, h);
+}
+addEventListener("resize", resize);
+resize();
+
+let pe = scrollProgress();                                      // eased scroll, so the camera glides
+function frame(now) {
+  const t = reduceMotion ? 0 : now / 1000;
+  const p = scrollProgress();
+  pe += (p - pe) * (reduceMotion ? 1 : 0.07);
+  cameraAt(pe);
+
+  // Gentle float: the chart breathes a little but never changes shape.
+  chart.rotation.y = Math.sin(t * 0.12) * 0.035;
+  chart.position.y = Math.sin(t * 0.3) * 0.05;
+
+  // Zoom stage: the scan sweeps left to right; each number appears once the scan has passed it.
+  const reveal = clamp01((pe - 0.06) / 0.1) * (1 - clamp01((pe - 0.86) / 0.1) * 0.7);
+  const sweep = clamp01((pe - 0.08) / 0.22);
+  const scanX = -W / 2 - 0.5 + sweep * (W + 1);
+  const scanOn = Math.sin(Math.PI * sweep) * (sweep > 0 && sweep < 1 ? 1 : 0);
+  scan.position.x = scanBand.position.x = scanX;
+  scan.material.opacity = scanOn * 0.7; scanBand.material.opacity = scanOn * 0.08;
+  const xr = smooth(clamp01((pe - 0.38) / 0.14)) * (1 - smooth(clamp01((pe - 0.72) / 0.12)));   // X-ray amount
+  for (const n of notes) {
+    const a = reveal * clamp01((scanX - n.x) / 0.8) * (1 - xr);
+    n.sprite.material.opacity = a * 0.92; n.dot.material.opacity = a * 0.9;
+  }
+  for (const s of axis) s.material.opacity = 0.32 + reveal * 0.25;
+
+  // X-ray stage: the price line splits into money in / gains / dividends, spread out in depth.
+  layers.forEach((L, i) => {
+    const z = L.z * xr;
+    L.line.position.z = L.sheet.position.z = z;
+    L.line.material.opacity = xr * 0.95; L.sheet.material.opacity = xr * (L.fill ?? 0.55);
+    const s = layerLabels[i];
+    if (s) { const j = Math.round([0.2, 0.04, 0.47][i] * (N - 1)); s.position.set(xAt(j) + s.scale.x / 2, L.ys[j] + [-0.4, 0.45, 0.5][i], z); s.material.opacity = xr * 0.95; }
+  });
+  barLines.material.opacity = 0.6 * (1 - xr * 0.7);
+  volLines.material.opacity = 0.35 * (1 - xr * 0.6);
+  priceLine.material.opacity = 0.9 * (1 - xr);
+  maLine.material.opacity = 0.75 * (1 - xr * 0.8);
+
+  // The live tail.
+  if (!reduceMotion) for (let j = liveFrom; j < N; j++) setPoint(priceLine, j, liveY(j, t));
+
+  // Arrows: green where the line is rising, red where it's falling; each fades in and out.
+  if (!reduceMotion && t > nextArrow) {
+    const m = arrows.find(s => t - s.userData.born > s.userData.life);
+    if (m) {
+      const j = 4 + Math.floor(rand() * (N - 8)), rising = price[j + 3] > price[j - 3];
+      m.material.map = rising ? upTex : downTex;
+      m.position.set(xAt(j), price[j] + (rising ? 0.38 : -0.38), 0.25);
+      m.userData = { born: t, life: 1.6 + rand() * 0.8 };
+    }
+    nextArrow = t + 0.45 + rand() * 0.6;
+  }
+  for (const m of arrows) {
+    const age = t - m.userData.born;
+    m.material.opacity = age > m.userData.life ? 0 : Math.sin(Math.PI * age / m.userData.life) * 0.85 * (1 - xr);
+  }
+
+  renderer.render(scene, camera);
+  if (!reduceMotion && !document.hidden) requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+document.addEventListener("visibilitychange", () => { if (!document.hidden && !reduceMotion) requestAnimationFrame(frame); });
+if (reduceMotion) {
+  addEventListener("scroll", () => requestAnimationFrame(frame), { passive: true });
+  document.fonts.ready.then(() => requestAnimationFrame(frame));
+}
+</script>
+</body>
+</html>

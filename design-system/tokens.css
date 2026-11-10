@@ -1,0 +1,85 @@
+/* SGXray design tokens.
+   Mood: a rainy evening in a finance office. Cool navy outside, warm lamplight inside,
+   a screen glowing calmly in blue. Clear, smooth, never loud or tiring on the eyes.
+
+   Every page builds only from these names. Never hard-code a colour, size or timing:
+   if a value is missing, add a token here. */
+
+:root {
+  color-scheme: dark;
+
+  /* ---- Colour: the room ---- */
+  --color-night: #0A0F1E;            /* page background: the rainy night outside */
+  --color-surface: #121C33;          /* cards and panels: dry, matte navy */
+  --color-surface-raised: #182540;   /* a panel above a panel (popovers) */
+  --color-line: rgba(156, 196, 255, 0.12);   /* hairlines and borders */
+  --color-line-strong: rgba(156, 196, 255, 0.24);
+
+  /* ---- Colour: light sources ---- */
+  --color-glow: #3A73FF;             /* screen glow: the data accent. Use sparingly. Not for small text. */
+  --color-glow-soft: #9CC4FF;        /* glow as readable text, links, focus rings */
+  --color-lamp: #E3A35E;             /* warm lamplight: highlights and warmth. Use sparingly. */
+  --color-lamp-wash: rgba(227, 163, 94, 0.13);  /* the lamp's glow on the wall */
+
+  /* ---- Colour: text (never pure white: easier on the eyes) ---- */
+  --color-text: #EEE7DC;             /* warm off-white, like paper under a lamp */
+  --color-text-muted: #9AA3B5;       /* secondary text */
+  --color-text-faint: #6B7590;       /* captions, axis labels (large text only) */
+
+  /* ---- Colour: meaning (muted, calm: a bad day doesn't shout) ---- */
+  --color-up: #7BC4A0;
+  --color-down: #D98282;
+  --color-caution: #E3A35E;          /* Watch out: same warm amber, never alarm red */
+
+  /* ---- Colour: chart layers ---- */
+  --chart-money-in: #4A5B82;         /* your own money: solid, quiet */
+  --chart-gains: #3A73FF;            /* price gains: the glow */
+  --chart-dividends: #E3A35E;        /* dividends: the lamp, cash in hand */
+  --chart-sti: #9AA3B5;              /* the market: neutral, dashed */
+
+  /* ---- Type ---- */
+  --font-serif: "Newsreader", Georgia, "Times New Roman", serif;     /* headings: a financial paper */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;   /* body and UI */
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;  /* numbers, ASCII */
+
+  --text-xs: 0.75rem;     /* 12px: captions */
+  --text-sm: 0.875rem;    /* 14px: secondary */
+  --text-base: 1rem;      /* 16px: body */
+  --text-lg: 1.125rem;    /* 18px: lead */
+  --text-xl: 1.5rem;      /* 24px: card numbers, h3 */
+  --text-2xl: 2.25rem;    /* 36px: h2 */
+  --text-3xl: 3.5rem;     /* 56px: h1, hero numbers */
+
+  --leading-tight: 1.15;
+  --leading-body: 1.6;    /* generous, so pages breathe */
+
+  /* ---- Space: 4px steps only ---- */
+  --space-1: 0.25rem;   --space-2: 0.5rem;   --space-3: 0.75rem;  --space-4: 1rem;
+  --space-5: 1.25rem;   --space-6: 1.5rem;   --space-8: 2rem;     --space-10: 2.5rem;
+  --space-12: 3rem;     --space-16: 4rem;    --space-24: 6rem;
+
+  --page-width: 72rem;
+
+  /* ---- Shape: modest corners, never pill-everything ---- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* ---- Texture ---- */
+  --dot-grid-size: 24px;
+  --grain-opacity: 0.07;
+
+  /* ---- Motion: slow, eased, short. Plays once. Off when "reduce motion" is on. ---- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 200ms;
+  --duration-base: 450ms;
+  --duration-slow: 800ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}

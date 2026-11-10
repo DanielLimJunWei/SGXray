@@ -122,6 +122,20 @@ Important things to remember about how SGXray works and the data it uses. Newest
 - Saved prices never need rewriting, even if a split happens later, because they're stored as real.
 - Changing the price basis meant rebuilding the database (delete it, import, run market.py).
 
+## Design system (design-system/)
+
+- **Mood:** a rainy evening in a finance office. Cool navy outside, warm lamplight inside, a screen glowing calmly in blue. Clear, smooth, never loud or tiring on the eyes.
+- `tokens.css` holds every colour, font, size, space, corner and timing as a named variable. Pages use only these; a missing value becomes a new token, never a hard-coded one.
+- Colours: night `#0A0F1E`, dry navy `#121C33`, screen glow `#3A73FF` (data accent, sparingly; never small text), glow-as-text `#9CC4FF`, lamplight `#E3A35E` (warmth, Watch out), paper text `#EEE7DC` (never pure white), muted up/down `#7BC4A0` / `#D98282`.
+- Fonts: Newsreader (headings, like a financial paper), Inter (body), JetBrains Mono (numbers and ASCII, so columns line up).
+- Chart layers: your money = solid slate, price gains = blue halftone dots, dividends = amber halftone dots, STI = light dashed line with a dark outline so it reads over the dots.
+- Textures (felt grain, dot grid, halftone, lightbox glow, ASCII, pixel X logo) only in backgrounds and decoration; numbers always on solid surfaces.
+- Motion: real numbers count up once, then sit still; decoration (rain, the sample chart) may move gently; everything is still when "reduce motion" is on.
+- `preview.html` shows it all, including the scroll-driven X-ray chart built from the demo portfolio. Run it with the `design-preview` launch config (a Python server on port 5500; 8765 was taken), then open http://localhost:5500/preview.html.
+- `home.html` is the landing page: one made-up 3D stock chart (Three.js 0.186.1, smooth scroll from Lenis 1.3.26) that keeps its shape while the camera moves round it. Scrolling goes: whole chart behind the headline, then a zoom while a scan line reveals the numbers, then the line splits into money in / price gains / dividends (the X-ray), then a pull back. Small ▲/▼ arrows fade in where the line rises or falls. It's pure decoration (same fake data for everyone); real user charts animate in once, then stay still. One motif, as on the Conoid reference: no unrelated effects.
+- Lessons from building it: many loose lines morphing between shapes looked messy; a single object with a moving camera reads better. Text over the scene needs a dark haze or solid panel behind it. Wait for the web font to load before drawing labels onto canvases, or they fall back to a default font.
+- Lessons from building it: `.wrap { padding: 0 X }` silently wiped `section`'s vertical padding (class beats element), so use `padding-inline` / `padding-block`. On phones, SVG text shrinks with the chart, so the script resizes chart text to stay ~12px. Opening the HTML file directly in the browser pane loaded it as `data:` and dropped `tokens.css`, so serve it instead.
+
 ## Feature research (9 Nov 2026)
 
 What investors value in trackers (Financial Horse, Seedly, PortfolioTrackr, The Accounting Investor): accurate SGX REIT and stock dividends, projected dividends and income by year, returns including dividends, comparison with the STI, allocation charts, multiple portfolios. Complaints: small free tiers, poor local broker support, no good CPF/SRS or regular-savings-plan support, and trackers that encourage daily price-watching. Beginner mistakes (Endowus, The Smart Investor, Saxo): too little diversification and home bias (local banks and REITs), not knowing about fees, emotional decisions, not understanding what they own.

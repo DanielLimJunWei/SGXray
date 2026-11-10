@@ -15,6 +15,9 @@ venv/
 .pytest_cache/
 .coverage
 
+# Claude Code: personal permission settings stay on this computer (launch.json is shared)
+.claude/settings.local.json
+
 # Editor and system files
 .vscode/
 .DS_Store

@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SGXray design preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap">
+<link rel="stylesheet" href="tokens.css">
+<style>
+/* ---------- Base ---------- */
+* { box-sizing: border-box; }
+html { background: var(--color-night); }
+body {
+  margin: 0;
+  color: var(--color-text);
+  font: var(--text-base)/var(--leading-body) var(--font-sans);
+  background:
+    radial-gradient(60rem 40rem at 100% 0%, var(--color-lamp-wash), transparent 60%),   /* the desk lamp */
+    radial-gradient(50rem 50rem at 0% 100%, rgba(58, 115, 255, 0.08), transparent 60%), /* screen glow */
+    var(--color-night);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+/* Felt grain over everything: makes the screen feel printed, not glassy. */
+body::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 50;
+  opacity: var(--grain-opacity); mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.wrap { max-width: var(--page-width); margin: 0 auto; padding-inline: var(--space-6); }
+h1, h2, h3 { font-family: var(--font-serif); font-weight: 400; line-height: var(--leading-tight); margin: 0; text-wrap: balance; }
+h1 { font-size: var(--text-3xl); letter-spacing: -0.01em; }
+h2 { font-size: var(--text-2xl); }
+h3 { font-size: var(--text-xl); }
+p { margin: 0; max-width: 62ch; }
+.muted { color: var(--color-text-muted); }
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.eyebrow { font: 500 var(--text-xs)/1 var(--font-mono); color: var(--color-text-muted); letter-spacing: 0.08em; }
+section { padding-block: var(--space-16); }
+.stack > * + * { margin-top: var(--space-4); }
+a { color: var(--color-glow-soft); }
+:focus-visible { outline: 2px solid var(--color-glow-soft); outline-offset: 3px; border-radius: var(--radius-sm); }
+
+/* ---------- Header ---------- */
+header { padding: var(--space-6) 0; border-bottom: 1px solid var(--color-line); }
+.brand { display: flex; align-items: center; gap: var(--space-3); font: 500 var(--text-lg)/1 var(--font-serif); }
+.brand svg { width: 28px; height: 28px; }
+
+/* ---------- Hero, with faint rain (landing page only) ---------- */
+.hero { position: relative; overflow: hidden; padding: var(--space-24) 0 var(--space-16); }
+.hero::before {
+  content: ""; position: absolute; inset: -50% 0 0 0; pointer-events: none; opacity: 0.05;
+  background: repeating-linear-gradient(100deg, transparent 0 11px, var(--color-glow-soft) 11px 12px, transparent 12px 37px);
+  animation: rain 9s linear infinite;
+}
+@keyframes rain { to { transform: translate3d(-40px, 50%, 0); } }
+.hero .lead { font-size: var(--text-lg); color: var(--color-text-muted); margin-top: var(--space-6); }
+
+/* ---------- Palette and type ---------- */
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: var(--space-4); margin-top: var(--space-8); }
+.swatch { border: 1px solid var(--color-line); border-radius: var(--radius-md); overflow: hidden; background: var(--color-surface); }
+.swatch span { display: block; height: 4.5rem; }
+.swatch div { padding: var(--space-3); font-size: var(--text-sm); }
+.swatch code { font: var(--text-xs) var(--font-mono); color: var(--color-text-muted); }
+.type-grid { display: grid; gap: var(--space-8); grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); margin-top: var(--space-8); }
+
+/* ---------- Card ---------- */
+.card { background: var(--color-surface); border: 1px solid var(--color-line); border-radius: var(--radius-lg); padding: var(--space-6); }
+.card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-4); }
+.icon-btn { white-space: nowrap; }
+.figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: var(--space-6); margin-top: var(--space-6); }
+.figure .label { font-size: var(--text-sm); color: var(--color-text-muted); }
+.figure .value { font: 500 var(--text-xl)/1.2 var(--font-mono); font-variant-numeric: tabular-nums; margin-top: var(--space-1); }
+.up { color: var(--color-up); }
+.icon-btn {
+  display: inline-flex; align-items: center; gap: var(--space-2); cursor: pointer;
+  font: 500 var(--text-sm)/1 var(--font-sans); color: var(--color-text-muted);
+  background: transparent; border: 1px solid var(--color-line-strong); border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  transition: color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
+}
+.icon-btn:hover { color: var(--color-text); border-color: var(--color-glow-soft); }
+.icon-btn.caution:hover { border-color: var(--color-lamp); }
+.icon-btn svg { width: 16px; height: 16px; }
+.count { font: 500 var(--text-xs)/1 var(--font-mono); color: var(--color-night); background: var(--color-lamp); border-radius: var(--radius-sm); padding: 2px 5px; }
+.actions { display: flex; gap: var(--space-2); }
+[popover] {
+  max-width: 26rem; margin: auto; padding: var(--space-6); color: var(--color-text);
+  background: var(--color-surface-raised); border: 1px solid var(--color-line-strong); border-radius: var(--radius-lg);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+[popover]::backdrop { background: rgba(5, 8, 16, 0.55); }
+[popover] h3 { font-size: var(--text-lg); margin-bottom: var(--space-3); }
+[popover] li + li { margin-top: var(--space-2); }
+[popover] ul { padding-left: var(--space-5); margin: 0; }
+.caution-title { color: var(--color-lamp); }
+.close { margin-top: var(--space-6); }
+
+/* ---------- The X-ray chart (scroll-driven) ---------- */
+.xray { height: 320vh; position: relative; }
+.xray-stage { position: sticky; top: 0; min-height: 100vh; display: grid; align-content: center; gap: var(--space-6); padding-block: var(--space-8); }
+.chart-card { position: relative; padding: var(--space-6) var(--space-6) var(--space-4); }
+.chart-card svg { display: block; width: 100%; height: auto; overflow: visible; }
+/* --svg-text is set by script so chart text stays ~12px on screen however small the chart gets. */
+.axis text { font-family: var(--font-mono); font-size: var(--svg-text, 12px); fill: var(--color-text-faint); }
+.chart-card.narrow #labels { display: none; }      /* phones: the steps underneath act as the key */
+.axis line { stroke: var(--color-line); }
+.layer-label { font-family: var(--font-mono); font-weight: 500; font-size: var(--svg-text, 12px); }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: var(--space-4); }
+.step { opacity: 0.35; transition: opacity var(--duration-base) var(--ease-out); border-top: 1px solid var(--color-line-strong); padding-top: var(--space-3); }
+.step.on { opacity: 1; }
+.step b { display: block; font-weight: 500; margin-bottom: var(--space-1); }
+.key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: var(--space-2); vertical-align: baseline; }
+
+/* ---------- Textures ---------- */
+.textures { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--space-4); margin-top: var(--space-8); }
+.tex { height: 10rem; border-radius: var(--radius-md); border: 1px solid var(--color-line); position: relative; overflow: hidden; }
+.tex figcaption { position: absolute; left: var(--space-2); bottom: var(--space-2); font: var(--text-xs) var(--font-mono); color: var(--color-text-muted);
+  background: var(--color-surface); padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); }
+.dot-grid { background: radial-gradient(circle at 1px 1px, var(--color-line-strong) 1px, transparent 0) 0 0 / var(--dot-grid-size) var(--dot-grid-size), var(--color-surface); }
+.halftone { background: radial-gradient(circle, var(--color-glow) 1.6px, transparent 2px) 0 0 / 7px 7px, var(--color-surface);
+  -webkit-mask: linear-gradient(100deg, #000 10%, transparent 90%); mask: linear-gradient(100deg, #000 10%, transparent 90%); }
+.halftone-wrap { background: var(--color-surface); }
+.lightbox { background: radial-gradient(70% 90% at 70% 40%, #2F63E8 0%, #163A86 35%, var(--color-night) 75%); }
+.ascii { margin: 0; padding: var(--space-4); font: var(--text-xs)/1.35 var(--font-mono); color: var(--color-glow-soft); background: var(--color-surface); white-space: pre; }
+
+/* ---------- Empty state with decorative motion ---------- */
+.empty { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-8); align-items: center; }
+.empty svg { width: 100%; height: auto; }
+.breathe { animation: breathe 6s var(--ease-out) infinite alternate; transform-origin: 50% 50%; }
+@keyframes breathe { from { transform: translateY(4px) scaleY(0.96); } to { transform: translateY(-4px) scaleY(1.04); } }
+.btn-primary {
+  display: inline-block; font: 500 var(--text-sm)/1 var(--font-sans); color: var(--color-night);
+  background: var(--color-text); border: 0; border-radius: var(--radius-md); padding: var(--space-3) var(--space-5); cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+.btn-primary:hover { background: #FFFFFF; }
+
+footer { padding: var(--space-12) 0; border-top: 1px solid var(--color-line); font-size: var(--text-sm); color: var(--color-text-muted); }
+
+@media (max-width: 720px) {
+  h1 { font-size: var(--text-2xl); }
+  .empty { grid-template-columns: 1fr; }
+  .xray { height: 260vh; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero::before, .breathe { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap brand">
+    <!-- Pixel X mark: square pixels on a 7x7 grid. -->
+    <svg viewBox="0 0 7 7" aria-hidden="true" shape-rendering="crispEdges">
+      <g fill="var(--color-glow-soft, #9CC4FF)">
+        <rect x="0" y="0" width="1" height="1"/><rect x="6" y="0" width="1" height="1"/>
+        <rect x="1" y="1" width="1" height="1"/><rect x="5" y="1" width="1" height="1"/>
+        <rect x="2" y="2" width="1" height="1"/><rect x="4" y="2" width="1" height="1"/>
+        <rect x="2" y="4" width="1" height="1"/><rect x="4" y="4" width="1" height="1"/>
+        <rect x="1" y="5" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/>
+        <rect x="0" y="6" width="1" height="1"/><rect x="6" y="6" width="1" height="1"/>
+      </g>
+      <rect x="3" y="3" width="1" height="1" fill="var(--color-lamp, #E3A35E)"/>
+    </svg>
+    <span>SGXray</span>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="wrap">
+      <p class="eyebrow">DESIGN PREVIEW · v0.1</p>
+      <h1 style="margin-top: var(--space-4)">See inside your portfolio.</h1>
+      <p class="lead">A rainy evening, warm lamplight, a screen glowing calmly in blue. Everything clear, smooth and easy on the eyes. This page shows every piece of SGXray's look before real pages are built.</p>
+    </div>
+  </div>
+
+  <!-- 1. Palette -->
+  <section class="wrap" aria-labelledby="palette-h">
+    <p class="eyebrow">01 · PALETTE</p>
+    <h2 id="palette-h" style="margin-top: var(--space-3)">Cool outside, warm inside</h2>
+    <p class="muted" style="margin-top: var(--space-3)">Blue is the screen and the data. Amber is the lamp: warmth and highlights. Both are used sparingly, so they mean something when they appear.</p>
+    <div class="swatches">
+      <figure class="swatch" style="margin:0"><span style="background:var(--color-night)"></span><div>Night<br><code>#0A0F1E · background</code></div></figure>
+      <figure class="swatch" style="margin:0"><span style="background:var(--color-surface)"></span><div>Dry navy<br><code>#121C33 · cards</code></div></figure>
+      <figure class="swatch" style="margin:0"><span style="background:var(--color-glow)"></span><div>Screen glow<br><code>#3A73FF · data accent</code></div></figure>
+      <figure class="swatch" style="margin:0"><span style="background:var(--color-glow-soft)"></span><div>Glow, as text<br><code>#9CC4FF · links, focus</code></div></figure>
+      <figure class="swatch" style="margin:0"><span style="background:var(--color-lamp)"></span><div>Lamplight<br><code>#E3A35E · warmth, Watch out</code></div></figure>
+      <figure class="swatch" style="margin:0"><span style="background:var(--color-text)"></span><div>Paper<br><code>#EEE7DC · text</code></div></figure>
+      <figure class="swatch" style="margin:0"><span style="background:var(--color-up)"></span><div>Up<br><code>#7BC4A0 · muted green</code></div></figure>
+      <figure class="swatch" style="margin:0"><span style="background:var(--color-down)"></span><div>Down<br><code>#D98282 · muted red</code></div></figure>
+    </div>
+  </section>
+
+  <!-- 2. Type -->
+  <section class="wrap" aria-labelledby="type-h">
+    <p class="eyebrow">02 · TYPE</p>
+    <h2 id="type-h" style="margin-top: var(--space-3)">A financial paper, set on a calm screen</h2>
+    <div class="type-grid">
+      <div class="stack"><p class="eyebrow">HEADINGS · NEWSREADER</p><h3>Dividends are a cushion, not free money.</h3></div>
+      <div class="stack"><p class="eyebrow">BODY · INTER</p><p>Your first $1,000 ended back at $1,000. The second bought 20 shares at $50, now worth $2,000. Timing made the difference.</p></div>
+      <div class="stack"><p class="eyebrow">NUMBERS · JETBRAINS MONO</p><p class="num" style="font-size: var(--text-xl)">$22,695.20<br><span class="up">+32.08%</span> <span class="muted">a year</span></p></div>
+    </div>
+  </section>
+
+  <!-- 3. A real card: count-up numbers, the two buttons -->
+  <section class="wrap" aria-labelledby="card-h">
+    <p class="eyebrow">03 · A CARD, WITH ⓘ AND ⚠</p>
+    <div class="card" style="margin-top: var(--space-6)">
+      <div class="card-head">
+        <h2 id="card-h" style="font-size: var(--text-xl)">Your portfolio</h2>
+        <div class="actions">
+          <button class="icon-btn" popovertarget="explain">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 7.25v4M8 4.75v.5" stroke-linecap="round"/></svg>
+            What does this mean?
+          </button>
+          <button class="icon-btn caution" popovertarget="watch" aria-label="Watch out, 2 notes">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 2 14.5 13.5h-13z" stroke-linejoin="round"/><path d="M8 6.5v3M8 11.5v.25" stroke-linecap="round"/></svg>
+            <span class="count">2</span>
+          </button>
+        </div>
+      </div>
+      <div class="figures">
+        <div class="figure"><div class="label">Value now</div><div class="value" data-count="22695.20" data-prefix="$">$22,695.20</div></div>
+        <div class="figure"><div class="label">Total profit</div><div class="value up" data-count="11517.48" data-prefix="+$">+$11,517.48</div></div>
+        <div class="figure"><div class="label">Dividends received</div><div class="value" data-count="2183.28" data-prefix="$">$2,183.28</div></div>
+        <div class="figure"><div class="label">You vs the STI</div><div class="value up" data-count="6.22" data-prefix="+" data-suffix="%">+6.22%</div></div>
+      </div>
+    </div>
+
+    <div id="explain" popover>
+      <h3>What does this mean?</h3>
+      <ul class="muted">
+        <li><span style="color:var(--color-text)">Value now</span> is what your shares are worth at the last close.</li>
+        <li><span style="color:var(--color-text)">Total profit</span> = $9,056.20 on paper + $278.00 locked in from sales + $2,183.28 of dividends.</li>
+        <li><span style="color:var(--color-text)">You vs the STI</span>: the same dollars, on the same days, in the STI ETF grew 6.22% a year less.</li>
+      </ul>
+      <button class="btn-primary close" popovertarget="explain" popovertargetaction="hide">Got it</button>
+    </div>
+    <div id="watch" popover>
+      <h3 class="caution-title">Watch out</h3>
+      <ul class="muted">
+        <li>$9,056.20 of your profit is unrealised: only on paper until you sell.</li>
+        <li>65% of your portfolio is in one stock, D05.SI. One bad year there, and you feel it everywhere.</li>
+      </ul>
+      <button class="btn-primary close" popovertarget="watch" popovertargetaction="hide">Got it</button>
+    </div>
+  </section>
+
+  <!-- 4. The X-ray: scroll to reveal -->
+  <section class="xray" aria-labelledby="xray-h">
+    <div class="xray-stage wrap">
+      <div>
+        <p class="eyebrow">04 · THE X-RAY · SCROLL SLOWLY</p>
+        <h2 id="xray-h" style="margin-top: var(--space-3)">What's really inside the line</h2>
+      </div>
+      <div class="card chart-card">
+        <svg id="chart" viewBox="0 0 800 340" role="img" aria-labelledby="chart-title chart-desc">
+          <title id="chart-title">Your portfolio, X-rayed into its layers</title>
+          <desc id="chart-desc">From March 2024 to November 2026: $13,361 of your own money, $9,334 of price gains and $2,183 of dividends, $24,878 in all, against $22,525 for the same money in the STI ETF.</desc>
+          <defs>
+            <pattern id="ht-gains" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1.35" fill="var(--chart-gains, #3A73FF)"/></pattern>
+            <pattern id="ht-divs" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1.6" fill="var(--chart-dividends, #E3A35E)"/></pattern>
+            <clipPath id="reveal"><rect id="reveal-rect" x="0" y="0" width="0" height="340"/></clipPath>
+            <linearGradient id="scan" x1="0" x2="1"><stop offset="0" stop-color="#9CC4FF" stop-opacity="0"/><stop offset="1" stop-color="#9CC4FF" stop-opacity="0.35"/></linearGradient>
+          </defs>
+          <g class="axis" id="axis"></g>
+          <path id="plain" fill="none" stroke="var(--color-text, #EEE7DC)" stroke-width="2" stroke-linejoin="round"/>
+          <g clip-path="url(#reveal)">
+            <path id="l-money" fill="var(--chart-money-in, #4A5B82)" fill-opacity="0.55"/>
+            <path id="l-gains" fill="url(#ht-gains)"/>
+            <path id="l-divs" fill="url(#ht-divs)"/>
+            <path id="l-top" fill="none" stroke="var(--color-glow-soft, #9CC4FF)" stroke-width="1.5"/>
+          </g>
+          <path id="l-sti-halo" fill="none" stroke="var(--color-night, #0A0F1E)" stroke-width="5" stroke-linejoin="round" opacity="0"/>
+          <path id="l-sti" fill="none" stroke="var(--color-text, #EEE7DC)" stroke-width="1.75" stroke-dasharray="6 5" stroke-linejoin="round" opacity="0"/>
+          <g id="labels" class="layer-label"></g>
+          <g id="scanline" opacity="0">
+            <rect x="-40" y="0" width="40" height="300" fill="url(#scan)"/>
+            <line x1="0" x2="0" y1="0" y2="300" stroke="#9CC4FF" stroke-width="1.5"/>
+          </g>
+        </svg>
+      </div>
+      <div class="steps">
+        <div class="step" data-at="0"><b>An ordinary chart</b><span class="muted">One line going up. It doesn't say why.</span></div>
+        <div class="step" data-at="0.2"><b><span class="key" style="background:var(--chart-money-in)"></span>Your own money</b><span class="muted">$13,361 put in. Not profit.</span></div>
+        <div class="step" data-at="0.45"><b><span class="key" style="background:var(--chart-gains)"></span>Price gains · <span class="key" style="background:var(--chart-dividends)"></span>dividends</b><span class="muted">$9,334 from prices, $2,183 paid in cash.</span></div>
+        <div class="step" data-at="0.75"><b><span class="key" style="background:var(--chart-sti)"></span>The market</b><span class="muted">Same money in the STI ETF: $22,525.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Textures -->
+  <section class="wrap" aria-labelledby="tex-h">
+    <p class="eyebrow">05 · TEXTURES</p>
+    <h2 id="tex-h" style="margin-top: var(--space-3)">Felt, dots, film and pixels</h2>
+    <p class="muted" style="margin-top: var(--space-3)">Textures live in backgrounds and decoration only. Numbers always sit on clean, solid surfaces.</p>
+    <div class="textures">
+      <figure class="tex dot-grid" style="margin:0"><figcaption>dot grid · section backgrounds</figcaption></figure>
+      <figure class="tex halftone-wrap" style="margin:0"><div class="halftone" style="position:absolute; inset:0"></div><figcaption>halftone · chart layers</figcaption></figure>
+      <figure class="tex lightbox" style="margin:0"><figcaption>lightbox glow · the X-ray light</figcaption></figure>
+      <figure class="tex" style="margin:0"><pre class="ascii" aria-hidden="true">
+ D05.SI  ▓▓▓▓▓▓▓▓▓▓▓▓░░  65%
+ ES3.SI  ▓▓▓▓░░░░░░░░░░  23%
+ C38U.SI ▓▓░░░░░░░░░░░░  12%
+
+ &gt; x-ray: 3 layers found_</pre><figcaption>ascii · loading and empty states</figcaption></figure>
+    </div>
+  </section>
+
+  <!-- 6. Empty state with decorative motion -->
+  <section class="wrap" aria-labelledby="empty-h">
+    <p class="eyebrow">06 · DECORATIVE MOTION</p>
+    <div class="card empty" style="margin-top: var(--space-6)">
+      <div class="stack">
+        <h2 id="empty-h" style="font-size: var(--text-xl)">No trades yet</h2>
+        <p class="muted">Import a CSV from your broker, or add your first buy by hand. The sample chart moves gently because it's decoration; your real numbers will sit still.</p>
+        <button class="btn-primary">Add your first trade</button>
+      </div>
+      <svg viewBox="0 0 320 120" aria-hidden="true">
+        <g class="breathe">
+          <path d="M0 96 C40 90 60 70 96 74 S150 40 190 48 S250 22 320 16 V120 H0 Z" fill="url(#ht-gains)" opacity="0.6"/>
+          <path d="M0 96 C40 90 60 70 96 74 S150 40 190 48 S250 22 320 16" fill="none" stroke="var(--color-glow-soft, #9CC4FF)" stroke-width="1.5"/>
+        </g>
+      </svg>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">SGXray design preview · educational, not financial advice · not affiliated with Singapore Exchange Limited.</div>
+</footer>
+
+<script>
+// ---------- Data: the demo portfolio, month by month (from history.py) ----------
+// [month, money in, price gains, dividends so far, same money in the STI ETF]
+const DATA = [["Mar 24",3472,131,0,3521],["Apr 24",3472,367,54,3627],["May 24",3472,487,113,3695],["Jun 24",7392,505,113,7627],["Jul 24",7392,793,113,7916],["Aug 24",10772,959,281,11504],["Sep 24",10772,1296,324,11993],["Oct 24",10772,1135,324,11903],["Nov 24",10772,1633,384,12564],["Dec 24",10772,1747,384,12667],["Jan 25",10772,1960,384,12910],["Feb 25",10772,2104,541,13082],["Mar 25",15207,2736,541,17996],["Apr 25",15207,1878,667,17495],["May 25",15207,2349,824,18000],["Jun 25",15207,2604,824,18242],["Jul 25",15207,3514,824,19209],["Aug 25",15207,4287,1210,19885],["Sep 25",15207,4472,1210,20030],["Oct 25",15207,5348,1210,20610],["Nov 25",13361,5461,1367,19316],["Dec 25",13361,6064,1367,19720],["Jan 26",13361,6935,1367,20817],["Feb 26",13361,6571,1508,21160],["Mar 26",13361,6219,1508,20705],["Apr 26",13361,6735,1726,21088],["May 26",13361,7679,1896,21651],["Jun 26",13361,8494,1896,22278],["Jul 26",13361,10922,1896,24169],["Aug 26",13361,11547,2183,24776],["Sep 26",13361,11359,2183,24612],["Oct 26",13361,10182,2183,23339],["Nov 26",13361,9334,2183,22525]];
+
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// ---------- Chart geometry ----------
+const W = 800, H = 300, LEFT = 56, RIGHT = 700;
+const maxY = Math.ceil(Math.max(...DATA.map(d => Math.max(d[1] + d[2] + d[3], d[4]))) / 5000) * 5000;
+const x = i => LEFT + (RIGHT - LEFT) * i / (DATA.length - 1);
+const y = v => H - (v / maxY) * (H - 16);
+const line = vals => vals.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
+const band = (lo, hi) => line(hi) + " " + lo.map((v, i) => [i, v]).reverse().map(([i, v]) => `L${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ") + " Z";
+
+const money = DATA.map(d => d[1]);
+const gainsTop = DATA.map(d => d[1] + d[2]);
+const total = DATA.map(d => d[1] + d[2] + d[3]);
+const sti = DATA.map(d => d[4]);
+const $ = id => document.getElementById(id);
+$("plain").setAttribute("d", line(total));
+$("l-money").setAttribute("d", band(DATA.map(() => 0), money));
+$("l-gains").setAttribute("d", band(money, gainsTop));
+$("l-divs").setAttribute("d", band(gainsTop, total));
+$("l-top").setAttribute("d", line(total));
+$("l-sti").setAttribute("d", line(sti));
+$("l-sti-halo").setAttribute("d", line(sti));       // a dark outline so the dashed line reads over the dots
+
+// Axis: 4 horizontal rules with labels, and a few month labels.
+const axis = $("axis"), NS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs, text) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text) e.textContent = text; return e; };
+for (let v = 0; v <= maxY; v += maxY / 4) {
+  axis.append(el("line", { x1: LEFT, x2: RIGHT, y1: y(v), y2: y(v) }));
+  axis.append(el("text", { x: LEFT - 8, y: y(v) + 4, "text-anchor": "end" }, v ? `$${v / 1000}k` : "$0"));
+}
+[0, 10, 20, 32].forEach(i => axis.append(el("text", { x: x(i), y: H + 22, "text-anchor": "middle" }, DATA[i][0])));
+
+// Layer labels at the right edge, each fading in at its stage.
+const last = DATA.length - 1, labels = $("labels");
+const mid = (a, b) => y((a + b) / 2) + 4;
+const LABELS = [
+  { at: 0.55, text: "dividends", color: "#E3A35E", y: y(total[last]) - 6 },
+  { at: 0.75, text: "STI ETF ---", color: "#EEE7DC", y: y(sti[last]) + 4 },
+  { at: 0.45, text: "price gains", color: "#9CC4FF", y: mid(money[last], gainsTop[last]) },
+  { at: 0.2, text: "your money", color: "#9AA3B5", y: mid(0, money[last]) },
+];
+// Labels are listed top to bottom; push each one down until it's at least 16px below the one above.
+LABELS.forEach((l, i) => { if (i && l.y < LABELS[i - 1].y + 16) l.y = LABELS[i - 1].y + 16; });
+LABELS.forEach(l => { l.node = el("text", { x: RIGHT + 10, y: l.y, fill: l.color, opacity: 0 }, l.text); labels.append(l.node); });
+
+// ---------- Keep chart text readable on small screens ----------
+const chartSvg = $("chart"), chartCard = chartSvg.closest(".chart-card");
+function fitText() {
+  const scale = chartSvg.clientWidth / W;                       // how much the 800-wide chart is shrunk
+  chartSvg.style.setProperty("--svg-text", `${Math.min(20, 12 / scale)}px`);
+  chartCard.classList.toggle("narrow", scale < 0.6);
+}
+addEventListener("resize", fitText);
+fitText();
+
+// ---------- Scroll-driven reveal ----------
+const section = document.querySelector(".xray"), steps = [...document.querySelectorAll(".step")];
+function render(p) {
+  const reveal = Math.min(1, Math.max(0, (p - 0.12) / 0.5));          // the scan sweeps between 12% and 62%
+  const sx = LEFT + (RIGHT - LEFT) * reveal;
+  $("reveal-rect").setAttribute("width", sx);
+  $("scanline").setAttribute("transform", `translate(${sx} 0)`);
+  $("scanline").setAttribute("opacity", reveal > 0 && reveal < 1 ? 1 : 0);
+  $("plain").setAttribute("opacity", 1 - reveal * 0.85);
+  const stiOn = Math.min(1, Math.max(0, (p - 0.72) / 0.12));
+  $("l-sti").setAttribute("opacity", stiOn);
+  $("l-sti-halo").setAttribute("opacity", stiOn * 0.8);
+  LABELS.forEach(l => l.node.setAttribute("opacity", reveal >= 1 || p >= l.at + 0.15 ? 1 : 0));
+  steps.forEach(s => s.classList.toggle("on", p >= +s.dataset.at));
+}
+function progress() {
+  const r = section.getBoundingClientRect(), span = r.height - innerHeight;
+  return Math.min(1, Math.max(0, -r.top / span));
+}
+if (reduceMotion) {
+  render(1);                                                           // show the finished picture, no animation
+} else {
+  let queued = false;
+  addEventListener("scroll", () => { if (!queued) { queued = true; requestAnimationFrame(() => { render(progress()); queued = false; }); } }, { passive: true });
+  render(progress());
+}
+
+// ---------- Numbers count up once, the first time they're seen, then sit still ----------
+const fmt = (n, decimals) => n.toLocaleString("en-SG", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+const counters = document.querySelectorAll("[data-count]");
+if (!reduceMotion && "IntersectionObserver" in window) {
+  const io = new IntersectionObserver(entries => entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    io.unobserve(entry.target);
+    const node = entry.target, end = +node.dataset.count, decimals = node.dataset.count.split(".")[1]?.length ?? 0;
+    const pre = node.dataset.prefix || "", post = node.dataset.suffix || "", start = performance.now(), dur = 800;
+    const tick = now => {
+      const t = Math.min(1, (now - start) / dur), eased = 1 - Math.pow(1 - t, 3);
+      node.textContent = pre + fmt(end * eased, decimals) + post;
+      if (t < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }), { threshold: 0.6 });
+  counters.forEach(c => io.observe(c));
+}
+</script>
+</body>
+</html>
