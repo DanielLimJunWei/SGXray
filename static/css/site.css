@@ -12,6 +12,12 @@ body {
   min-height: 100vh; display: flex; flex-direction: column;
 }
 main { flex: 1; }
+/* Cursors, the same everywhere: the plain arrow on text and boxes; the pointing hand only where a click
+   does something (links, buttons, tappable terms, "Show as a table"); a text cursor only in boxes you type in.
+   Things you can drag keep their own (the open hand on the home chart, the move and resize handles). */
+body { cursor: default; }
+a, button, summary, [role="button"] { cursor: pointer; }
+input, textarea, [contenteditable] { cursor: text; }
 h1, h2, h3 { font-family: var(--font-serif); font-weight: 400; line-height: var(--leading-tight); margin: 0; text-wrap: balance; }
 p { margin: 0; max-width: 60ch; }
 a { color: var(--color-glow-soft); }
@@ -68,7 +74,8 @@ footer.site p + p { margin-top: var(--space-2); }
 .scroll-hint { font: var(--text-xs)/1 var(--font-mono); color: var(--color-text-faint); letter-spacing: 0.08em; margin-top: var(--space-12); }
 /* Drag to turn the home chart (mouse and trackpad only; touch keeps scrolling the page). */
 .can-turn .content section { cursor: grab; }
-.can-turn .content section :is(a, button, .panel, h1, h2, h3, p, li) { cursor: auto; }
+.can-turn .content section :is(.panel, h1, h2, h3, p, li) { cursor: default; }   /* plain arrow: nothing to click here */
+.can-turn .content section :is(a, button, summary, .term) { cursor: pointer; }   /* pointing hand: only where a click does something */
 .turning, .turning * { cursor: grabbing !important; user-select: none; }
 .turn-hint { display: none; }
 .can-turn .turn-hint { display: inline; }
@@ -141,7 +148,7 @@ footer.site p + p { margin-top: var(--space-2); }
 /* ---------- Tap a term ---------- */
 /* Looks like the words around it, with a quiet dotted underline: a hint, not a link to chase. */
 .term { display: inline; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; background: none; border: 0; padding: 0;
-  cursor: help; text-decoration: underline dotted; text-decoration-color: var(--color-text-faint); text-underline-offset: 0.22em; }
+  cursor: pointer; text-decoration: underline dotted; text-decoration-color: var(--color-text-faint); text-underline-offset: 0.22em; }
 .term:hover { text-decoration-color: var(--color-glow-soft); }
 .term-pop { width: min(20rem, calc(100vw - 24px)); margin: auto; padding: var(--space-4); color: var(--color-text);
   background: var(--color-surface-raised); border: 1px solid var(--color-line-strong); border-radius: var(--radius-md);
