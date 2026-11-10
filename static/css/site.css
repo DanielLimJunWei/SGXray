@@ -40,9 +40,9 @@ section[tabindex="-1"]:focus, main[tabindex="-1"]:focus { outline: none; }   /* 
    The grain on top stops the gradients from banding. */
 .ambient { position: fixed; inset: -20vh 0; z-index: -1; pointer-events: none;   /* behind the 3D chart and everything else */
   background:
-    radial-gradient(48rem 34rem at 10% calc(78% - var(--scroll, 0) * 30%), rgba(58, 115, 255, 0.06), transparent 70%),
-    radial-gradient(40rem 32rem at calc(78% - var(--scroll, 0) * 14%) calc(80% - var(--scroll, 0) * 20%), rgba(84, 70, 190, 0.045), transparent 70%),
-    radial-gradient(80rem 26rem at 50% 108%, rgba(22, 58, 134, 0.12), transparent 72%); }   /* indigo kept low-right, clear of the lamp's top-right corner */
+    radial-gradient(48rem 34rem at 10% calc(78% - var(--scroll, 0) * 30%), rgba(58, 115, 255, 0.04), transparent 70%),
+    radial-gradient(40rem 32rem at calc(78% - var(--scroll, 0) * 14%) calc(80% - var(--scroll, 0) * 20%), rgba(84, 70, 190, 0.03), transparent 70%),
+    radial-gradient(80rem 26rem at 50% 108%, rgba(22, 58, 134, 0.08), transparent 72%); }   /* indigo kept low-right, clear of the lamp's top-right corner */
 .content { position: relative; z-index: 2; }
 
 /* ---------- Nav ---------- */
