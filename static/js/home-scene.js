@@ -222,7 +222,83 @@ function cameraAt(p) {
   camLook.fromArray(a.look).lerp(vb.fromArray(b.look), s);
   camPos.fromArray(a.pos).lerp(va.fromArray(b.pos), s);
   camPos.sub(camLook).multiplyScalar(fit).add(camLook);        // phones: stand further back
+  turnAroundChart(camPos, camLook);                            // the visitor's own turn (drag), if any
   camera.position.copy(camPos); camera.lookAt(camLook);
+}
+
+// ---------- Drag to turn the chart ----------
+// Holding the left mouse button on an empty part of the page turns the chart. It's done by swinging
+// the CAMERA around the chart's centre (with its aim point), so the chart keeps its shape and every
+// scroll stage (the zoom, the scan, the X-ray layers) still lands on the same part of the chart,
+// whichever way it's been turned. Double-click an empty spot to turn it back.
+const PIVOT = new THREE.Vector3(0, -0.4, 0), UP = new THREE.Vector3(0, 1, 0);
+const YAW_MAX = 0.7, PITCH_MIN = -0.25, PITCH_MAX = 0.35;    // about 40 degrees each way: always readable, never edge-on
+const turn = { yaw: 0, pitch: 0, toYaw: 0, toPitch: 0, vYaw: 0, vPitch: 0, dragging: false };
+const qYaw = new THREE.Quaternion(), qPitch = new THREE.Quaternion(), right = new THREE.Vector3(), fwd = new THREE.Vector3();
+function turnAroundChart(pos, look) {
+  if (!turn.yaw && !turn.pitch) return;
+  fwd.subVectors(look, pos);
+  right.crossVectors(fwd, UP).normalize();                     // "sideways" as the camera sees it
+  qYaw.setFromAxisAngle(UP, turn.yaw);
+  right.applyQuaternion(qYaw);
+  qPitch.setFromAxisAngle(right, turn.pitch);
+  qPitch.multiply(qYaw);
+  for (const v of [pos, look]) v.sub(PIVOT).applyQuaternion(qPitch).add(PIVOT);
+}
+function easeTurn() {
+  if (!turn.dragging) {                                        // a little glide after letting go
+    turn.toYaw += turn.vYaw; turn.toPitch += turn.vPitch;
+    turn.vYaw *= 0.85; turn.vPitch *= 0.85;
+  }
+  turn.toYaw = Math.max(-YAW_MAX, Math.min(YAW_MAX, turn.toYaw));
+  turn.toPitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, turn.toPitch));
+  const k = reduceMotion ? 1 : 0.14;
+  turn.yaw += (turn.toYaw - turn.yaw) * k;
+  turn.pitch += (turn.toPitch - turn.pitch) * k;
+}
+// Only empty space starts a drag: text, buttons, links and the panels keep working as normal.
+const NOT_DRAGGABLE = "a, button, nav, .panel, h1, h2, h3, p, li, input, textarea, select, label, footer";
+const finePointer = matchMedia("(hover: hover) and (pointer: fine)").matches;   // mouse or trackpad, not touch
+if (finePointer) {
+  document.documentElement.classList.add("can-turn");
+  let last = null;
+  const startsTurn = e => e.button === 0 && e.pointerType !== "touch" && !e.target.closest(NOT_DRAGGABLE);
+  const clearSelection = () => { const sel = getSelection(); if (sel && sel.rangeCount) sel.removeAllRanges(); };
+  // Text selection starts on mousedown, a separate event from pointerdown, so stop it there too.
+  addEventListener("mousedown", e => { if (startsTurn(e)) e.preventDefault(); });
+  addEventListener("selectstart", e => { if (turn.dragging) e.preventDefault(); });
+  addEventListener("pointerdown", e => {
+    if (!startsTurn(e)) return;
+    e.preventDefault();
+    clearSelection();                                          // a click on empty space clears any old highlight, as usual
+    turn.dragging = true; turn.vYaw = turn.vPitch = 0;
+    last = { x: e.clientX, y: e.clientY };
+    document.documentElement.classList.add("turning");
+  });
+  addEventListener("pointermove", e => {
+    if (!turn.dragging) return;
+    const dx = e.clientX - last.x, dy = e.clientY - last.y;
+    last = { x: e.clientX, y: e.clientY };
+    const speed = 1.6 / Math.max(innerWidth, 600);             // a full-width drag turns about 90 degrees
+    turn.toYaw -= dx * speed; turn.toPitch += dy * speed;
+    turn.vYaw = -dx * speed * 0.4; turn.vPitch = dy * speed * 0.4;   // a short glide after letting go
+    if (reduceMotion) requestAnimationFrame(frame);
+  });
+  const stop = () => {
+    if (!turn.dragging) return;
+    turn.dragging = false;
+    document.documentElement.classList.remove("turning");
+    clearSelection();
+    if (reduceMotion) { turn.vYaw = turn.vPitch = 0; requestAnimationFrame(frame); }
+  };
+  addEventListener("pointerup", stop);
+  addEventListener("pointercancel", stop);
+  addEventListener("blur", stop);
+  addEventListener("dblclick", e => {
+    if (e.target.closest(NOT_DRAGGABLE)) return;
+    turn.toYaw = turn.toPitch = turn.vYaw = turn.vPitch = 0;
+    if (reduceMotion) { turn.yaw = turn.pitch = 0; requestAnimationFrame(frame); }
+  });
 }
 
 function scrollProgress() {
@@ -244,6 +320,7 @@ function frame(now) {
   const t = reduceMotion ? 0 : now / 1000;
   const p = scrollProgress();
   pe += (p - pe) * (reduceMotion ? 1 : 0.07);
+  easeTurn();
   cameraAt(pe);
 
   // Gentle float: the chart breathes a little but never changes shape.
