@@ -45,10 +45,11 @@ TERMS = {
                 "One fund that holds the 30 biggest companies on the Singapore Exchange. SGXray puts your money into "
                 "it on paper, on the same days, to show what simply buying 'the market' would have done.",
                 "ES3.SI (SPDR Straits Times Index ETF)."),
-    "a-year": ("A year (XIRR)",
-               "Your return turned into one yearly rate, counting WHEN each dollar went in or came out, so money "
-               "added recently isn't treated as if it had been there from the start.",
-               "$1,000 in, $1,100 back a year later = +10% a year."),
+    "a-year": ("Your return (a year, or so far)",
+               "From a year of history: your return as one yearly rate (XIRR), counting WHEN each dollar went in or "
+               "came out. Under a year: the plain total for the time you've held, because stretching a few months "
+               "into a 'per year' figure exaggerates luck. Under a month: too soon to compare.",
+               "+3% over 2 months is shown as +3% over 2 months, not as +19% a year."),
     "price-gains": ("Price gains",
                     "What price changes have added on top of the money you put in (or taken away, if prices fell). "
                     "Not counting dividends.",

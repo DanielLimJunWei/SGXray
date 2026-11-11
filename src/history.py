@@ -193,7 +193,7 @@ def time_weighted(conn, user_id, as_of=None, history=None):
     """
     h = history if history is not None else value_history(conn, user_id, as_of)
     empty = {"you_total": float("nan"), "sti_total": float("nan"), "you_year": float("nan"),
-             "sti_year": float("nan"), "days": 0}
+             "sti_year": float("nan"), "days": 0, "yearly": False}
     g = _growth(conn, user_id, as_of, h)
     if g is None:
         return empty
@@ -201,7 +201,7 @@ def time_weighted(conn, user_id, as_of=None, history=None):
     sti = g["sti"].prod() - 1
     days = (h.index[-1] - h.index[0]).days
     return {"you_total": you, "sti_total": sti, "you_year": _yearly(you, days),
-            "sti_year": _yearly(sti, days), "days": days}
+            "sti_year": _yearly(sti, days), "days": days, "yearly": days >= 365}
 
 
 PERIODS = [("1M", "the last month"), ("3M", "the last 3 months"), ("YTD", "this year so far"), ("1Y", "the last year"), ("All", "the whole time since you started")]

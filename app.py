@@ -31,13 +31,15 @@ import auth  # noqa: E402
 import db  # noqa: E402
 import fmt  # noqa: E402
 import glossary  # noqa: E402
-from explain import (explain_forecast, explain_holdings, explain_income_by_year,  # noqa: E402
+from explain import (Explanation, explain_dividends_received, explain_forecast, explain_holdings,  # noqa: E402
+                     explain_income_by_year,
                      explain_performance, explain_periods, explain_sold, explain_stock_chart,
                      explain_total_return, explain_two_returns, explain_value_chart, explain_worth, explain_yields)
 from history import period_returns, time_weighted, value_history  # noqa: E402
 import insights  # noqa: E402
 from importer import DEMO_EMAIL  # noqa: E402
 from income import by_year, forecast, portfolio_yield, yields  # noqa: E402
+import lookup  # noqa: E402
 from performance import compare, per_stock  # noqa: E402
 from portfolio import positions, summary  # noqa: E402
 from stocks import stock_history  # noqa: E402
@@ -56,6 +58,7 @@ def create_app(db_path=None):
         PERMANENT_SESSION_LIFETIME=timedelta(days=7),
         MAX_CONTENT_LENGTH=2 * 1024 * 1024,          # refuse uploads over 2 MB
         MARKET_DOWNLOAD=trades.download_market_data, # tests swap in a fake, so they never use the internet
+        TICKER_LOOKUP=lookup.yahoo_info,              # the same for looking up a new SGX code
     )
 
     conn = db.get_connection(db_path)       # make sure the tables exist once, at start-up
@@ -138,6 +141,37 @@ def create_app(db_path=None):
         db.log_security_event(conn, "trade_deleted", uid, request.remote_addr)
         return redirect(url_for("trades_page", deleted=1))
 
+    @app.post("/trades/lookup")
+    @login_required
+    def lookup_ticker():
+        """Adds any SGX stock, REIT or ETF to the picker, after checking it on Yahoo (w309)."""
+        conn, uid = get_db(), g.user["id"]
+        typed = request.form.get("code", "")[:16]
+        ticker = lookup.normalise(typed)
+        if ticker is None:
+            return _lookup_failed(conn, uid, typed, "An SGX code is up to 6 letters and numbers, like C6L or D05.")
+        if any(r["ticker"] == ticker for r in db.get_instruments(conn)):
+            return redirect(url_for("trades_page", added=ticker))           # already listed: just pick it
+        key = f"lookup:{uid}"
+        if auth.limited(conn, key, lookup.LOOKUPS_PER_HOUR, 60):
+            return _lookup_failed(conn, uid, typed, "That's a lot of lookups. Try again in an hour.", 429)
+        auth.count(conn, key)
+        info = current_app.config["TICKER_LOOKUP"](ticker)
+        if info is None:
+            return _lookup_failed(conn, uid, typed, "Yahoo Finance couldn't be reached just now. Try again in a minute.", 503)
+        found = lookup.describe(info)
+        if found is None:
+            return _lookup_failed(conn, uid, typed, f"We couldn't find {ticker} on SGX. Check the code: "
+                                  "it's the short one, like C6L, not the company name.")
+        name, type_, sector = found
+        db.save_instrument(conn, ticker, name, type_, sector)
+        db.log_security_event(conn, "ticker_added", uid, request.remote_addr)
+        return redirect(url_for("trades_page", added=ticker))
+
+    def _lookup_failed(conn, uid, typed, message, status=422):
+        return _trades_page(conn, uid, values={"side": "BUY", "date": date.today().isoformat()},
+                            lookup_error=message, lookup_code=typed), status
+
     def _market_note(conn, trade):
         """Downloads prices first if this trade needs some (a new stock, or an earlier date).
         If the download fails the trade is still saved; the page says prices come with the next update."""
@@ -145,16 +179,24 @@ def create_app(db_path=None):
         if not needed:
             return {}
         ok = current_app.config["MARKET_DOWNLOAD"](conn, needed)
+        if db.get_latest_price_date(conn, trade["ticker"]) is None and trade["trade_date"] > _last_close_day():
+            return {"prices": "tonight"}            # bought today: its first close doesn't exist until ~5:30pm
         return {} if ok else {"prices": "later"}
 
-    def _trades_page(conn, uid, values, problems=None):
+    def _trades_page(conn, uid, values, problems=None, lookup_error=None, lookup_code=None):
         names = {r["ticker"]: r["name"] for r in db.get_instruments(conn)}
         rows = [{**dict(t), "name": names.get(t["ticker"], "")} for t in db.get_trades(conn, uid)]
         rows.reverse()                                          # newest first: the one you just added is on top
         saved = request.args.get("saved", type=int)
+        added = request.args.get("added", "")
+        added = {"ticker": added, "name": names[added]} if added in names else None   # only a ticker that's really listed
+        if added and request.method == "GET":
+            values = {**values, "ticker": added["ticker"]}      # pick the stock that was just added
         return render_template("trades.html", trades=rows, values=values, tickers=_tickers(conn), problems=problems,
                                saved=saved, deleted=request.args.get("deleted") == "1",
-                               prices_later=request.args.get("prices") == "later")
+                               prices_later=request.args.get("prices") == "later",
+                               prices_tonight=request.args.get("prices") == "tonight", added=added,
+                               lookup_error=lookup_error, lookup_code=lookup_code)
 
     # ---------- Accounts ----------
 
@@ -271,13 +313,20 @@ def create_app(db_path=None):
         w = insights.weights(df)
         for row in holdings:
             row["weight"] = w.get(row["ticker"], float("nan"))
+        waiting = _waiting_for_close(conn, uid, s["missing_prices"])
+        # Only when every missing price is a stock bought today: then unknown numbers read "pending".
+        g.waiting_for_close = bool(waiting) and len(waiting) == len(s["missing_prices"])
         return render_template(
             "dashboard.html",
             mode=mode,
             s=s,
+            waiting=waiting,
             vs=vs,
             twr=_or_none(time_weighted, conn, uid),
-            twr_ex=_or_none(explain_two_returns, conn, uid),
+            # Every figure gets a "What does this mean?" box, whatever state it's in (the page rule).
+            twr_ex=_or_none(explain_two_returns, conn, uid) or Explanation(
+                ["There's nothing to compare with yet: no STI ETF prices are saved. Run the price update."]),
+            divs_ex=explain_dividends_received(conn, uid),
             holdings=holdings,
             holdings_ex=explain_holdings(conn, uid),
             stocks=_records(_or_none(per_stock, conn, uid), names),
@@ -285,6 +334,8 @@ def create_app(db_path=None):
             yields=_records(y, names),
             total_yield=portfolio_yield(y, df),
             income_12m=y["income_12m"].sum(),
+            total_on_cost=_on_cost(y, df),
+            bought_after_prices=y.empty and bool((df["shares"] > 0).any()),   # held now, but not at the latest close
             yields_ex=explain_yields(conn, uid),
             forecast=_records(f, names),
             forecast_total=f["total"].sum(),
@@ -321,6 +372,31 @@ def create_app(db_path=None):
         return send_from_directory(ROOT / "design-system", name)
 
     return app
+
+
+def _last_close_day():
+    """The newest day whose SGX closing price is final ('YYYY-MM-DD'): today after ~5:30pm, else yesterday."""
+    from market import last_complete_day
+    return last_complete_day().isoformat()
+
+
+def _waiting_for_close(conn, uid, missing):
+    """Of the stocks with no price, the ones only bought today: they're waiting for tonight's close,
+    not broken. Returns {ticker: name}."""
+    if not missing:
+        return {}
+    last = _last_close_day()
+    first = {}
+    for t in db.get_trades(conn, uid):
+        first.setdefault(t["ticker"], t["trade_date"])        # trades come oldest first
+    names = {r["ticker"]: r["name"] for r in db.get_instruments(conn)}
+    return {tk: names.get(tk, tk) for tk in missing if first.get(tk, "") > last}
+
+
+def _on_cost(y, positions_df):
+    """The whole portfolio's yield on cost: a year's dividends / what you paid for what you hold."""
+    held_cost = positions_df.loc[positions_df["shares"] > 0, "cost"].sum()
+    return y["income_12m"].sum() / held_cost if len(y) and held_cost else float("nan")
 
 
 def _tickers(conn):
@@ -485,17 +561,27 @@ def _security_headers(response):
     ])
     if os.environ.get("SGXRAY_HTTPS") == "1":                    # the live site: always HTTPS from now on
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    if request.endpoint in ("login", "signup", "account", "portfolio", "trades_page", "edit_trade", "delete_trade"):
+    if request.endpoint in ("login", "signup", "account", "portfolio", "trades_page", "edit_trade", "delete_trade", "lookup_ticker"):
         response.headers["Cache-Control"] = "no-store"            # private pages aren't kept in the browser cache
     return response
 
 
 # ---------- Template filters: how numbers look, from fmt.py so every screen agrees ----------
 
+def _pending_or(formatter):
+    """While a stock bought today waits for its first close, numbers that need its price say
+    "pending" instead of "n/a", so the page reads as waiting, not broken. Anywhere else, "n/a" as before."""
+    def show(x, *args, **kwargs):
+        if fmt.missing(x) and g.get("waiting_for_close"):
+            return "pending"
+        return formatter(x, *args, **kwargs)
+    return show
+
+
 def _add_filters(app):
-    app.add_template_filter(fmt.money, "money")                   # {{ x|money }}, {{ x|money(signed=True) }}
-    app.add_template_filter(fmt.pct, "pct")
-    app.add_template_filter(fmt.num, "num")
+    app.add_template_filter(_pending_or(fmt.money), "money")      # {{ x|money }}, {{ x|money(signed=True) }}
+    app.add_template_filter(_pending_or(fmt.pct), "pct")
+    app.add_template_filter(_pending_or(fmt.num), "num")
 
     @app.template_filter("trend")
     def trend(x):
@@ -515,10 +601,18 @@ def _add_filters(app):
         """A plain number for data attributes; empty when unknown, so a page never shows 'nan'."""
         return "" if fmt.missing(x) else repr(float(x))
 
+    @app.template_filter("span")
+    def span(days):
+        """380 -> '1 year', 120 -> '4 months', 20 -> '20 days': how long, in words."""
+        from explain import _span
+        return _span(int(days))
+
     @app.template_filter("pct1")
     def pct1(x):
         """+75.7% (one decimal, for short labels) / n/a."""
-        return "n/a" if fmt.missing(x) else f"{x:+.1%}"
+        if fmt.missing(x):
+            return "pending" if g.get("waiting_for_close") else "n/a"
+        return f"{x:+.1%}"
 
     @app.template_filter("shortdate")
     def shortdate(iso):

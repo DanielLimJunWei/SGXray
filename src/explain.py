@@ -366,7 +366,7 @@ def _timing_mattered(xirr_year, twr_year):
     return abs(xirr_year - twr_year) > max(TIMING_GAP, TIMING_SHARE * abs(twr_year))
 
 
-def _two_returns_section(xirr_year, twr_year):
+def _two_returns_section(xirr_year, twr_year, xirr_text=None, twr_text=None):
     """'Why SGXray shows two returns', ending with what the gap between them means for THIS user."""
     lines = [
         "Why SGXray shows two returns:",
@@ -376,16 +376,24 @@ def _two_returns_section(xirr_year, twr_year):
         "or bad timing (adding a lot just before a fall).",
     ]
     gap = xirr_year - twr_year
+    xirr_text = xirr_text or f"{xirr_year:+.2%}"
+    twr_text = twr_text or f"{twr_year:+.2%}"
     if not _timing_mattered(xirr_year, twr_year):
-        lines.append(f"  - Yours: XIRR {xirr_year:+.2%} and TWR {twr_year:+.2%} are close, so your timing didn't "
+        lines.append(f"  - Yours: XIRR {xirr_text} and TWR {twr_text} are close, so your timing didn't "
                      f"help or hurt much. Your result came mostly from what you picked.")
     elif gap > 0:
-        lines.append(f"  - Yours: XIRR {xirr_year:+.2%} is higher than TWR {twr_year:+.2%}, so your timing helped: "
+        lines.append(f"  - Yours: XIRR {xirr_text} is higher than TWR {twr_text}, so your timing helped: "
                      f"you tended to add money before prices rose.")
     else:
-        lines.append(f"  - Yours: XIRR {xirr_year:+.2%} is lower than TWR {twr_year:+.2%}, so your timing cost you: "
+        lines.append(f"  - Yours: XIRR {xirr_text} is lower than TWR {twr_text}, so your timing cost you: "
                      f"you tended to add money before prices fell.")
     return lines
+
+
+def _rate(year, total, days):
+    """'+8.12% a year' from a year of history. Under a year, the plain total, '+3.01% over 4 months':
+    stretching a few months into a 'per year' figure exaggerates luck (+3% in 2 months = +19% a year)."""
+    return f"{year:+.2%} a year" if days >= 365 else f"{total:+.2%} over {_span(days)}"
 
 
 def _span(days):
@@ -418,6 +426,31 @@ def explain_worth(conn, user_id, change):
     return Explanation(out, watch)
 
 
+def explain_dividends_received(conn, user_id):
+    """Explains 'Dividends received': the cash paid to you so far."""
+    paid = dividends_received(conn, user_id)
+    if paid.empty:
+        return Explanation(
+            ["'Dividends received' is the cash companies have paid you for holding their shares. Nothing yet: "
+             "to get a dividend you must own the shares before its ex-date, and you haven't held any stock "
+             "through one so far."],
+            ["Most SGX companies and REITs pay once, twice or four times a year, so the first payout can take "
+             "a few months to arrive."])
+    total = paid["total"].sum()
+    by_stock = paid.groupby("ticker")["total"].sum().sort_values(ascending=False)
+    top, top_amount = by_stock.index[0], by_stock.iloc[0]
+    last = paid.iloc[-1]
+    out = [f"'Dividends received' is the cash companies have paid you for holding their shares: "
+           f"{money(total)} from {len(paid)} payout{'s' if len(paid) != 1 else ''} so far.",
+           f"The most came from {top}: {money(top_amount)}. The latest was {last['ticker']} on "
+           f"{_day(pd.Timestamp(last['ex_date']))}: {last['shares']:,.0f} shares x ${last['amount']:.4f} = "
+           f"{money(last['total'])}."]
+    watch = ["SGXray counts a dividend from its ex-date, the day you must already own the shares by. The cash "
+             "itself usually reaches your account a few weeks later.",
+             "Singapore dividends and REIT payouts are tax-free for individuals, so what's shown is what you get."]
+    return Explanation(out, watch)
+
+
 def explain_total_return(conn, user_id):
     """Explains 'Total profit' and the simple total return under it."""
     from insights import simple_return
@@ -433,7 +466,7 @@ def explain_total_return(conn, user_id):
         out.append(f"The line under it is your simple total return: that profit divided by all the money you've put "
                    f"in ({money(r['put_in'])} of buys, fees included) = {r['pct']:+.1%}, over {_span(r['days'])}.")
         watch.append(f"This is a total, not a yearly rate: {r['pct']:+.1%} over {_span(r['days'])} is much less "
-                     f"per year. For a fair yearly number, see 'You vs the STI a year'.")
+                     f"per year. For a fair comparison with the market, see 'You vs the STI'.")
         if s["unrealised"] > 0.5 * s["total_profit"] > 0:
             watch.append("Most of this profit is unrealised: it's only real once you sell, and a market drop can shrink it.")
     return Explanation(out, watch)
@@ -476,22 +509,33 @@ def explain_sold(rows):
 
 
 def explain_two_returns(conn, user_id, as_of=None):
-    """Explains the 'You vs the STI, a year' figure: the money-weighted (XIRR) and time-weighted (TWR) returns."""
+    """Explains the 'You vs the STI' figure: the money-weighted (XIRR) and time-weighted (TWR) returns."""
     from history import time_weighted
     from performance import compare
 
     c = compare(conn, user_id, as_of)
     t = time_weighted(conn, user_id, as_of)
     if c["too_short"] or c["you"] != c["you"] or t["you_year"] != t["you_year"]:
-        return Explanation(["A yearly rate needs at least 30 days of history and a price for everything you hold."])
+        return Explanation(
+            ["'You vs the STI' compares your return with the same money put into the STI ETF (the market) on the "
+             "same days, with the same fees.",
+             "It needs at least a month of history and a closing price for everything you hold. From a month it "
+             "shows your total so far, like '+3.0% over 4 months'; from a year, a yearly rate, like '+8.1% a year'."],
+            ["Under a month, results are mostly day-to-day noise, so comparing them with the market would say "
+             "nothing about your picks.",
+             "Under a year, SGXray doesn't stretch a total into a yearly rate: +3% in 2 months would show as about "
+             "+19% a year, which mostly measures luck."])
+    d = c["days"]
+    mine, sti = _rate(c["you"], c["you_period"], d), _rate(c["benchmark"], c["benchmark_period"], d)
+    picks, sti_picks = _rate(t["you_year"], t["you_total"], t["days"]), _rate(t["sti_year"], t["sti_total"], t["days"])
     out = [
-        f"The big number, {c['you']:+.2%} a year, is your money-weighted return (XIRR): what actually happened to "
+        f"The big number, {mine}, is your money-weighted return (XIRR): what actually happened to "
         f"YOUR money, counting when each dollar went in or came out. The same dollars in the STI ETF, on the same "
-        f"days, made {c['benchmark']:+.2%} a year.",
-        f"\"Your picks alone\", {t['you_year']:+.2%} a year, is the time-weighted return (TWR): how the investments "
+        f"days, made {sti}.",
+        f"\"Your picks alone\", {picks}, is the time-weighted return (TWR): how the investments "
         f"themselves did, as if you'd put one dollar in at the start and never added or taken out any. On the same "
-        f"measure the STI ETF made {t['sti_year']:+.2%} a year.",
-    ] + _two_returns_section(c["you"], t["you_year"])
+        f"measure the STI ETF made {sti_picks}.",
+    ] + _two_returns_section(c["you"], t["you_year"], mine, picks)
     watch = []
     if c["you"] < t["you_year"] and _timing_mattered(c["you"], t["you_year"]):
         watch.append("Your timing cost you: your money earned less than your picks did, which usually means more "
@@ -500,7 +544,8 @@ def explain_two_returns(conn, user_id, as_of=None):
         watch.append("Your picks alone did worse than the STI ETF. Over several years, that would mean simply buying "
                      "the STI ETF was the easier, cheaper choice.")
     if c["days"] < 365:
-        watch.append("Less than a year of history: a yearly rate from a short stretch mostly shows luck.")
+        watch.append("Under a year of history, SGXray shows the total for the time you've invested, not a yearly "
+                     "rate: stretching a few months into a 'per year' number would exaggerate what was mostly luck.")
     watch.append("Past returns don't predict future ones, whichever way they're measured.")
     return Explanation(out, watch)
 
@@ -620,7 +665,7 @@ def explain_performance(conn, user_id, as_of=None):
         return Explanation(["You haven't made any trades yet."])
     if c["too_short"]:
         return Explanation(
-            [f"You have only {c['days']} days of history, which is too short for a yearly rate. "
+            [f"You have only {c['days']} days of history, which is too short to compare fairly. "
              f"So far you're {up_down(c['your_profit'])}; the same money in the STI ETF would be "
              f"{up_down(c['benchmark_profit'])}."],
             ["A few days or weeks of results say almost nothing about how good your picks are. "
@@ -630,26 +675,28 @@ def explain_performance(conn, user_id, as_of=None):
                             "Run the price update first."])
     if c["benchmark"] != c["benchmark"]:
         return Explanation(
-            [f"Your portfolio grew at {c['you']:+.2%} a year (money-weighted, XIRR).",
-             f"The STI comparison can't be given a yearly rate here. Your picks did so much better than the "
+            [f"Your portfolio made {_rate(c['you'], c['you_period'], c['days'])} (money-weighted, XIRR).",
+             f"The STI comparison can't be given a rate here. Your picks did so much better than the "
              f"index that, when you sold, you took out more money than the same dollars in the STI ETF would "
              f"have been worth. In dollars: you're {up_down(c['your_profit'])}; the STI ETF version would be "
              f"{up_down(c['benchmark_profit'])}."],
             ["One or two big winners can produce results like this. Past results don't predict the future."])
-    gap = c["you"] - c["benchmark"]
+    yearly = c["yearly"]
+    gap = c["you"] - c["benchmark"] if yearly else c["you_period"] - c["benchmark_period"]
+    gap_words = f"{abs(gap):.2%} a year" if yearly else f"{abs(gap):.2%} points over {_span(c['days'])}"
     out = [
-        f"Your portfolio grew at {c['you']:+.2%} a year. That's the money-weighted return (XIRR): it counts "
+        f"Your portfolio made {_rate(c['you'], c['you_period'], c['days'])}. That's the money-weighted return (XIRR): it counts "
         f"when each dollar went in or came out, so money you added recently isn't treated as if it had "
         f"been invested from the start.",
         f"SGXray then replayed exactly the same dollars, on the same days, with the same fees, into the STI "
-        f"ETF. That would have grown at {c['benchmark']:+.2%} a year.",
-        f"So you {'beat' if gap > 0 else 'trailed'} the market by {abs(gap):.2%} a year. Because the timing and "
+        f"ETF. That would have made {_rate(c['benchmark'], c['benchmark_period'], c['days'])}.",
+        f"So you {'beat' if gap > 0 else 'trailed'} the market by {gap_words}. Because the timing and "
         f"amounts are the same on both sides, the difference comes only from what you chose to buy.",
     ]
     # The second measure (TWR) and "why two returns" are explained once, under "You vs the STI, a year"
     # at the top of the page (explain_two_returns), so here it's just a pointer.
     out.append("For your picks alone (the time-weighted return) and why SGXray shows two returns, see "
-               "\"What does this mean?\" under \"You vs the STI a year\" at the top of the page.")
+               "\"What does this mean?\" under \"You vs the STI\" at the top of the page.")
     timing_watch = None
     stocks = per_stock(conn, user_id, as_of)
     if stocks["shortfall"].any():
@@ -657,7 +704,9 @@ def explain_performance(conn, user_id, as_of=None):
                    "more than the STI version of that stock held, so the per-stock rows won't add up exactly "
                    "to the whole-portfolio difference.")
     for r in stocks.itertuples():
-        if r.verdict == "about level":
+        if r.verdict == "unknown":
+            out.append(f"{r.ticker}: not known yet, because it has no closing price yet.")
+        elif r.verdict == "about level":
             out.append(f"{r.ticker}: about the same as the STI ETF ({money(r.difference)} apart).")
         else:
             verb = "helped you" if r.verdict == "helped" else "held you back"
@@ -673,9 +722,9 @@ def explain_performance(conn, user_id, as_of=None):
         watch.append("The STI ETF's newest saved price is older than yours, so the comparison may be out of "
                      "date. Run the price update.")
     if c["days"] < 365:
-        watch.append(f"Only {c['days']} days of history. Turning a short period into a yearly rate assumes the "
-                     f"same luck repeats all year: +10% in 2 months works out to about +77% a year (1.10 x 1.10 "
-                     f"x ... six times), which rarely happens.")
+        watch.append(f"Only {_span(c['days'])} of history, so these are totals for that time, not yearly rates. "
+                     f"Stretching them into a 'per year' number assumes the same luck repeats all year: +10% in 2 "
+                     f"months works out to about +77% a year, which rarely happens.")
     helped = stocks[stocks["difference"] > 0]
     total_gain = helped["difference"].sum()
     if gap > 0 and not helped.empty and total_gain and helped["difference"].max() / total_gain > 0.75:

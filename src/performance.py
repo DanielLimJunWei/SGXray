@@ -27,8 +27,17 @@ from market import BENCHMARK
 from portfolio import dividends_received, positions, summary, trades_frame
 
 DAYS_PER_YEAR = 365.0      # Excel's XIRR uses 365-day years too
-MIN_DAYS = 30              # under this much history, no yearly rate is shown
+MIN_DAYS = 30              # under this much history, no comparison is shown: a few weeks is mostly noise
+YEARLY_DAYS = 365          # from a year of history, returns are shown as a yearly rate; under it, as the plain
+                           # total over the time held (the GIPS standard: don't annualise under a year)
 STALE_DAYS = 5             # an STI ETF price this much older than your end date is flagged
+
+
+def over_days(yearly_rate, days):
+    """A yearly rate turned back into the total over `days`: +19% a year held for 2 months = +3%."""
+    if yearly_rate != yearly_rate:
+        return float("nan")
+    return (1 + yearly_rate) ** (days / DAYS_PER_YEAR) - 1
 
 
 # ---------- XIRR ----------
@@ -264,16 +273,21 @@ def compare(conn, user_id, as_of=None):
     if ctx is None:
         return {"you": float("nan"), "benchmark": float("nan"), "your_value": 0.0, "benchmark_value": 0.0,
                 "benchmark_dividends": 0.0, "shortfall": False, "end": None, "days": 0,
-                "too_short": True, "stale_benchmark": False, "your_profit": 0.0, "benchmark_profit": 0.0}
+                "too_short": True, "stale_benchmark": False, "your_profit": 0.0, "benchmark_profit": 0.0,
+                "you_period": float("nan"), "benchmark_period": float("nan"), "yearly": False}
     flows, end, end_value = portfolio_flows(conn, user_id, as_of, ctx=ctx)
     bench = benchmark(conn, user_id, as_of, end=end, trades=ctx.trades)
     days = (end - min(d for d, _ in flows)).days
     too_short = days < MIN_DAYS
     known = end_value == end_value
     mine = xirr(flows + [(end, end_value)]) if known and not too_short else float("nan")
+    theirs = float("nan") if too_short else xirr(bench.flows)
     return {
         "you": mine,
-        "benchmark": float("nan") if too_short else xirr(bench.flows),
+        "benchmark": theirs,
+        "you_period": over_days(mine, days),             # the same return as a plain total over the time held
+        "benchmark_period": over_days(theirs, days),
+        "yearly": days >= YEARLY_DAYS,                   # True: show the yearly rate; False: show the total
         "your_value": end_value,
         "benchmark_value": bench.value,
         "benchmark_dividends": bench.dividends,
@@ -307,11 +321,18 @@ def per_stock(conn, user_id, as_of=None):
         sti_profit = sum(a for _, a in bench.flows)
         put_in = -sum(a for _, a in mine if a < 0)
         difference = your_profit - sti_profit
-        too_short = (end - min(d for d, _ in flows)).days < MIN_DAYS
+        days = (end - min(d for d, _ in flows)).days
+        too_short = days < MIN_DAYS
+        you = xirr(mine) if value == value and not too_short else float("nan")
+        sti = float("nan") if too_short else xirr(bench.flows)
         rows.append({
             "ticker": ticker,
-            "you": xirr(mine) if value == value and not too_short else float("nan"),
-            "sti": float("nan") if too_short else xirr(bench.flows),
+            "you": you,
+            "sti": sti,
+            "you_period": over_days(you, days),
+            "sti_period": over_days(sti, days),
+            "days": days,
+            "yearly": days >= YEARLY_DAYS,
             "your_profit": your_profit,
             "sti_profit": sti_profit,
             "difference": difference,
@@ -319,9 +340,10 @@ def per_stock(conn, user_id, as_of=None):
             # This stock alone did so well that a sale took out more than its STI version held.
             # Then the per-stock rows don't add up exactly to the whole-portfolio difference.
             "shortfall": bench.shortfall,
+            "too_short": too_short,          # under MIN_DAYS: no yearly rate, whatever the prices
         })
     df = pd.DataFrame(rows, columns=["ticker", "you", "sti", "your_profit", "sti_profit", "difference",
-                                     "verdict", "shortfall"])
+                                     "verdict", "shortfall", "too_short", "you_period", "sti_period", "days", "yearly"])
     return df.sort_values("difference", ascending=False, ignore_index=True)
 
 
@@ -330,7 +352,10 @@ LEVEL_SHARE = 0.005     # within 0.5% of the money put in counts as "about level
 
 def _verdict(difference, put_in):
     """The STI version buys at each day's closing price, while you paid a price during the day,
-    so even buying the STI ETF itself can be a few dollars apart. Tiny gaps aren't a lesson."""
+    so even buying the STI ETF itself can be a few dollars apart. Tiny gaps aren't a lesson.
+    No price yet (NaN) means we can't tell: before, NaN fell through to "held back", which was wrong."""
+    if difference != difference:                       # NaN is the only value not equal to itself
+        return "unknown"
     if put_in and abs(difference) < LEVEL_SHARE * put_in:
         return "about level"
     return "helped" if difference > 0 else "held back"

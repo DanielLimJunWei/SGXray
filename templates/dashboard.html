@@ -10,13 +10,17 @@
 {% endblock %}
 
 
+{# PAGE RULE (tests/test_page_rules.py checks it): every cell shows a value or a reason, never a blank or "n/a";
+   an empty table shows one row saying why; every key figure and table has a "What does this mean?" box. #}
+{% macro empty_row(cols, reason) %}<tr class="empty-row"><td colspan="{{ cols }}">{{ reason }}</td></tr>{% endmacro %}
+
 {% block content %}
 <div class="page wrap">
   <header class="page-head">
     <p class="eyebrow">{% if mode == "demo" %}Demo portfolio · sample trades, real SGX prices{% else %}Your portfolio · {{ current_user.email }}{% endif %}</p>
     <h1>Your portfolio</h1>
     {% if s %}
-    <p class="as-of">Prices as of {{ s.prices_as_of|longdate }} · {{ term("closing-price", "closing prices") }}</p>
+    <p class="as-of">{% if s.prices_as_of %}Prices as of {{ s.prices_as_of|longdate }}{% elif waiting %}Prices: waiting for today's close{% else %}No prices downloaded yet{% endif %} · {{ term("closing-price", "closing prices") }}</p>
     {% endif %}
     {% if s and mode == "own" %}<p><a href="{{ url_for('trades_page') }}">Add or change trades</a></p>{% endif %}
   </header>
@@ -38,8 +42,8 @@
   <section class="panel figures" aria-label="Key figures">
     <div class="figure">
       <span class="label">{{ term("worth", "Worth now") }}</span>
-      <span class="value" data-count="{{ s.value|rawnum }}">{{ s.value|money }}</span>
-      <span class="note">What you hold, at the latest closing prices</span>
+      <span class="value" data-count="{{ s.value|rawnum }}">{% if waiting and s.missing_prices|length == waiting|length %}Waiting{% else %}{{ s.value|money }}{% endif %}</span>
+      <span class="note">{% if waiting and s.missing_prices|length == waiting|length %}Today's closing price comes at about 5:30pm{% else %}What you hold, at the latest closing prices{% endif %}</span>
       {% if day %}
       <span class="note twr">{{ term("day-change", "Day's change") }} <b class="{{ day.change|trend }}">{{ day.change|arrow }} {{ day.change|money(signed=True) }}</b> ({{ day.pct|pct }}) on {{ day.date|shortdate }}</span>
       {% endif %}
@@ -58,29 +62,33 @@
       <span class="label">{{ term("dividend", "Dividends") }} received</span>
       <span class="value" data-count="{{ s.dividends|rawnum }}">{{ s.dividends|money }}</span>
       <span class="note">Cash paid to you so far</span>
+      <span class="figure-explain">{{ explain_buttons(divs_ex, "divs", "Dividends received", compact=True) }}</span>
     </div>
     <div class="figure">
-      <span class="label">You vs the {{ term("sti-etf", "STI") }} {{ term("a-year", "a year") }}</span>
+      <span class="label">You vs the {{ term("sti-etf", "STI") }}</span>
       {% if not vs %}
-      <span class="value">n/a</span>
+      <span class="value">Not yet</span>
       <span class="note">No STI ETF prices saved yet</span>
       {% elif vs.too_short %}
-      <span class="value">n/a</span>
-      <span class="note">Needs at least 30 days of history</span>
+      <span class="value">Too soon</span>
+      <span class="note">Needs a month of history to compare fairly</span>
       {% else %}
-      <span class="value {{ (vs.you - vs.benchmark)|trend }}">{{ vs.you|pct }}</span>
-      <span class="note">The STI ETF made {{ vs.benchmark|pct }} a year with the same money on the same days</span>
-      {% if twr and twr.you_year == twr.you_year %}
-      <span class="note twr">{{ term("picks-alone", "Your picks alone") }} <b class="{{ (twr.you_year - twr.sti_year)|trend }}">{{ twr.you_year|pct }}</b> vs the STI ETF's {{ twr.sti_year|pct }}</span>
+      {% set you = vs.you if vs.yearly else vs.you_period %}{% set them = vs.benchmark if vs.yearly else vs.benchmark_period %}
+      <span class="value {{ (you - them)|trend }}">{{ you|pct }}</span>
+      <span class="note">{% if vs.yearly %}{{ term("a-year", "A year") }} on average. The STI ETF made {{ them|pct }} a year{% else %}{{ term("a-year", "Over " ~ vs.days|span) }} so far. The STI ETF made {{ them|pct }}{% endif %} with the same money on the same days</span>
+      {% if twr and twr.days >= 30 and twr.you_total == twr.you_total %}
+      {% set p = twr.you_year if twr.yearly else twr.you_total %}{% set q = twr.sti_year if twr.yearly else twr.sti_total %}
+      <span class="note twr">{{ term("picks-alone", "Your picks alone") }} <b class="{{ (p - q)|trend }}">{{ p|pct }}</b> vs the STI ETF's {{ q|pct }}</span>
       {% endif %}
-      {% if twr_ex %}<span class="figure-explain">{{ explain_buttons(twr_ex, "returns", "You vs the STI, a year", compact=True) }}</span>{% endif %}
       {% endif %}
+      <span class="figure-explain">{{ explain_buttons(twr_ex, "returns", "You vs the STI", compact=True) }}</span>
     </div>
   </section>
 
   {% if s.missing_prices or s.stale_prices %}
   <p class="muted" role="status" style="margin-bottom: var(--space-6)">
-    {% if s.missing_prices %}No price yet for {{ s.missing_prices|join(', ') }}, so the totals can't be worked out. {% endif %}
+    {% for tk, name in waiting.items() %}{{ name }} ({{ tk }}) was bought today. Its first closing price comes after SGX closes, at about 5:30pm, and your worth and profit fill in then. {% endfor %}
+    {% set unknown = s.missing_prices|reject('in', waiting)|list %}{% if unknown %}No price yet for {{ unknown|join(', ') }}, so the totals can't be worked out. {% endif %}
     {% if s.stale_prices %}Older prices for {{ s.stale_prices|join(', ') }}: their value may be out of date.{% endif %}
   </p>
   {% endif %}
@@ -148,7 +156,7 @@
           <b class="{{ (p.you - p.sti)|trend }}">{{ p.you|pct1 }}</b>
           <span class="period-sti">STI ETF {{ p.sti|pct1 }}</span>
           {% else %}
-          <b class="muted">n/a</b><span class="period-sti">not enough history</span>
+          <b class="muted">too soon</b><span class="period-sti">not enough history yet</span>
           {% endif %}
         </li>
         {% endfor %}
@@ -189,7 +197,7 @@
             <td><b>{{ r.ticker }}</b><span class="name">{{ r.name }}</span><button class="link-btn" type="button" data-chart="chart-{{ r.ticker|replace('.', '-') }}" aria-controls="chart-{{ r.ticker|replace('.', '-') }}" aria-expanded="false" hidden>Price chart</button></td>
             <td>{{ "{:,}".format(r.shares|int) }}</td>
             <td>{{ r.avg_cost|num(".3f") }}</td>
-            <td>{{ r.price|num(".2f") }}</td>
+            <td>{% if r.ticker in waiting %}<span class="sub">after today's close</span>{% else %}{{ r.price|num(".2f") }}{% endif %}</td>
             <td>{{ r.cost|money }}</td>
             <td>{{ r.value|money }}</td>
             <td>{{ r.weight|pct(signed=False) }}</td>
@@ -280,20 +288,22 @@
     <div class="panel table-wrap">
       <table class="data">
         <thead>
-          <tr><th scope="col">{{ term("ticker", "Stock") }}</th><th scope="col">You {{ term("a-year", "a year") }}</th><th scope="col">{{ term("sti-etf", "STI ETF") }} {{ term("a-year", "a year") }}</th>
+          <tr><th scope="col">{{ term("ticker", "Stock") }}</th><th scope="col">{{ term("a-year", "Your return") }}</th><th scope="col">{{ term("sti-etf", "STI ETF") }} return</th>
               <th scope="col">{{ term("your-profit", "Your profit") }}</th><th scope="col">{{ term("same-money-sti", "Same money in the STI ETF") }}</th><th scope="col">{{ term("difference", "Difference") }}</th></tr>
         </thead>
         <tbody>
           {% for r in stocks %}
           <tr>
             <td><b>{{ r.ticker }}</b><span class="name">{{ r.name }}</span></td>
-            <td>{{ r.you|pct }}</td>
-            <td>{{ r.sti|pct }}</td>
+            {% if r.too_short %}<td><span class="sub" title="Comparing needs at least a month of history">too soon</span></td><td><span class="sub" title="Comparing needs at least a month of history">too soon</span></td>
+            {% else %}{% set when = "a year" if r.yearly else "in " ~ r.days|span %}
+            <td>{{ (r.you if r.yearly else r.you_period)|pct }}<span class="sub">{{ when }}</span></td>
+            <td>{{ (r.sti if r.yearly else r.sti_period)|pct }}<span class="sub">{{ when }}</span></td>{% endif %}
             <td>{{ r.your_profit|money(signed=True) }}</td>
             <td>{{ r.sti_profit|money(signed=True) }}</td>
             <td class="{{ '' if r.verdict == 'about level' else r.difference|trend }}">
               {% if r.verdict == "about level" %}about level{% else %}{{ r.difference|arrow }} {{ r.difference|money(signed=True) }}{% endif %}
-              <span class="sub">{{ {"helped": "helped you", "held back": "held you back", "about level": "same as the market"}[r.verdict] }}</span>
+              <span class="sub">{{ {"helped": "helped you", "held back": "held you back", "about level": "same as the market", "unknown": "not known yet"}[r.verdict] }}</span>
             </td>
           </tr>
           {% endfor %}
@@ -326,11 +336,15 @@
             <td>{{ r.yield_on_cost|pct(signed=False) }}</td>
             <td>{{ r.income_12m|money }}</td>
           </tr>
+          {% else %}
+          {{ empty_row(7, ("Your stocks were bought after the latest closing prices" ~ (" (" ~ (s.prices_as_of|shortdate) ~ ")" if s.prices_as_of else "") ~ ", so their dividend figures appear after the next price update.") if bought_after_prices else "You don't hold any stocks right now, so there are no yields to show.") }}
           {% endfor %}
         </tbody>
+        {% if yields %}
         <tfoot>
-          <tr><th scope="row">Whole portfolio</th><td colspan="2"></td><td>{{ total_yield|pct(signed=False) }}</td><td colspan="2"></td><td>{{ income_12m|money }}</td></tr>
+          <tr><th scope="row" colspan="3">Whole portfolio</th><td>{{ total_yield|pct(signed=False) }}</td><td colspan="2">{{ total_on_cost|pct(signed=False) }}<span class="sub">on what you paid</span></td><td>{{ income_12m|money }}</td></tr>
         </tfoot>
+        {% endif %}
       </table>
     </div>
   </section>
@@ -402,7 +416,7 @@
           {% endfor %}
         </tbody>
         <tfoot>
-          <tr><th scope="row">Total, about</th><td colspan="3"></td><td>{{ forecast_total|money }}</td><td></td></tr>
+          <tr><th scope="row" colspan="4">Total over the next 12 months, about</th><td>{{ forecast_total|money }}</td><td><span class="sub">{{ forecast|length }} payout{{ "s" if forecast|length != 1 }}</span></td></tr>
         </tfoot>
       </table>
     </div>

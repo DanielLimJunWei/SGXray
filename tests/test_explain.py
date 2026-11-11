@@ -204,4 +204,5 @@ def test_two_returns_explains_both_numbers(conn, user_id):
     ex = explain_two_returns(conn, user_id)
     assert "money-weighted return (XIRR)" in ex.text and "time-weighted return (TWR)" in ex.text
     assert "Why SGXray shows two returns:" in ex.text
-    assert any("Less than a year" in w for w in ex.watch_out)
+    assert any("Under a year of history" in w for w in ex.watch_out)
+    assert " over " in ex.text and "a year, is your money-weighted" not in ex.text   # a total, not stretched to a year

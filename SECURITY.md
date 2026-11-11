@@ -43,7 +43,7 @@ UNKNOWN = can only be checked on the live site; each has a Week 4 task.
 | 20 | CSRF | PASS | Token in every form, constant-time check, SameSite=Lax, logout POST-only (`test_forms_without_the_token...`, `test_logout_needs_a_post...`) |
 | 21 | Insecure file uploads | N/A now | No uploads yet. CSV import in the app (w308) will cap size, accept only CSV text, never save the file or use its name |
 | 22 | Path traversal | PASS | The only file route uses `send_from_directory` (safe join) and is debug-only |
-| 23 | SSRF | N/A now | SGXray never fetches a user-supplied URL. Ticker lookup (w309) will only accept `^[A-Z0-9]{1,6}\.SI$` and only call Yahoo |
+| 23 | SSRF | PASS | SGXray never fetches a user-supplied URL. Ticker lookup only sends a code matching `^[A-Z0-9]{1,6}$` (+ `.SI`), only through yfinance to Yahoo, logged in only, 20 lookups an hour each; Yahoo's answer must say SGX and a share or ETF before anything is saved (`test_lookup.py`) |
 | 24 | Password-reset flows | N/A / later | Not built. When built: single-use, short-lived, hashed tokens and the same reply whether or not the email exists |
 | 25 | Weak session management | FIXED | Was: logging out only cleared the browser cookie, so a copied cookie still worked for 7 days. Now: server-side `sessions` table (only SHA-256 hashes stored), ended on logout and on password change, 7-day limit (`test_a_copied_cookie_stops_working_after_logout`) |
 | 26 | JWTs | N/A | Not used (signed Flask session + server-side session id) |

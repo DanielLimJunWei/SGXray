@@ -12,13 +12,28 @@
 
   {% if saved %}<p class="form-ok" role="status">Trade saved. <a href="{{ url_for('portfolio') }}">See your portfolio</a></p>{% endif %}
   {% if prices_later %}<p class="form-note" role="status">Prices for that stock couldn't be downloaded just now. The trade is saved; its prices will appear after the next price update.</p>{% endif %}
+  {% if prices_tonight %}<p class="form-note" role="status">That trade is dated today. Its first closing price comes after SGX closes, at about 5:30pm, so your portfolio's worth shows as waiting until then.</p>{% endif %}
   {% if deleted %}<p class="form-ok" role="status">Trade deleted.</p>{% endif %}
+  {% if added %}<p class="form-ok" role="status">{{ added.name }} ({{ added.ticker }}) is in the list now, and picked below. Fill in the rest of the trade.</p>{% endif %}
 
   <section class="panel trade-add" aria-labelledby="add-title">
     <h2 id="add-title">Add a trade</h2>
     <p class="muted">Copy it from your broker's contract note: the date, how many shares, and the price per share.</p>
     {{ problems_box(problems) }}
     {{ trade_form(url_for('trades_page'), values, tickers, "Save trade") }}
+
+    <details class="lookup" id="lookup"{% if lookup_error or lookup_code %} open{% endif %}>
+      <summary>Can't find your stock in the list?</summary>
+      <form method="post" action="{{ url_for('lookup_ticker') }}#lookup" class="lookup-form">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <label for="lookup-code">SGX code <span class="optional">like C6L for Singapore Airlines. It's on SGX's site and in your broker's app</span></label>
+        <div class="lookup-row">
+          <input id="lookup-code" name="code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="16" value="{{ lookup_code or '' }}" placeholder="C6L">
+          <button class="btn btn-ghost" type="submit">Look it up</button>
+        </div>
+        {% if lookup_error %}<p class="form-error" role="alert">{{ lookup_error }}</p>{% endif %}
+      </form>
+    </details>
   </section>
 
   <section class="block" aria-labelledby="list-title">
@@ -56,3 +71,4 @@
   </section>
 </div>
 {% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/lookup.js') }}" defer></script>{% endblock %}

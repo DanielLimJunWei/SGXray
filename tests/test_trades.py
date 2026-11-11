@@ -271,3 +271,29 @@ def test_if_the_download_fails_the_trade_is_still_saved(app, db_path):
     r = add(c, ticker="O39.SI", price="14.00")
     assert len(saved(db_path)) == 1
     assert "next price update" in c.get(r.headers["Location"]).get_data(as_text=True)
+
+
+# ---------- A stock bought today: waiting for its first close, not broken ----------
+
+def test_a_stock_bought_today_says_waiting_not_n_a(app, monkeypatch):
+    import app as app_module
+    monkeypatch.setattr(app_module, "_last_close_day", lambda: "2025-02-28")   # "today" is 3 Mar, before 5:30pm
+    c = signed_up(app)
+    r = add(c, ticker="O39.SI", price="14.00")                                   # OCBC: no prices saved
+    assert "prices=tonight" in r.headers["Location"]
+    assert "dated today" in c.get(r.headers["Location"]).get_data(as_text=True)
+    page = html.unescape(c.get("/portfolio").get_data(as_text=True))
+    assert "OCBC (O39.SI) was bought today" in page
+    assert ">Waiting<" in page and "after today's close" in page
+    assert "pending" in page and "n/a" not in page          # unknown numbers read "pending", not n/a
+    assert "held you back" not in page                     # an unknown result is "not known yet", never a loss
+    assert "not known yet" in page
+
+
+def test_a_stock_with_no_price_for_another_reason_still_says_so(app, monkeypatch):
+    import app as app_module
+    monkeypatch.setattr(app_module, "_last_close_day", lambda: "2025-06-30")   # the buy is long past
+    c = signed_up(app)
+    add(c, ticker="O39.SI", price="14.00")
+    page = html.unescape(c.get("/portfolio").get_data(as_text=True))
+    assert "No price yet for O39.SI" in page and "bought today" not in page

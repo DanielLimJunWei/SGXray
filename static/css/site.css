@@ -446,3 +446,17 @@ table.data .sub { display: block; font-size: var(--text-xs); }
 @media (max-width: 560px) {
   .trade-form .field, .trade-form .field-stock, .trade-form .trade-actions { grid-column: span 12; }
 }
+/* "Can't find your stock?": folded away under the form, since most people never need it. */
+.lookup { border-top: 1px solid var(--color-line); padding-top: var(--space-4); scroll-margin-top: 7rem; }   /* lands clear of the fixed top bar */
+.lookup summary { font-size: var(--text-sm); color: var(--color-glow-soft); width: fit-content; }
+.lookup-form { display: grid; gap: var(--space-2); margin-top: var(--space-4); max-width: 32rem; }
+.lookup-form label { font-size: var(--text-sm); color: var(--color-text-muted); }
+.lookup-form .optional { color: var(--color-text-faint); font-size: var(--text-xs); }
+.lookup-row { display: flex; gap: var(--space-3); }
+.lookup-row input { flex: 1; min-width: 0; font: var(--text-base)/1.4 var(--font-mono); text-transform: uppercase; color: var(--color-text);
+  background: rgba(5, 8, 16, 0.72); border: 1px solid rgba(156, 196, 255, 0.18); border-radius: 4px; padding: var(--space-3); }
+.lookup-row input::placeholder { color: var(--color-text-faint); opacity: 0.6; }
+.lookup-row input:focus { outline: none; border-color: var(--color-glow-soft); box-shadow: 0 0 0 3px rgba(156, 196, 255, 0.2); }
+.lookup-row .btn { border-radius: 4px; }
+/* An empty table says why, in one full-width row (the page rule: never a blank table). */
+table.data tr.empty-row td { text-align: left; font-family: var(--font-sans); color: var(--color-text-muted); padding: var(--space-6) var(--space-4); }
