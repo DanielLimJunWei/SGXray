@@ -392,3 +392,12 @@ Plan for them (agreed 9 Nov 2026):
 - `src/checks.py` compares saved trades and manual dividends with market data and gives **warnings, not errors**: a trade on a day SGX didn't trade (public holiday), a price more than 10% from that day's close, a manual dividend at a time of year the company doesn't usually pay. They only work once prices are saved, so the order is: import, then `market.py`, then `checks.py`.
 - Real trades before a split or bonus issue pass the 10% check, because saved prices are real too.
 - `pd.read_csv` does **not** check the data: a word in the price column or a weekend date loads without any error. The CSV importer must validate every row (numbers are numbers, dates are trading days, SELLs don't exceed holdings) and reject bad rows with a clear message.
+
+
+## Works well on phones (w307, 12 Nov 2026)
+
+Checked every page at 375px wide (a typical phone) on a scratch copy, logged in and out: nothing spilled off the screen, forms and lessons fit, wide tables scroll sideways inside their own box. Two real problems, both fixed:
+- The top bar hid its links on phones, so Learn, Practice, Trades and Account couldn't be reached at all. Now, at 720px and narrower, a "Menu" button opens a panel with every link (logged in: Home, Demo, Learn, Your portfolio, Practice, Trades, Account, Log out; logged out: Home, Demo, Learn, Log in, Create an account). It's the browser's own popover (`popover` / `popovertarget`), so it closes by tapping outside or pressing Esc with no extra script. Rows are 44px tall (a comfortable finger target), and the page you're on has a faint blue bar. Wider screens keep the links in the bar.
+- Wide tables kept scrolling the stock's name out of view. On phones the first column is pinned (`position: sticky`), so you always know which row you're reading.
+- The tappable words inside sentences are under 24px tall; that's allowed for links inside text (WCAG 2.2 target size has an exception for them), so they stay.
+Tests: `tests/test_phone.py`.

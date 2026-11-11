@@ -88,7 +88,33 @@ nav.site ul a:hover, nav.site ul a[aria-current="page"] { color: var(--color-tex
 .form-ok { color: var(--color-up); background: rgba(123, 196, 160, 0.08); border: 1px solid rgba(123, 196, 160, 0.35);
   border-radius: var(--radius-md); padding: var(--space-3); font-size: var(--text-sm); }
 .auth-alt { font-size: var(--text-sm); }
-@media (max-width: 720px) { .nav-link { display: none; } .nav-actions .nav-link[href$="/portfolio"] { display: inline; } }
+/* Phones (w307): the links move into a "Menu" panel instead of disappearing. */
+.nav-menu-btn { display: none; }
+.nav-menu { inset: auto; top: 4.75rem; right: var(--space-4); margin: 0; width: min(17rem, calc(100% - 2 * var(--space-4)));
+  padding: var(--space-2); display: none; flex-direction: column; color: var(--color-text);
+  background: var(--color-surface-raised); border: 1px solid var(--color-line-strong); border-radius: var(--radius-lg);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45); }
+.nav-menu:popover-open { display: flex; }
+.nav-menu a { display: flex; align-items: center; min-height: 44px; padding: 0 var(--space-3); border-radius: var(--radius-sm);
+  font: 500 var(--text-base)/1.2 var(--font-sans); color: var(--color-text-muted); text-decoration: none; }
+.nav-menu a:hover, .nav-menu a:focus-visible { color: var(--color-text); background: rgba(156, 196, 255, 0.06); }
+.nav-menu a[aria-current="page"] { color: var(--color-text); }
+.nav-menu a[aria-current="page"]::before { content: ""; width: 3px; height: 1.1em; margin-right: var(--space-3); border-radius: 2px;
+  background: var(--color-glow-soft); }
+.nav-menu form { margin: var(--space-2) var(--space-1) var(--space-1); padding-top: var(--space-2); border-top: 1px solid var(--color-line); }
+.nav-menu form .btn { width: 100%; justify-content: center; min-height: 44px; }
+@media (max-width: 720px) {
+  .nav-actions { display: none; }
+  .nav-menu-btn { display: inline-flex; align-items: center; min-height: 40px; padding: 0 var(--space-4); cursor: pointer;
+    font: 500 var(--text-sm)/1 var(--font-sans); color: var(--color-text); background: transparent;
+    border: 1px solid var(--color-line-strong); border-radius: var(--radius-md); }
+  .nav-menu-btn:hover { border-color: var(--color-glow-soft); }
+  /* Wide tables scroll sideways inside their box; the first column (the stock) stays put, so you always
+     know which row you're reading. */
+  .table-wrap table.data th:first-child, .table-wrap table.data td:first-child {
+    position: sticky; left: 0; z-index: 1; background: var(--color-surface); box-shadow: 1px 0 0 var(--color-line); }
+}
+@media (min-width: 721px) { .nav-menu:popover-open { display: none; } }
 
 /* ---------- The lightbox (log in, sign up, account) ----------
    A backlit panel with a sheet of film clipped to it. Radii are nested: the box is 14px, its 10px

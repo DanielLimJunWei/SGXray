@@ -41,6 +41,25 @@
     {% endif %}
   </div>
   {% endblock %}
+  {#- Phones (w307): every link in one quiet "Menu" panel. The browser's own popover opens and closes it:
+      tap outside or press Esc to close, no script needed. Hidden on wider screens, where the links fit. -#}
+  <button class="nav-menu-btn" type="button" popovertarget="nav-menu">Menu</button>
+  <div class="nav-menu" id="nav-menu" popover>
+    {% set here = request.endpoint %}
+    <a href="{{ url_for('home') }}"{% if here == "home" %} aria-current="page"{% endif %}>Home</a>
+    <a href="{{ url_for('demo') }}"{% if here == "demo" %} aria-current="page"{% endif %}>Demo</a>
+    <a href="{{ url_for('learn') }}"{% if here in ("learn", "lesson", "ready") %} aria-current="page"{% endif %}>Learn</a>
+    {% if current_user %}
+    <a href="{{ url_for('portfolio') }}"{% if here == "portfolio" %} aria-current="page"{% endif %}>Your portfolio</a>
+    <a href="{{ url_for('practice_page') }}"{% if here in ("practice_page", "practice_trades", "practice_reset") %} aria-current="page"{% endif %}>Practice</a>
+    <a href="{{ url_for('trades_page') }}"{% if here in ("trades_page", "edit_trade", "delete_trade") %} aria-current="page"{% endif %}>Trades</a>
+    <a href="{{ url_for('account') }}"{% if here in ("account", "account_password") %} aria-current="page"{% endif %}>Account</a>
+    <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn btn-ghost" type="submit">Log out</button></form>
+    {% else %}
+    <a href="{{ url_for('login') }}"{% if here == "login" %} aria-current="page"{% endif %}>Log in</a>
+    <a href="{{ url_for('signup') }}"{% if here == "signup" %} aria-current="page"{% endif %}>Create an account</a>
+    {% endif %}
+  </div>
 </nav>
 
 <main class="content" id="main">
