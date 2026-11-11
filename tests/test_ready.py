@@ -109,3 +109,12 @@ def test_every_question_has_a_lesson_or_an_outside_link():
     for q in readiness.QUESTIONS:
         assert q.lesson in BY_SLUG or q.outside.startswith("https://"), q.key
         assert q.good <= {v for v, _ in q.options}, q.key
+
+
+def test_the_result_is_a_diagnosis_film_on_the_lightbox(app):
+    page = send(app.test_client(), ALL_GOOD).get_data(as_text=True)
+    assert 'class="lightbox lightbox-wide"' in page and '<span class="film-scan">Diagnosis</span>' in page
+    assert 'class="film-image"' not in page                  # no portfolio line on a diagnosis
+    assert ">unidentified<" in page                           # logged out: no name on the film
+    ann = signed_up(app)
+    assert "ann@example.com" in send(ann, ALL_GOOD).get_data(as_text=True)

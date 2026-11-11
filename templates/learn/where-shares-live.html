@@ -27,7 +27,7 @@
 <p class="demo-figure">{{ sums.dividends|money }} <span class="demo-figure-sub">of dividends so far</span></p>
 <ul class="demo-list">
   {% for s in sums.by_stock %}
-  <li><b>{{ s.name }}</b> <span class="demo-num">{{ s.dividends|money }}</span></li>
+  <li>{% if split %}<span class="key-swatch split-{{ split[loop.index0].kind }}" aria-hidden="true"></span>{% endif %}<b>{{ s.name }}</b> <span class="demo-num">{{ s.dividends|money }}</span></li>
   {% endfor %}
 </ul>
 <p>In a CDP account, each of those payments would have gone straight into the demo owner's bank account. In a custodian account, each would have arrived in the broker account first, possibly minus a handling fee. On a portfolio this size the fees are small, but they repeat with every payment, every year.</p>

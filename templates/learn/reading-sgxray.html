@@ -26,9 +26,9 @@
 {% block demo %}
 {% if layers %}
 <ul class="demo-list">
-  <li><b>Your own money</b> <span class="demo-num">{{ layers.money|money }}</span></li>
-  <li><b>Price gains</b> <span class="demo-num {{ layers.gains|trend }}">{{ layers.gains|money(signed=True) }}</span></li>
-  <li><b>Dividends</b> <span class="demo-num">{{ layers.dividends|money }}</span></li>
+  <li><span class="key-swatch split-money" aria-hidden="true"></span><b>Your own money</b> <span class="demo-num">{{ layers.money|money }}</span></li>
+  <li><span class="key-swatch split-gains" aria-hidden="true"></span><b>Price gains</b> <span class="demo-num {{ layers.gains|trend }}">{{ layers.gains|money(signed=True) }}</span></li>
+  <li><span class="key-swatch split-dividends" aria-hidden="true"></span><b>Dividends</b> <span class="demo-num">{{ layers.dividends|money }}</span></li>
   <li><b>All together</b> <span class="demo-num">{{ layers.total|money }}</span></li>
   {% if layers.sti %}<li><b>Same money in the STI ETF</b> <span class="demo-num">{{ layers.sti|money }}</span></li>{% endif %}
 </ul>

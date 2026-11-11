@@ -224,25 +224,124 @@ def scam_compare(returns):
 
 
 def facts_for(conn, slug):
-    """Everything one lesson's "In the demo" box needs, from the demo portfolio. Missing pieces are None,
-    and each lesson then says the demo isn't loaded yet instead of showing a blank."""
+    """Everything one lesson's "In the demo" box needs, from the demo portfolio, plus its small film.
+    Missing pieces are None, and each lesson then says the demo isn't loaded yet instead of a blank."""
     uid = demo_user_id(conn)
     if uid is None:
         # No demo loaded: only the scams lesson's "3% a month" example works without it.
         return {"scam": scam_compare(None)} if slug == "scams" else {}
-    if slug == "first-dollar":
-        return {"dip": biggest_dip(conn, uid)}
+    f = {}
+    if slug in ("first-dollar", "scams", "risk-and-time"):
+        f["dip"] = biggest_dip(conn, uid)
+        f["film"] = dip_film(conn, uid, f["dip"])
     if slug == "what-you-own":
-        return {"owned": what_you_own(conn, uid)}
-    if slug in ("where-shares-live", "fees", "dividends"):
-        return {"sums": money_summary(conn, uid)}
+        f["owned"] = what_you_own(conn, uid)
+        f["split"] = split_film([(h["name"], h["value"], h["type"]) for h in f["owned"]])
+    if slug in ("where-shares-live", "fees", "dividends", "risk-and-time"):
+        f["sums"] = money_summary(conn, uid)
+    if slug in ("where-shares-live", "dividends") and f["sums"]:
+        kinds = {r["ticker"]: r["type"] for r in db.get_instruments(conn)}
+        f["split"] = split_film([(s["name"], s["dividends"], kinds.get(s["ticker"], "stock"))
+                                 for s in f["sums"]["by_stock"]])
+    if slug in ("scams", "stocks-vs-market", "reading-sgxray"):
+        f["returns"] = returns_summary(conn, uid)
     if slug == "scams":
-        r = returns_summary(conn, uid)
-        return {"scam": scam_compare(r), "returns": r, "dip": biggest_dip(conn, uid)}
-    if slug == "risk-and-time":
-        return {"dip": biggest_dip(conn, uid), "sums": money_summary(conn, uid)}
-    if slug == "stocks-vs-market":
-        return {"returns": returns_summary(conn, uid)}
+        f["scam"] = scam_compare(f["returns"])
+    if slug == "stocks-vs-market" and f["returns"]:
+        f["diffs"] = diff_film(f["returns"]["stocks"])
     if slug == "reading-sgxray":
-        return {"returns": returns_summary(conn, uid), "layers": xray_layers(conn, uid)}
-    return {}
+        f["layers"] = xray_layers(conn, uid)
+        if f["layers"]:
+            L = f["layers"]
+            f["split"] = split_film([("Your own money", L["money"], "money"), ("Price gains", L["gains"], "gains"),
+                                     ("Dividends", L["dividends"], "dividends")])
+    return f
+
+
+# ---------- Small "films" for the In the demo boxes (drawn as plain SVG, no script) ----------
+# Each is the demo's real data, scaled into a 400 x 80 box. Nothing decorative: if the data isn't there,
+# there's no film.
+
+FILM_W, FILM_H, FILM_PAD = 400, 80, 6
+
+
+def _points(values):
+    """Values -> "x,y x,y ..." across the film, highest value at the top."""
+    lo, hi = min(values), max(values)
+    span = (hi - lo) or 1.0
+    n = len(values)
+    out = []
+    for i, v in enumerate(values):
+        x = FILM_PAD + (FILM_W - 2 * FILM_PAD) * (i / (n - 1) if n > 1 else 0.5)
+        y = FILM_PAD + (FILM_H - 2 * FILM_PAD) * (1 - (v - lo) / span)
+        out.append((round(x, 1), round(y, 1)))
+    return out
+
+
+def dip_film(conn, user_id, dip, before=21, after=14):
+    """The demo's line around its biggest fall: a few weeks before the peak to a little after it climbed
+    back. The fall itself is its own piece of line, so the page can colour just that part.
+    Returns {"line", "fall", "peak", "low", "label"} or None."""
+    if not dip:
+        return None
+    import datetime as dt
+    h = history.value_history(conn, user_id)
+    if h is None or h.empty:
+        return None
+    h = h.dropna(subset=["value"])
+    # Stay inside the stretch with no trades around the fall: a buy or sale is money moving, not the
+    # market, and drawing its jump would make the film say something untrue.
+    stretch = (h["net_invested"] != h["net_invested"].shift()).cumsum()
+    at_peak = stretch[h.index.date == dip["peak_day"]]
+    if at_peak.empty:
+        return None
+    same = h[stretch == at_peak.iloc[0]]
+    start = max(dip["peak_day"] - dt.timedelta(days=before), same.index[0].date())
+    end = min((dip["back_day"] or dip["now_day"]) + dt.timedelta(days=after), same.index[-1].date())
+    part = h.loc[str(start):str(end), "value"]
+    if len(part) < 3:
+        return None
+    days = [d.date() for d in part.index]
+    pts = _points([float(v) for v in part.values])
+    i_peak = days.index(dip["peak_day"]) if dip["peak_day"] in days else 0
+    i_low = days.index(dip["low_day"]) if dip["low_day"] in days else len(days) - 1
+    as_text = lambda ps: " ".join(f"{x},{y}" for x, y in ps)
+    return {"line": as_text(pts), "fall": as_text(pts[i_peak:i_low + 1]), "peak": pts[i_peak], "low": pts[i_low],
+            "label": f"The demo's value from {start.day} {start:%B %Y} to {end.day} {end:%B %Y}, falling from "
+                     f"${dip['peak']:,.0f} to ${dip['low']:,.0f}"
+                     + (f" and back above it by {dip['back_day'].day} {dip['back_day']:%B %Y}" if dip["back_day"] else "")}
+
+
+def split_film(parts):
+    """One bar split by share, like an X-ray of a total: parts = [(label, value, kind), ...].
+    kind picks the colour (stock, etf, reit, money, gains, dividends). Returns a list of
+    {"x", "w", "kind", "label", "share"}, or None if nothing to split."""
+    parts = [p for p in parts if p[1] and p[1] > 0]
+    total = sum(p[1] for p in parts)
+    if not parts or not total:
+        return None
+    out, x = [], 0.0
+    for label, value, kind in parts:
+        w = FILM_W * value / total
+        out.append({"x": round(x, 1), "w": round(max(w - 2, 1), 1), "kind": kind, "label": label,
+                    "share": value / total})
+        x += w
+    return out
+
+
+def diff_film(stocks):
+    """Lesson 8: one short bar per stock, up from a middle line if it beat the STI ETF, down if it
+    trailed. Returns [{"x", "y", "h", "up", "name", "difference"}] or None."""
+    if not stocks:
+        return None
+    biggest = max(abs(s["difference"]) for s in stocks) or 1.0
+    mid, reach = FILM_H / 2, FILM_H / 2 - FILM_PAD
+    slot = FILM_W / len(stocks)
+    out = []
+    for i, s in enumerate(stocks):
+        h = max(reach * abs(s["difference"]) / biggest, 1.0)
+        up = s["difference"] >= 0
+        out.append({"x": round(slot * i + slot * 0.3, 1), "w": round(slot * 0.4, 1),
+                    "y": round(mid - h if up else mid, 1), "h": round(h, 1), "up": up,
+                    "name": s["name"], "difference": s["difference"]})
+    return out

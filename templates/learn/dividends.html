@@ -25,7 +25,7 @@
 <p class="demo-figure">{{ sums.dividends|money }} <span class="demo-figure-sub">of dividends since {{ sums.first_day|longdate }}</span></p>
 <ul class="demo-list">
   {% for s in sums.by_stock %}
-  <li><b>{{ s.name }}</b> <span class="demo-num">{{ s.dividends|money }}</span></li>
+  <li>{% if split %}<span class="key-swatch split-{{ split[loop.index0].kind }}" aria-hidden="true"></span>{% endif %}<b>{{ s.name }}</b> <span class="demo-num">{{ s.dividends|money }}</span></li>
   {% endfor %}
 </ul>
 {% if sums.profit > 0 %}<p>That's {{ "%.0f%%"|format(sums.dividends / sums.profit * 100) }} of the demo's {{ sums.profit|money }} total profit, all of it tax-free because these are Singapore companies and funds. A price chart alone would leave it out.</p>{% endif %}

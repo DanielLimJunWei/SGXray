@@ -24,7 +24,7 @@
 <p>What the demo holds today:</p>
 <ul class="demo-list">
   {% for h in owned %}
-  <li><b>{{ h.name }}</b> <span class="demo-kind">{{ h.kind }}</span>
+  <li><span class="key-swatch split-{{ h.type }}" aria-hidden="true"></span><b>{{ h.name }}</b> <span class="demo-kind">{{ h.kind }}</span>
       <span class="demo-num">{{ h.value|money }} · {{ "%.0f%%"|format(h.weight * 100) }} of the portfolio</span></li>
   {% endfor %}
 </ul>

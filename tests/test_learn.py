@@ -269,3 +269,28 @@ def test_a_demo_with_no_dividends_yet_says_so_instead_of_not_loaded(app, db_path
     load_demo(db_path)
     page = app.test_client().get("/learn/dividends").get_data(as_text=True)
     assert "hasn't been paid any dividends yet" in page and "isn't loaded yet" not in page
+
+
+def test_lesson_films_draw_the_demos_real_data_and_vanish_without_it(app, db_path):
+    c = app.test_client()
+    assert 'class="lesson-film' not in c.get("/learn/first-dollar").get_data(as_text=True)   # no demo: no film
+    load_demo(db_path)
+    first = c.get("/learn/first-dollar").get_data(as_text=True)
+    assert '<polyline class="film-fall"' in first and "falling from $7,800 to $6,200" in first
+    assert 'class="split-stock"' in c.get("/learn/what-you-own").get_data(as_text=True)
+    assert 'class="film-bar' in c.get("/learn/stocks-vs-market").get_data(as_text=True)
+    assert 'class="split-money"' in c.get("/learn/reading-sgxray").get_data(as_text=True)
+    assert 'class="lesson-num" aria-hidden="true">1<' in c.get("/learn").get_data(as_text=True)
+
+
+def test_the_fall_film_never_draws_a_trade_as_a_market_move(app, db_path):
+    """A buy just before the peak would show as a jump up; the film starts after it instead."""
+    uid = load_demo(db_path)
+    conn = db.get_connection(db_path)
+    db.add_trade(conn, uid, "D05.SI", "2025-01-27", "BUY", 50, 41.0, 10.0)      # a week before the 3 Feb peak
+    db.save_prices(conn, "D05.SI", [("2025-01-27", 41.0)])
+    db.save_prices(conn, "ES3.SI", [("2025-01-27", 3.55)])
+    dip = lessons.biggest_dip(conn, uid)
+    film = lessons.dip_film(conn, uid, dip)
+    conn.close()
+    assert "from 27 January 2025" in film["label"]                               # not from before the buy

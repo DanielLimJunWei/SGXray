@@ -24,6 +24,25 @@
 
   <aside class="panel lesson-demo" aria-labelledby="demo-title">
     <h2 id="demo-title" class="eyebrow">In the demo</h2>
+    {#- A small film of the demo's real numbers, drawn like the X-ray chart: faint, 1px, no animation. -#}
+    {% if film %}
+    <svg class="lesson-film" viewBox="0 0 400 80" preserveAspectRatio="none" role="img" aria-label="{{ film.label }}">
+      <line class="film-base" x1="0" y1="{{ film.peak[1] }}" x2="400" y2="{{ film.peak[1] }}"/>
+      <polyline class="film-line film-trace" points="{{ film.line }}"/>
+      <polyline class="film-fall" points="{{ film.fall }}"/>
+      <circle class="film-dot" cx="{{ film.peak[0] }}" cy="{{ film.peak[1] }}" r="2"/>
+      <circle class="film-dot film-dot-low" cx="{{ film.low[0] }}" cy="{{ film.low[1] }}" r="2"/>
+    </svg>
+    {% elif diffs %}
+    <svg class="lesson-film" viewBox="0 0 400 80" preserveAspectRatio="none" role="img" aria-label="Each stock against the same money in the STI ETF: bars up beat it, bars down trailed it">
+      <line class="film-base" x1="0" y1="40" x2="400" y2="40"/>
+      {% for d in diffs %}<rect class="film-bar {{ 'is-up' if d.up else 'is-down' }}" x="{{ d.x }}" y="{{ d.y }}" width="{{ d.w }}" height="{{ d.h }}"/>{% endfor %}
+    </svg>
+    {% elif split %}
+    <svg class="lesson-film lesson-split" viewBox="0 0 400 14" preserveAspectRatio="none" role="img" aria-label="{% for s in split %}{{ s.label }} {{ '%.0f%%'|format(s.share * 100) }}{{ ', ' if not loop.last }}{% endfor %}">
+      {% for s in split %}<rect class="split-{{ s.kind }}" x="{{ s.x }}" y="0" width="{{ s.w }}" height="14" rx="2"/>{% endfor %}
+    </svg>
+    {% endif %}
     {% block demo %}{% endblock %}
   </aside>
 

@@ -3,6 +3,7 @@
   Nothing here is saved: the answers come in the POST body, are used once for the result, and are gone.
 #}
 {% extends "base.html" %}
+{% from "_lightbox.html" import lightbox %}
 {% block title %}Am I ready to start? · Learn · SGXray{% endblock %}
 
 {% block content %}
@@ -14,7 +15,8 @@
   </header>
 
   {% if result %}
-  <section class="panel ready-result" aria-labelledby="result-title" tabindex="-1" id="result">
+  <section class="ready-result" aria-labelledby="result-title" tabindex="-1" id="result">
+  {% call lightbox(current_user.email if current_user else "unidentified", "Diagnosis", chart=False, wide=True) %}
     <h2 id="result-title"><span class="ready-count">{{ result.in_place }} of {{ result.total }}</span> in place{% if result.skipped %} <span class="muted">· {{ result.skipped }} skipped</span>{% endif %}</h2>
     <ul class="ready-list">
       {% for r in result.rows %}
@@ -36,6 +38,7 @@
       <a class="btn btn-ghost" href="{{ url_for('learn') }}">All lessons</a>
       <a class="btn btn-ghost" href="{{ url_for('demo') }}">Look at the demo</a>
     </div>
+  {% endcall %}
   </section>
   {% endif %}
 
