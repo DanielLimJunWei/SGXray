@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from "_explain.html" import explain_buttons, pop_head, pop_resize %}
 {% from "_term.html" import term, term_popups %}
-{% block title %}{{ "Demo portfolio" if mode == "demo" else "Your portfolio" }} · SGXray{% endblock %}
+{% block title %}{{ {"demo": "Demo portfolio", "practice": "Practice portfolio"}.get(mode, "Your portfolio") }} · SGXray{% endblock %}
 {% block navlinks %}
   <ul>
     <li><a href="{{ url_for('home') }}">Home</a></li>
@@ -35,12 +35,14 @@
 {% block content %}
 <div class="page wrap">
   <header class="page-head">
-    <p class="eyebrow">{% if mode == "demo" %}Demo portfolio · sample trades, real SGX prices{% else %}Your portfolio · {{ current_user.email }}{% endif %}</p>
-    <h1>Your portfolio</h1>
+    <p class="eyebrow">{% if mode == "demo" %}Demo portfolio · sample trades, real SGX prices{% elif mode == "practice" %}Practice · pretend money, real SGX prices{% else %}Your portfolio · {{ current_user.email }}{% endif %}</p>
+    <h1>{{ "Practice portfolio" if mode == "practice" else "Your portfolio" }}</h1>
+    {% if mode == "practice" %}<p class="practice-cash">{{ term("practice-cash", "Pretend cash") }} <b>{{ cash|money }}</b> <span class="muted">of {{ start_cash|money }} to start · none of this is real money</span></p>{% endif %}
     {% if s %}
     <p class="as-of">{% if s.prices_as_of %}Prices as of {{ s.prices_as_of|longdate }}{% elif waiting %}Prices: waiting for today's close{% else %}No prices downloaded yet{% endif %} · {{ term("closing-price", "closing prices") }}</p>
     {% endif %}
     {% if s and mode == "own" %}<p><a class="btn btn-well" href="{{ url_for('trades_page') }}">Add or change trades</a></p>{% endif %}
+    {% if mode == "practice" %}<p><a class="btn btn-well" href="{{ url_for('practice_trades') }}">Make a practice trade</a></p>{% endif %}
   </header>
 
   {% if not s %}
@@ -49,6 +51,10 @@
     <h2>The demo portfolio isn't loaded yet</h2>
     <p class="muted">Load the sample trades, then download their prices:</p>
     <p><code>python src/importer.py data/demo_trades.csv</code><br><code>python src/market.py</code></p>
+    {% elif mode == "practice" %}
+    <h2>No practice trades yet</h2>
+    <p class="muted">You have {{ cash|money }} of pretend cash. Buy any SGX stock, REIT or ETF at its latest closing price, with real fees, and this page fills in exactly like a real portfolio. Nothing here is real money.</p>
+    <p><a class="btn btn-primary" href="{{ url_for('practice_trades') }}">Make your first practice trade</a> <a class="btn btn-ghost" href="{{ url_for('learn') }}">Read the lessons first</a></p>
     {% else %}
     <h2>No trades yet</h2>
     <p class="muted">Add the buys and sells from your broker's contract notes, and SGXray works out the rest. Not sure what you'll see? Explore the demo first.</p>

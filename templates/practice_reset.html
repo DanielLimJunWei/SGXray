@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Start over · Practice · SGXray{% endblock %}
+{% block content %}
+<div class="page wrap trades">
+  <header class="page-head">
+    <p class="eyebrow"><a href="{{ url_for('practice_trades') }}">Practice trades</a> · start over</p>
+    <h1>Start the practice portfolio over?</h1>
+    <p class="muted">This deletes {{ "all " ~ count ~ " practice trades" if count != 1 else "your 1 practice trade" }} and puts your pretend cash back to $10,000. Your real portfolio isn't touched. This can't be undone.</p>
+  </header>
+  <form method="post" action="{{ url_for('practice_reset') }}" class="trade-actions">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <button class="btn btn-primary" type="submit">Yes, start over</button>
+    <a class="quiet-link" href="{{ url_for('practice_trades') }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

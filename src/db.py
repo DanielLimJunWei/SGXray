@@ -156,6 +156,11 @@ MIGRATIONS = [
     ("users", "session_version", "ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 1"),
     # "Why I bought" (w317): your own reason for a trade, in your words. Optional, so NULL for most trades.
     ("trades", "note", "ALTER TABLE trades ADD COLUMN note TEXT CHECK (note IS NULL OR length(note) <= 280)"),
+    # Practice portfolio (w320): each account's hidden "practice twin" points back to its owner, and is
+    # deleted with it. The twin also keeps the practice fee settings (NULL = the typical fee).
+    ("users", "practice_of", "ALTER TABLE users ADD COLUMN practice_of INTEGER REFERENCES users(id) ON DELETE CASCADE"),
+    ("users", "fee_rate", "ALTER TABLE users ADD COLUMN fee_rate REAL CHECK (fee_rate IS NULL OR (fee_rate >= 0 AND fee_rate <= 0.02))"),
+    ("users", "fee_min", "ALTER TABLE users ADD COLUMN fee_min REAL CHECK (fee_min IS NULL OR (fee_min >= 0 AND fee_min <= 100))"),
 ]
 
 
@@ -466,6 +471,45 @@ def get_trades(conn, user_id):
         """,
         (user_id,),
     ).fetchall()
+
+
+# ---------- Practice portfolio (w320) ----------
+
+PRACTICE_HASH = "!practice-no-login"     # starts with "!": auth.check_login and the reset form refuse it
+
+
+def practice_user(conn, owner_id):
+    """The hidden "practice twin" of this account, made the first time it's needed. It can't log in or
+    get a reset email (its password is the "!" no-login marker, like the demo), and it's deleted with
+    its owner. Every calculation then works on it exactly as on a real portfolio."""
+    row = conn.execute("SELECT * FROM users WHERE practice_of = ?", (owner_id,)).fetchone()
+    if row is not None:
+        return row
+    with conn:
+        conn.execute("INSERT INTO users (email, password_hash, practice_of) VALUES (?, ?, ?)",
+                     (f"practice-{owner_id}@practice.invalid", PRACTICE_HASH, owner_id))
+    return conn.execute("SELECT * FROM users WHERE practice_of = ?", (owner_id,)).fetchone()
+
+
+def set_practice_fees(conn, twin_id, rate, minimum):
+    """Your own broker's fee for practice trades, or (None, None) for the typical fee."""
+    with conn:
+        conn.execute("UPDATE users SET fee_rate = ?, fee_min = ? WHERE id = ? AND practice_of IS NOT NULL",
+                     (rate, minimum, twin_id))
+
+
+def delete_all_trades(conn, user_id):
+    """Start over: every trade of this (practice) user. Returns how many were deleted."""
+    with conn:
+        cur = conn.execute("DELETE FROM trades WHERE user_id = ?", (user_id,))
+    return cur.rowcount
+
+
+def latest_close(conn, ticker):
+    """(date, close) of the newest saved price, or None."""
+    row = conn.execute("SELECT price_date, close FROM prices WHERE ticker = ? ORDER BY price_date DESC LIMIT 1",
+                       (ticker,)).fetchone()
+    return (row["price_date"], row["close"]) if row else None
 
 
 # ---------- Lessons read (w313) ----------

@@ -31,6 +31,7 @@
     <a class="nav-link" href="{{ url_for('learn') }}">Learn</a>
     {% if current_user %}
     <a class="nav-link" href="{{ url_for('portfolio') }}">Your portfolio</a>
+    <a class="nav-link" href="{{ url_for('practice_page') }}">Practice</a>
     <a class="nav-link" href="{{ url_for('trades_page') }}">Trades</a>
     <a class="nav-link" href="{{ url_for('account') }}">Account</a>
     <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn btn-ghost" type="submit">Log out</button></form>

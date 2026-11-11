@@ -118,3 +118,14 @@ def test_the_result_is_a_diagnosis_film_on_the_lightbox(app):
     assert ">unidentified<" in page                           # logged out: no name on the film
     ann = signed_up(app)
     assert "ann@example.com" in send(ann, ALL_GOOD).get_data(as_text=True)
+
+
+def test_the_diagnosis_film_has_a_light_switch_and_the_form_page_doesnt(app):
+    c = app.test_client()
+    assert "data-light-switch" not in c.get("/learn/ready").get_data(as_text=True)
+    page = send(c, ALL_GOOD).get_data(as_text=True)
+    for side in ("left", "right"):                                            # both clips are switches
+        assert f'<button class="clip clip-{side} clip-switch" type="button" data-light-switch aria-pressed="false"' in page
+    assert "js/lightbox.js" in page
+    login = c.get("/login").get_data(as_text=True)
+    assert "data-light-switch" not in login                                   # not on the login page

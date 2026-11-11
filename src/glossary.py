@@ -261,6 +261,10 @@ TERMS = {
                       "How your picks did, ignoring when you added or took out money, as if one dollar had stayed "
                       "in from the start. It's how funds report, so it's the fair way to compare picks.",
                       "Funds and the STI ETF report time-weighted returns."),
+    "practice-cash": ("Pretend cash",
+                      "The practice portfolio's money. You start with $10,000 of it; buys and their fees take it "
+                      "away, sales and dividends add it back. It isn't real and can't be withdrawn.",
+                      "Buy 100 DBS at $69.72: $6,972.00 plus $13.94 of fees, so $10,000 becomes $3,014.06."),
     "per-stock": ("Per stock",
                   "This column only has a number for one stock at a time (its own shares, price, cost or "
                   "dividend per share), so a whole-portfolio total wouldn't mean anything. Each stock's "

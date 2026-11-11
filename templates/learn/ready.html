@@ -16,7 +16,7 @@
 
   {% if result %}
   <section class="ready-result" aria-labelledby="result-title" tabindex="-1" id="result">
-  {% call lightbox(current_user.email if current_user else "unidentified", "Diagnosis", chart=False, wide=True) %}
+  {% call lightbox(current_user.email if current_user else "unidentified", "Diagnosis", chart=False, wide=True, switch=True) %}
     <h2 id="result-title"><span class="ready-count">{{ result.in_place }} of {{ result.total }}</span> in place{% if result.skipped %} <span class="muted">· {{ result.skipped }} skipped</span>{% endif %}</h2>
     <ul class="ready-list">
       {% for r in result.rows %}
@@ -68,3 +68,4 @@
   <p class="lesson-foot">Educational, not financial advice. SGXray never tells you what to buy, or whether to invest.</p>
 </div>
 {% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/lightbox.js') }}" defer></script>{% endblock %}

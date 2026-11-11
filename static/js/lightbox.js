@@ -35,6 +35,20 @@
     btn.addEventListener("click", () => set(field.type === "password"));
     if (field.form) field.form.addEventListener("submit", () => set(false));
   });
+  // The self-check's Diagnosis film: both clips are light switches. Click either and the lightbox goes
+  // dark, like switching off a real one; click either again and it comes back on. Both clips always show
+  // the same state. Just for fun: nothing is saved.
+  const switches = [...document.querySelectorAll("[data-light-switch]")];
+  switches.forEach(sw => {
+    sw.addEventListener("click", () => {
+      const off = box.classList.toggle("off");
+      switches.forEach(s => {
+        s.setAttribute("aria-pressed", String(off));
+        s.setAttribute("aria-label", off ? "Turn the lightbox light on" : "Turn the lightbox light off");
+        s.title = off ? "Turn the light on" : "Turn the light off";
+      });
+    });
+  });
   // On the log-in film the patient is "unidentified" until you start typing your email, when the
   // label quietly fills in with it, like a name being written on the film. Empty again: unidentified.
   document.querySelectorAll("[data-patient-from]").forEach(label => {

@@ -640,3 +640,20 @@ a.lesson-link:hover { color: var(--color-glow-soft); }
 .lesson-item { padding-left: var(--space-4); }
 .lesson-num { font: 400 var(--text-sm)/1.6 var(--font-mono); letter-spacing: 0.04em; color: var(--color-text-faint); }
 .lesson-item.is-read .lesson-num, .lesson-item.is-read .lesson-state { color: var(--color-up); }
+
+/* ---------- Practice portfolio (w320) ---------- */
+.practice-cash { margin: 0; font-size: var(--text-sm); color: var(--color-text-muted); }
+.practice-cash b { font: 500 var(--text-lg)/1.2 var(--font-mono); color: var(--color-text); margin-inline: var(--space-1); }
+.practice-fee { margin: var(--space-4) 0 0; font-size: var(--text-sm); color: var(--color-text-muted); }
+.practice-reset { margin: var(--space-3) 0 0; font-size: var(--text-sm); }
+.practice .lookup-row label { display: grid; gap: var(--space-1); font-size: var(--text-sm); color: var(--color-text-muted); }
+.practice .lookup-row input { width: 7rem; }
+
+/* The self-check's light switch: the right-hand clip on the Diagnosis film. Off, the backlight fades to
+   almost nothing (the same 450ms fade as the login's dimming); the clip sits a pixel lower, pressed. */
+.clip-switch { padding: 0; cursor: pointer; transition: transform var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out); }
+.clip-switch:hover { border-color: rgba(156, 196, 255, 0.4); }
+.clip-switch:focus-visible { outline: 2px solid var(--color-glow-soft); outline-offset: 2px; }
+.clip-switch[aria-pressed="true"] { transform: translateY(1px); background: #1d2842; }
+.lightbox.off::before { opacity: 0.04; }
+.lightbox.off .film { border-color: rgba(156, 196, 255, 0.08); }

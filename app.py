@@ -41,6 +41,7 @@ import insights  # noqa: E402
 from importer import DEMO_EMAIL  # noqa: E402
 from income import by_year, forecast, portfolio_yield, yields  # noqa: E402
 import lessons  # noqa: E402
+import practice  # noqa: E402
 import readiness  # noqa: E402
 import lookup  # noqa: E402
 import mailer  # noqa: E402
@@ -137,6 +138,77 @@ def create_app(db_path=None):
                                result=readiness.check(answers) if request.method == "POST" else None,
                                chosen=answers)
 
+    # ---------- Practice portfolio (w320) ----------
+    # Pretend trades at real SGX prices. They belong to the account's hidden "practice twin", found from the
+    # logged-in user's id in the session (never from the address), so nobody can reach anyone else's.
+
+    def _twin():
+        return db.practice_user(get_db(), g.user["id"])
+
+    @app.get("/practice")
+    @login_required
+    def practice_page():
+        twin = _twin()
+        return _portfolio_page(twin["id"], mode="practice", cash=practice.cash(get_db(), twin["id"]),
+                               start_cash=practice.START_CASH)
+
+    @app.route("/practice/trades", methods=["GET", "POST"])
+    @login_required
+    def practice_trades():
+        conn, twin = get_db(), _twin()
+        problems, values = None, {"side": "BUY"}
+        if request.method == "POST":
+            tid, problems = practice.place(conn, twin, request.form, current_app.config["MARKET_DOWNLOAD"])
+            if not problems:
+                db.log_security_event(conn, "practice_trade", g.user["id"], request.remote_addr)
+                return redirect(url_for("practice_trades", saved=tid))
+            values = {"ticker": request.form.get("ticker", "")[:16], "side": request.form.get("side", "BUY")[:4],
+                      "quantity": request.form.get("quantity", "")[:12], "note": request.form.get("note", "")[:300]}
+        return _practice_trades_page(conn, twin, values, problems), (422 if problems else 200)
+
+    @app.post("/practice/fees")
+    @login_required
+    def practice_fees():
+        conn, twin = get_db(), _twin()
+        if request.form.get("typical") == "1":
+            db.set_practice_fees(conn, twin["id"], None, None)
+            return redirect(url_for("practice_trades", fees="typical"))
+        rate, minimum, problem = practice.fee_problem(request.form.get("rate", ""), request.form.get("minimum", ""))
+        if problem:
+            return _practice_trades_page(conn, twin, {"side": "BUY"}, None, fee_error=problem), 422
+        db.set_practice_fees(conn, twin["id"], rate, minimum)
+        return redirect(url_for("practice_trades", fees="saved"))
+
+    @app.route("/practice/reset", methods=["GET", "POST"])
+    @login_required
+    def practice_reset():
+        """GET asks "are you sure?"; only the POST from that page deletes the practice trades."""
+        conn, twin = get_db(), _twin()
+        if request.method == "GET":
+            return render_template("practice_reset.html", count=db.count_trades(conn, twin["id"]))
+        db.delete_all_trades(conn, twin["id"])
+        db.log_security_event(conn, "practice_reset", g.user["id"], request.remote_addr)
+        return redirect(url_for("practice_trades", reset=1))
+
+    def _practice_trades_page(conn, twin, values, problems, fee_error=None, lookup_error=None, lookup_code=None):
+        names = {r["ticker"]: r["name"] for r in db.get_instruments(conn)}
+        rows = [{**dict(t), "name": names.get(t["ticker"], "")} for t in db.get_trades(conn, twin["id"])]
+        rows.reverse()
+        rate, minimum, typical = practice.fee_settings(twin)
+        prices = {tk: db.latest_close(conn, tk) for tk in names}
+        tickers = _tickers(conn)                      # every stock the real trade form has; prices come when you trade
+        added = request.args.get("added", "")
+        added = {"ticker": added, "name": names[added]} if added in names else None   # only a ticker that's really listed
+        if added and request.method == "GET":
+            values = {**values, "ticker": added["ticker"]}
+        return render_template("practice_trades.html", trades=rows, values=values, problems=problems,
+                               tickers=tickers, prices=prices, cash=practice.cash(conn, twin["id"]),
+                               start_cash=practice.START_CASH, rate=rate, minimum=minimum, typical=typical,
+                               example=practice.fee(1000, rate, minimum), fee_error=fee_error,
+                               saved=request.args.get("saved", type=int), reset=request.args.get("reset") == "1",
+                               fees_note=request.args.get("fees", ""), trades_ex=explain_trades(rows),
+                               added=added, lookup_error=lookup_error, lookup_code=lookup_code)
+
     @app.get("/portfolio")
     @login_required
     def portfolio():
@@ -200,11 +272,12 @@ def create_app(db_path=None):
         """Adds any SGX stock, REIT or ETF to the picker, after checking it on Yahoo (w309)."""
         conn, uid = get_db(), g.user["id"]
         typed = request.form.get("code", "")[:16]
+        back = "practice_trades" if request.form.get("then") == "practice" else "trades_page"   # only these two
         ticker = lookup.normalise(typed)
         if ticker is None:
             return _lookup_failed(conn, uid, typed, "An SGX code is up to 6 letters and numbers, like C6L or D05.")
         if any(r["ticker"] == ticker for r in db.get_instruments(conn)):
-            return redirect(url_for("trades_page", added=ticker))           # already listed: just pick it
+            return redirect(url_for(back, added=ticker))                    # already listed: just pick it
         key = f"lookup:{uid}"
         if auth.limited(conn, key, lookup.LOOKUPS_PER_HOUR, 60):
             return _lookup_failed(conn, uid, typed, "That's a lot of lookups. Try again in an hour.", 429)
@@ -219,9 +292,12 @@ def create_app(db_path=None):
         name, type_, sector = found
         db.save_instrument(conn, ticker, name, type_, sector)
         db.log_security_event(conn, "ticker_added", uid, request.remote_addr)
-        return redirect(url_for("trades_page", added=ticker))
+        return redirect(url_for(back, added=ticker))
 
     def _lookup_failed(conn, uid, typed, message, status=422):
+        if request.form.get("then") == "practice":
+            return _practice_trades_page(conn, _twin(), {"side": "BUY"}, None, lookup_error=message,
+                                         lookup_code=typed), status
         return _trades_page(conn, uid, values={"side": "BUY", "date": date.today().isoformat()},
                             lookup_error=message, lookup_code=typed), status
 
@@ -423,11 +499,12 @@ def create_app(db_path=None):
         session["password_changed"] = True
         return redirect(url_for("account"))
 
-    def _portfolio_page(uid, mode):
+    def _portfolio_page(uid, mode, **extra):
+        """extra: anything else the page needs (the practice portfolio passes its pretend cash)."""
         conn = get_db()
         df = positions(conn, uid) if uid else None
         if df is None or df.empty:
-            return render_template("dashboard.html", s=None, mode=mode)
+            return render_template("dashboard.html", s=None, mode=mode, **extra)
 
         names = {r["ticker"]: r["name"] for r in db.get_instruments(conn)}
         held = df[df["shares"] > 0].sort_values("value", ascending=False)
@@ -484,6 +561,7 @@ def create_app(db_path=None):
             periods=periods, periods_ex=explain_periods(periods) if periods else None,
             sold=sold, sold_ex=explain_sold(sold) if sold else None,
             chart_ex=explain_value_chart(conn, uid, h) if h is not None else None,
+            **extra,
         )
 
     # ---------- Errors: a calm, generic page; the details go to the server log only ----------
@@ -725,7 +803,7 @@ def _security_headers(response):
         response.headers["Referrer-Policy"] = "no-referrer"       # the reset link's secret is never passed on
     if request.endpoint in ("login", "signup", "account", "account_password", "forgot", "reset_link",
                             "reset_password", "portfolio", "trades_page", "edit_trade", "delete_trade", "lookup_ticker",
-                            "ready"):
+                            "ready", "practice_page", "practice_trades", "practice_fees", "practice_reset"):
         response.headers["Cache-Control"] = "no-store"            # private pages aren't kept in the browser cache
     return response
 

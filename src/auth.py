@@ -75,6 +75,8 @@ def password_problem(password, email=""):
 def email_problem(email):
     if not EMAIL.match(email) or len(email) > 254:
         return "Enter a valid email address."
+    if email.strip().lower().endswith(".invalid"):     # reserved: practice twins use it, and it can't get email
+        return "Enter a valid email address."
     return None
 
 

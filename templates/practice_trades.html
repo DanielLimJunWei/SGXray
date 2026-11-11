@@ -1,0 +1,139 @@
+{#
+  Practice trades (w320): pretend money, real SGX prices. You choose the stock, bought or sold, and how many
+  shares; the price and date are always the latest close, so there's no buying with hindsight. Fees are
+  charged like a real broker's. Nothing here is real money.
+#}
+{% extends "base.html" %}
+{% from "_trade_form.html" import problems_box with context %}
+{% from "_explain.html" import explain_buttons %}
+{% from "_term.html" import term, term_popups %}
+{% block title %}Practice trades · SGXray{% endblock %}
+
+{% block content %}
+<div class="page wrap trades practice">
+  <header class="page-head">
+    <p class="eyebrow"><a href="{{ url_for('practice_page') }}">Practice portfolio</a> · trades</p>
+    <h1>Practice trades</h1>
+    <p class="muted">Pretend money, real SGX prices. Each trade happens at the stock's latest closing price, with a real broker's fees, so it feels like the real thing without risking a dollar.</p>
+    <p class="practice-cash">{{ term("practice-cash", "Pretend cash") }} <b>{{ cash|money }}</b> <span class="muted">of {{ start_cash|money }} to start</span></p>
+  </header>
+
+  {% if saved %}<p class="form-ok" role="status">Practice trade saved. <a href="{{ url_for('practice_page') }}">See your practice portfolio</a></p>{% endif %}
+  {% if reset %}<p class="form-ok" role="status">Practice portfolio cleared. You're back to {{ start_cash|money }} of pretend cash.</p>{% endif %}
+  {% if fees_note == "saved" %}<p class="form-ok" role="status">Your broker's fee is saved. New practice trades use it.</p>{% endif %}
+  {% if added %}<p class="form-ok" role="status">{{ added.name }} ({{ added.ticker }}) is in the list now, and picked below.</p>{% endif %}
+  {% if fees_note == "typical" %}<p class="form-ok" role="status">Back to the typical fee for new practice trades.</p>{% endif %}
+
+  <section class="panel trade-add" aria-labelledby="add-title">
+    <h2 id="add-title">Make a practice trade</h2>
+    {{ problems_box(problems) }}
+    {% if tickers %}
+    <form class="trade-form" method="post" action="{{ url_for('practice_trades') }}" novalidate>
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <div class="field field-stock">
+        <label for="tf-ticker">Stock, REIT or ETF <span class="optional">with its latest closing price</span></label>
+        <select id="tf-ticker" name="ticker" required>
+          <option value="" {% if not values.ticker %}selected{% endif %} disabled>Choose one</option>
+          {% for group, label in [("stock", "Stocks"), ("reit", "REITs"), ("etf", "ETFs")] %}
+          <optgroup label="{{ label }}">
+            {% for t in tickers if t.type == group %}
+            {% set p = prices.get(t.ticker) %}
+            <option value="{{ t.ticker }}" {% if values.ticker == t.ticker %}selected{% endif %}>{{ t.name }} ({{ t.ticker }}){% if p %} · ${{ "%.3f"|format(p[1]) }} on {{ p[0]|shortdate }}{% else %} · price fetched when you trade{% endif %}</option>
+            {% endfor %}
+          </optgroup>
+          {% endfor %}
+        </select>
+      </div>
+      <fieldset class="field field-side">
+        <legend>Buy or sell</legend>
+        <div class="side-toggle">
+          <input type="radio" id="tf-buy" name="side" value="BUY" {% if values.side != "SELL" %}checked{% endif %}><label for="tf-buy">Buy</label>
+          <input type="radio" id="tf-sell" name="side" value="SELL" {% if values.side == "SELL" %}checked{% endif %}><label for="tf-sell">Sell</label>
+        </div>
+      </fieldset>
+      <div class="field">
+        <label for="tf-qty">Shares <span class="optional">usually 100 or more</span></label>
+        <input id="tf-qty" name="quantity" type="text" inputmode="numeric" autocomplete="off" value="{{ values.quantity or '' }}" placeholder="100" required>
+      </div>
+      <div class="field field-note">
+        <label for="tf-note"><span class="when-buy">Why I bought</span><span class="when-sell">Why I sold</span> <span class="optional">optional · a line for future you</span></label>
+        <input id="tf-note" name="note" type="text" maxlength="280" autocomplete="off" value="{{ values.note or '' }}" placeholder="Practising with a bank: steady dividends">
+      </div>
+      <div class="trade-actions">
+        <button class="btn btn-primary" type="submit">Place practice trade</button>
+      </div>
+    </form>
+    <p class="practice-fee">Fees: {% if typical %}a typical broker's{% else %}your broker's{% endif %} {{ "%g"|format(rate * 100) }}% with a {{ minimum|money }} minimum, plus SGX's fees and 9% GST. A $1,000 trade costs {{ example.total|money }} in fees ({{ example.commission|money }} + {{ example.sgx|money }} SGX + {{ example.gst|money }} GST).</p>
+    {% else %}
+    <p class="muted">No closing prices are saved yet, so there's nothing to practise with. They come with the next price update.</p>
+    {% endif %}
+
+    <details class="lookup" id="lookup"{% if lookup_error or lookup_code %} open{% endif %}>
+      <summary>Can't find your stock in the list?</summary>
+      <form method="post" action="{{ url_for('lookup_ticker') }}#lookup" class="lookup-form">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <input type="hidden" name="then" value="practice">
+        <label for="lookup-code">SGX code <span class="optional">like C6L for Singapore Airlines. It's on SGX's site and in your broker's app</span></label>
+        <div class="lookup-row">
+          <input id="lookup-code" name="code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="16" value="{{ lookup_code or '' }}" placeholder="C6L">
+          <button class="btn btn-ghost" type="submit">Look it up</button>
+        </div>
+        {% if lookup_error %}<p class="form-error" role="alert">{{ lookup_error }}</p>{% endif %}
+      </form>
+    </details>
+
+    <details class="lookup" id="fees"{% if fee_error %} open{% endif %}>
+      <summary>Use your own broker's fee instead</summary>
+      <form method="post" action="{{ url_for('practice_fees') }}#fees" class="lookup-form">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <div class="lookup-row">
+          <label for="fee-rate">Rate (%) <input id="fee-rate" name="rate" type="text" inputmode="decimal" autocomplete="off" value="{{ '%g'|format(rate * 100) }}"></label>
+          <label for="fee-min">Minimum ($) <input id="fee-min" name="minimum" type="text" inputmode="decimal" autocomplete="off" value="{{ '%g'|format(minimum) }}"></label>
+          <button class="btn btn-ghost" type="submit">Save fee</button>
+        </div>
+        {% if fee_error %}<p class="form-error" role="alert">{{ fee_error }}</p>{% endif %}
+      </form>
+      {% if not typical %}
+      <form method="post" action="{{ url_for('practice_fees') }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="typical" value="1">
+        <button class="link-btn" type="submit">Go back to the typical fee</button>
+      </form>
+      {% endif %}
+    </details>
+  </section>
+
+  <section class="block" aria-labelledby="list-title">
+    <div class="section-head"><h2 id="list-title">{{ trades|length }} practice trade{{ "s" if trades|length != 1 }}</h2>{{ explain_buttons(trades_ex, "trades", "Your practice trades") }}</div>
+    {% if trades %}
+    <div class="panel table-wrap">
+      <table class="data trades-table">
+        <thead>
+          <tr><th scope="col">Date</th><th scope="col">Stock</th><th scope="col">Side</th><th scope="col">Shares</th>
+              <th scope="col">Price</th><th scope="col">Fees</th><th scope="col">Total</th></tr>
+        </thead>
+        <tbody>
+          {% for t in trades %}
+          {% set amount = t.quantity * t.price %}
+          <tr{% if saved == t.id %} class="just-saved"{% endif %}>
+            <td>{{ t.trade_date|shortdate }}</td>
+            <td><b>{{ t.ticker }}</b><span class="name">{{ t.name }}</span>{% if t.note %}<q class="trade-note">{{ t.note }}</q>{% endif %}</td>
+            <td><span class="side side-{{ t.side|lower }}">{{ "Bought" if t.side == "BUY" else "Sold" }}</span></td>
+            <td>{{ "{:,}".format(t.quantity) }}</td>
+            <td>{{ t.price|num(".3f") }}</td>
+            <td>{{ t.fees|money }}</td>
+            <td>{{ (amount + t.fees if t.side == "BUY" else amount - t.fees)|money }}<span class="sub">{{ "paid" if t.side == "BUY" else "received" }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="practice-reset"><a href="{{ url_for('practice_reset') }}">Start over</a> <span class="muted">· clears every practice trade and gives back {{ start_cash|money }}</span></p>
+    {% else %}
+    <p class="muted">No practice trades yet. Make your first one above.</p>
+    {% endif %}
+  </section>
+</div>
+{{ term_popups() }}
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/popups.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/lookup.js') }}" defer></script>{% endblock %}
