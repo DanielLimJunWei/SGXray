@@ -168,6 +168,11 @@ TERMS = {
                  "profit and weight, and your totals) wait for it. Prices are saved by the daily price update, "
                  "after SGX closes at about 5:30pm.",
                  "Added Singapore Airlines this afternoon: its price comes with this evening's price update."),
+    "no-chart": ("No price chart yet",
+                 "A price chart is drawn from the closing prices SGXray has saved for a stock. This one has "
+                 "none saved yet, so there's nothing to draw. The daily price update saves them after SGX "
+                 "closes at about 5:30pm, and the chart appears after that.",
+                 "Added Singapore Airlines this afternoon: its chart is ready after this evening's price update."),
     "per-stock": ("Per stock",
                   "This column only has a number for one stock at a time (its own shares, price, cost or "
                   "dividend per share), so a whole-portfolio total wouldn't mean anything. Each stock's "

@@ -194,9 +194,16 @@
               <th scope="col">{{ term("cost", "Cost") }}</th><th scope="col">{{ term("worth", "Worth now") }}</th><th scope="col">{{ term("weight", "Weight") }}</th><th scope="col">{{ term("unrealised", "Unrealised") }}</th></tr>
         </thead>
         <tbody>
+          {% set charted = stock_charts|map(attribute="ticker")|list %}
           {% for r in holdings %}
           <tr>
-            <td><b>{{ r.ticker }}</b><span class="name">{{ r.name }}</span><button class="link-btn" type="button" data-chart="chart-{{ r.ticker|replace('.', '-') }}" aria-controls="chart-{{ r.ticker|replace('.', '-') }}" aria-expanded="false" hidden>Price chart</button></td>
+            <td><b>{{ r.ticker }}</b><span class="name">{{ r.name }}</span>
+              {%- if r.ticker in charted -%}
+              <button class="link-btn" type="button" data-chart="chart-{{ r.ticker|replace('.', '-') }}" aria-controls="chart-{{ r.ticker|replace('.', '-') }}" aria-expanded="false" hidden>Price chart</button>
+              {%- else -%}
+              {#- No saved prices yet, so no chart: the same link opens the reason instead of doing nothing. -#}
+              <button class="link-btn" type="button" popovertarget="term-no-chart" data-term="no-chart">Price chart</button>
+              {%- endif -%}</td>
             <td>{{ "{:,}".format(r.shares|int) }}</td>
             <td>{{ r.avg_cost|num(".3f") }}</td>
             <td>{% if r.ticker in waiting %}<span class="sub">{{ term("after-close", "after today's close") }}</span>{% else %}{{ r.price|num(".2f") }}{% endif %}</td>

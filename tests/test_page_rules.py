@@ -230,3 +230,16 @@ def test_a_stock_with_no_saved_price_follows_the_rule(app, monkeypatch):
     page = c.get("/portfolio").get_data(as_text=True)
     check_page_rules(page)
     assert "no price yet" in check_reason_words(page)
+
+
+def test_a_stock_with_no_saved_prices_explains_its_missing_chart(app, monkeypatch):
+    """Clicking "Price chart" on a stock with no saved prices used to do nothing (found 11 Nov 2026).
+    Now that link opens a box saying why there's no chart yet; stocks with prices keep their chart."""
+    monkeypatch.setattr(app_module, "_last_close_day", lambda: "2025-06-24")
+    c = _client(app)
+    _add(c)
+    _add(c, ticker="O39.SI", date="2025-06-24", price="14")          # no OCBC prices saved at all
+    page = c.get("/portfolio").get_data(as_text=True)
+    assert 'popovertarget="term-no-chart"' in page and 'id="term-no-chart"' in page
+    assert 'data-chart="chart-O39-SI"' not in page                 # no link to a chart that isn't there
+    assert 'data-chart="chart-D05-SI"' in page and 'id="chart-D05-SI"' in page

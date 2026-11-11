@@ -319,6 +319,7 @@ def test_the_account_page_shows_your_details_and_only_yours(app):
     assert "ann@example.com" in page and "bob@example.com" not in page
     assert "Joined" in page and "Change password" in page
     assert 'href="/account/password"' in page
+    assert '<span class="film-scan">Details</span>' in page          # the film's corner says Details, not File
 
 
 def test_the_account_pages_need_a_login_and_are_not_cached(app):

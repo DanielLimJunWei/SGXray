@@ -74,6 +74,15 @@ nav.site ul a:hover, nav.site ul a[aria-current="page"] { color: var(--color-tex
   border: 1px solid var(--color-line-strong); border-radius: var(--radius-md); padding: var(--space-3); }
 .auth-form input:focus { outline: none; border-color: var(--color-glow-soft); box-shadow: 0 0 0 3px rgba(156, 196, 255, 0.2); }
 .auth-form .btn { margin-top: var(--space-4); justify-content: center; }
+/* Show / Hide inside a password box (added by lightbox.js). */
+.pw-field { position: relative; display: grid; }
+.pw-field input { padding-right: 4.5rem; }
+.pw-field input::-ms-reveal { display: none; }   /* Edge's own eye icon: one button is enough */
+.pw-toggle { position: absolute; right: var(--space-2); top: 50%; transform: translateY(-50%); padding: var(--space-1) var(--space-2);
+  border: 0; border-radius: var(--radius-sm); background: none; cursor: pointer;
+  font: 500 var(--text-xs)/1.4 var(--font-sans); color: var(--color-text-muted); }
+.pw-toggle:hover { color: var(--color-glow-soft); }
+.pw-toggle:focus-visible { outline: 2px solid var(--color-glow-soft); outline-offset: 1px; }
 .form-error { color: var(--color-down); background: rgba(217, 130, 130, 0.08); border: 1px solid rgba(217, 130, 130, 0.35);
   border-radius: var(--radius-md); padding: var(--space-3); font-size: var(--text-sm); }
 .form-ok { color: var(--color-up); background: rgba(123, 196, 160, 0.08); border: 1px solid rgba(123, 196, 160, 0.35);

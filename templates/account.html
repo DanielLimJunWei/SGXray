@@ -3,7 +3,7 @@
 {% block title %}Account · SGXray{% endblock %}
 {% block content %}
 <div class="page wrap lightbox-page">
-  {% call lightbox(current_user.email, "File") %}
+  {% call lightbox(current_user.email, "Details") %}
     <h1>Your account</h1>
     {% if changed %}<p class="form-ok" role="status">Password changed. Any other devices have been logged out.</p>{% endif %}
     {# One row per thing you can see or do. Export my data and Delete my account (w411) go here later. #}
