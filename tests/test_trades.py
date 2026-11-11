@@ -296,4 +296,4 @@ def test_a_stock_with_no_price_for_another_reason_still_says_so(app, monkeypatch
     c = signed_up(app)
     add(c, ticker="O39.SI", price="14.00")
     page = html.unescape(c.get("/portfolio").get_data(as_text=True))
-    assert "No price yet for O39.SI" in page and "bought today" not in page
+    assert "No closing price is saved yet for" in page and "(O39.SI)" in page and "was bought today" not in page   # the status line, not the hidden meaning boxes

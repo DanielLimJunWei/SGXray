@@ -31,6 +31,9 @@ MAX_ATTEMPTS = 10
 WINDOW_MINUTES = 15
 SIGNUPS_PER_HOUR = 5           # new accounts from one network address in an hour
 PASSWORD_TRIES = 5             # wrong "current password" tries on the account page, per 15 minutes
+RESET_MINUTES = 30             # a "forgot your password?" link works this long, and once
+RESETS_PER_HOUR_EMAIL = 3      # reset emails for one address in an hour (no inbox flooding)
+RESETS_PER_HOUR_IP = 10        # reset requests from one network address in an hour
 EMAIL = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[^@\s]{2,}$")
 
 # The most common passwords in public breach lists (12+ characters, since shorter ones are refused

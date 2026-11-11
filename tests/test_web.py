@@ -115,8 +115,7 @@ def test_dividends_show_in_yields_and_forecast(client, db_path):
 def test_missing_prices_show_na_not_nan(client, db_path):
     load_demo(db_path, with_prices=False)
     html = client.get("/demo").get_data(as_text=True)
-    assert "No price yet" in html
-    assert "n/a" in html
+    assert "No price yet" in html and 'data-term="no-price"' in html     # a reason in words, tappable
     assert "No STI ETF prices saved yet" in html
     assert "nan" not in html.lower().replace("financial", "").replace("finance", "")
 

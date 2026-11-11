@@ -5,6 +5,8 @@ same thing. Each entry: the term as shown in the popup, a one- or two-sentence m
 example. Keep them short: a popup is a reminder, not a lesson (the Learn page is for lessons).
 """
 
+from markupsafe import Markup
+
 TERMS = {
     "worth": ("Worth now",
               "What everything you hold would sell for at the latest closing prices.",
@@ -148,11 +150,48 @@ TERMS = {
                "A stock's highest and lowest closing price over the last 52 weeks (one year), and where today's "
                "price sits between them. History, not a forecast.",
                "DBS: low $53.38, high $78.65, today $69.72, in the middle of its range."),
+    # The reason words: what a cell says instead of a number (the page rule in NOTES.md).
+    "pending": ("Pending",
+                "Waiting for tonight's closing price. You bought a stock today, and SGX publishes its first "
+                "closing price at about 5:30pm, so numbers that need that price fill in then.",
+                "Bought OCBC this morning: worth and profit say pending until the evening price update."),
+    "too-soon": ("Too soon",
+                 "Not enough history yet to work this out fairly. Comparing returns needs at least a month, and "
+                 "a period (like 1 year) needs that much history.",
+                 "Bought 3 weeks ago: too soon to compare with the STI ETF. In a week it fills in."),
+    "after-close": ("After today's close",
+                    "A stock you bought today has no closing price yet. SGX closes at 5pm and SGXray gets the "
+                    "price at about 5:30pm.",
+                    "Bought DBS at 10am: its price shows after today's close."),
+    "no-price": ("No price yet",
+                 "SGXray hasn't saved a closing price for this stock yet, so numbers that need it (its worth, "
+                 "profit and weight, and your totals) wait for it. Prices are saved by the daily price update, "
+                 "after SGX closes at about 5:30pm.",
+                 "Added Singapore Airlines this afternoon: its price comes with this evening's price update."),
+    "per-stock": ("Per stock",
+                  "This column only has a number for one stock at a time (its own shares, price, cost or "
+                  "dividend per share), so a whole-portfolio total wouldn't mean anything. Each stock's "
+                  "figure is in its row above.",
+                  "DBS's $69.72 price plus CICT's $2.34 = $72.06, which isn't the price of anything."),
+    "not-yet": ("Not yet",
+                "SGXray hasn't saved any prices for the STI ETF yet, so there's nothing to compare you with. "
+                "They come with the next price update.",
+                "A brand-new copy of SGXray, before its first price update."),
     "difference": ("Difference vs the STI ETF",
                    "Your profit on a stock minus what the same money would have made in the STI ETF. "
                    "Positive = that pick helped you beat the market.",
                    "DBS made +$8,075; the same money in the STI ETF, +$4,660: +$3,415 difference."),
 }
+
+
+def button(key, text=None):
+    """The tappable word itself: a quiet button that opens the meaning box for `key`. The term() macro
+    in templates/_term.html and the "pending" number filters both use this, so every tappable word is
+    built the same way. `text` is escaped, so it can never inject HTML."""
+    shown = text if text is not None else entry(key)[0]
+    return Markup(
+        '<button class="term" type="button" popovertarget="term-{k}" data-term="{k}">{t}</button>'
+    ).format(k=key, t=shown)
 
 
 def entry(key):

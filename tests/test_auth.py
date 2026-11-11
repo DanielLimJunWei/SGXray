@@ -126,8 +126,8 @@ def test_changing_password_logs_out_other_devices(app):
     login(laptop)
     assert laptop.get("/portfolio").status_code == 200
     new = "a different long passphrase"
-    r = phone.post("/account", data={"csrf": csrf(phone, "/account"), "current": GOOD,
-                                     "password": new, "password2": new})
+    r = phone.post("/account/password", data={"csrf": csrf(phone, "/account/password"), "current": GOOD,
+                                              "password": new, "password2": new}, follow_redirects=True)
     assert "Password changed" in r.get_data(as_text=True)
     assert laptop.get("/portfolio").status_code == 302      # the laptop's old session no longer works
     assert phone.get("/portfolio").status_code == 200       # the phone that changed it stays in
@@ -243,11 +243,11 @@ def test_guessing_the_current_password_on_the_account_page_is_limited(app):
     c = app.test_client()
     signup(c)
     for _ in range(auth.PASSWORD_TRIES):
-        r = c.post("/account", data={"csrf": csrf(c, "/account"), "current": "a wrong guess here",
+        r = c.post("/account/password", data={"csrf": csrf(c, "/account/password"), "current": "a wrong guess here",
                                      "password": "another long passphrase", "password2": "another long passphrase"})
         assert r.status_code == 401
-    r = c.post("/account", data={"csrf": csrf(c, "/account"), "current": GOOD,
-                                 "password": "another long passphrase", "password2": "another long passphrase"})
+    r = c.post("/account/password", data={"csrf": csrf(c, "/account/password"), "current": GOOD,
+                                          "password": "another long passphrase", "password2": "another long passphrase"})
     assert r.status_code == 429
 
 
@@ -307,3 +307,59 @@ def test_a_forged_or_broken_cookie_means_logged_out(app):
         other = app.test_client()
         other.set_cookie("session", bad)
         assert other.get("/portfolio").status_code == 302
+
+
+# ---------- The account page ----------
+
+def test_the_account_page_shows_your_details_and_only_yours(app):
+    ann, bob = app.test_client(), app.test_client()
+    signup(ann)
+    signup(bob, "bob@example.com")
+    page = ann.get("/account").get_data(as_text=True)
+    assert "ann@example.com" in page and "bob@example.com" not in page
+    assert "Joined" in page and "Change password" in page
+    assert 'href="/account/password"' in page
+
+
+def test_the_account_pages_need_a_login_and_are_not_cached(app):
+    c = app.test_client()
+    for path in ("/account", "/account/password"):
+        r = c.get(path)
+        assert r.status_code == 302 and "/login" in r.headers["Location"]
+    signup(c)
+    for path in ("/account", "/account/password"):
+        assert c.get(path).headers["Cache-Control"] == "no-store"
+
+
+def test_the_overview_has_no_password_form_and_takes_no_posts(app):
+    """Passwords are only ever sent to /account/password, with its checks and rate limit."""
+    c = app.test_client()
+    signup(c)
+    assert 'type="password"' not in c.get("/account").get_data(as_text=True)
+    assert c.post("/account", data={"csrf": csrf(c, "/account"), "current": GOOD}).status_code == 405
+
+
+def test_password_change_needs_the_form_token(app):
+    c = app.test_client()
+    signup(c)
+    r = c.post("/account/password", data={"current": GOOD, "password": "another long passphrase",
+                                          "password2": "another long passphrase"})
+    assert r.status_code == 400
+
+
+def test_password_changed_note_shows_once_and_cannot_be_faked(app):
+    c = app.test_client()
+    signup(c)
+    assert "Password changed" not in c.get("/account?changed=1").get_data(as_text=True)
+    new = "a different long passphrase"
+    r = c.post("/account/password", data={"csrf": csrf(c, "/account/password"), "current": GOOD,
+                                          "password": new, "password2": new})
+    assert r.status_code == 302 and r.headers["Location"].endswith("/account")
+    assert "Password changed" in c.get("/account").get_data(as_text=True)
+    assert "Password changed" not in c.get("/account").get_data(as_text=True)    # only the first time
+
+
+def test_the_joined_date_is_the_singapore_date():
+    from app import _singapore_day
+    assert _singapore_day("2026-11-10 17:30:00") == "2026-11-11"      # 1:30am in Singapore
+    assert _singapore_day("2026-11-10 09:00:00") == "2026-11-10"

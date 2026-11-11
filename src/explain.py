@@ -350,7 +350,8 @@ def explain_holdings(conn, user_id, as_of=None):
                          f"the price drops to match, so your holding is worth about the same on the day. "
                          f"Your average cost per share goes down because the same cost is spread over more shares.")
     if s["missing_prices"]:
-        watch.append(f"No price yet for {', '.join(s['missing_prices'])}, so the totals can't be worked out.")
+        watch.append(f"No closing price is saved yet for {', '.join(s['missing_prices'])}, so the totals "
+                     f"fill in after the next price update.")
     if s["stale_prices"]:
         watch.append(f"The prices for {', '.join(s['stale_prices'])} are older than the rest, so their value may be out of date.")
     return Explanation(out, watch)
@@ -408,7 +409,8 @@ def explain_worth(conn, user_id, change):
     """Explains 'Worth now' and the day's change under it."""
     s = summary(positions(conn, user_id))
     if s["value"] != s["value"]:                       # a held stock has no price yet
-        return Explanation([f"'Worth now' can't be worked out yet: there's no price for {', '.join(s['missing_prices'])}."])
+        return Explanation([f"'Worth now' can't be added up yet: no closing price is saved for "
+                            f"{', '.join(s['missing_prices'])}. It fills in after the next price update."])
     out = [f"'Worth now' is what everything you hold would sell for at the latest closing prices: {money(s['value'])}."]
     watch = ["SGXray uses end-of-day closing prices, not live ones: they change once a day, after the market closes."]
     if change:
@@ -457,7 +459,8 @@ def explain_total_return(conn, user_id):
     s = summary(positions(conn, user_id))
     r = simple_return(conn, user_id)
     if s["total_profit"] != s["total_profit"]:
-        return Explanation([f"'Total profit' can't be worked out yet: there's no price for {', '.join(s['missing_prices'])}."])
+        return Explanation([f"'Total profit' can't be added up yet: no closing price is saved for "
+                            f"{', '.join(s['missing_prices'])}. It fills in after the next price update."])
     out = [f"'Total profit' is everything you've made: {money(s['unrealised'])} unrealised (on paper, on what you "
            f"still hold) + {money(s['realised'])} realised (locked in by selling) + {money(s['dividends'])} of "
            f"dividends = {up_down(s['total_profit'])}."]
@@ -505,6 +508,24 @@ def explain_sold(rows):
     if any(x["realised"] < 0 for x in rows):
         watch.append("Some of these were sold at a loss. Many beginners sell after a fall and miss the recovery; "
                      "only sell when your reason for owning it has changed.")
+    return Explanation(out, watch)
+
+
+def explain_trades(rows):
+    """Explains the trades list on the Trades page: every buy and sell you've entered."""
+    if not rows:
+        return Explanation(["No trades yet. Each buy or sell you add here shows up in this list, and your "
+                            "portfolio is worked out from them."])
+    buys = sum(1 for t in rows if t["side"] == "BUY")
+    fees = sum(float(t["fees"]) for t in rows)
+    out = ["Every buy and sell you've entered, newest first. Your whole portfolio (holdings, profit, dividends, "
+           "returns) is worked out from this list, so if a number there looks wrong, check here first.",
+           "Total: for a buy, shares x price + fees (what you paid). For a sell, shares x price - fees "
+           "(what you got back).",
+           f"{buys} buy{'s' if buys != 1 else ''} and {len(rows) - buys} sell{'s' if len(rows) - buys != 1 else ''} "
+           f"so far, with {money(fees)} paid in fees altogether."]
+    watch = ["Copy each trade from your broker's contract note: the date, price and fees there are the real ones. "
+             "A typo here changes every number on your portfolio."]
     return Explanation(out, watch)
 
 

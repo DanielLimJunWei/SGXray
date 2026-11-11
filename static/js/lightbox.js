@@ -9,6 +9,15 @@
     field.addEventListener("focus", () => { box.classList.add("dim"); document.documentElement.classList.add("lamp-off"); });
     field.addEventListener("blur", () => { box.classList.remove("dim"); document.documentElement.classList.remove("lamp-off"); });
   });
+  // On the log-in film the patient is "unidentified" until you start typing your email, when the
+  // label quietly fills in with it, like a name being written on the film. Empty again: unidentified.
+  document.querySelectorAll("[data-patient-from]").forEach(label => {
+    const field = document.getElementById(label.dataset.patientFrom);
+    if (!field) return;
+    const show = () => { label.textContent = field.value.trim() || label.dataset.unknown; };
+    field.addEventListener("input", show);
+    show();
+  });
   const form = document.querySelector("[data-login-form]");
   if (!form) return;
   let sending = false;

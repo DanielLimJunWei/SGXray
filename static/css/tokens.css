@@ -12,6 +12,7 @@
   --color-night: #0A0F1E;            /* page background: the rainy night outside */
   --color-surface: #121C33;          /* cards and panels: dry, matte navy */
   --color-surface-raised: #182540;   /* a panel above a panel (popovers) */
+  --color-well: #0D1528;             /* a box set into the page, darker than the panels (Add or change trades) */
   --color-line: rgba(156, 196, 255, 0.12);   /* hairlines and borders */
   --color-line-strong: rgba(156, 196, 255, 0.24);
 

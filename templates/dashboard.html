@@ -22,7 +22,7 @@
     {% if s %}
     <p class="as-of">{% if s.prices_as_of %}Prices as of {{ s.prices_as_of|longdate }}{% elif waiting %}Prices: waiting for today's close{% else %}No prices downloaded yet{% endif %} · {{ term("closing-price", "closing prices") }}</p>
     {% endif %}
-    {% if s and mode == "own" %}<p><a href="{{ url_for('trades_page') }}">Add or change trades</a></p>{% endif %}
+    {% if s and mode == "own" %}<p><a class="btn btn-well" href="{{ url_for('trades_page') }}">Add or change trades</a></p>{% endif %}
   </header>
 
   {% if not s %}
@@ -42,8 +42,10 @@
   <section class="panel figures" aria-label="Key figures">
     <div class="figure">
       <span class="label">{{ term("worth", "Worth now") }}</span>
-      <span class="value" data-count="{{ s.value|rawnum }}">{% if waiting and s.missing_prices|length == waiting|length %}Waiting{% else %}{{ s.value|money }}{% endif %}</span>
-      <span class="note">{% if waiting and s.missing_prices|length == waiting|length %}Today's closing price comes at about 5:30pm{% else %}What you hold, at the latest closing prices{% endif %}</span>
+      {# A missing price: the big figures say why in words, capitalised like a value (the page rule). #}
+      {% set all_waiting = waiting and s.missing_prices|length == waiting|length %}
+      <span class="value" data-count="{{ s.value|rawnum }}">{% if all_waiting %}{{ term("pending", "Waiting") }}{% elif s.missing_prices %}{{ term("no-price", "No price yet") }}{% else %}{{ s.value|money }}{% endif %}</span>
+      <span class="note">{% if all_waiting %}Today's closing price comes at about 5:30pm{% elif s.missing_prices %}Fills in with the next price update{% else %}What you hold, at the latest closing prices{% endif %}</span>
       {% if day %}
       <span class="note twr">{{ term("day-change", "Day's change") }} <b class="{{ day.change|trend }}">{{ day.change|arrow }} {{ day.change|money(signed=True) }}</b> ({{ day.pct|pct }}) on {{ day.date|shortdate }}</span>
       {% endif %}
@@ -51,7 +53,7 @@
     </div>
     <div class="figure">
       <span class="label">{{ term("total-profit", "Total profit") }}</span>
-      <span class="value {{ s.total_profit|trend }}" data-count="{{ s.total_profit|rawnum }}" data-signed>{{ s.total_profit|arrow }} {{ s.total_profit|money(signed=True) }}</span>
+      <span class="value {{ s.total_profit|trend }}" data-count="{{ s.total_profit|rawnum }}" data-signed>{% if all_waiting %}{{ term("pending", "Waiting") }}{% elif s.missing_prices %}{{ term("no-price", "No price yet") }}{% else %}{{ s.total_profit|arrow }} {{ s.total_profit|money(signed=True) }}{% endif %}</span>
       <span class="note">{{ term("unrealised", "Unrealised") }} {{ s.unrealised|money(signed=True) }} · {{ term("realised", "realised") }} {{ s.realised|money(signed=True) }} · {{ term("dividend", "dividends") }} {{ s.dividends|money(signed=True) }}</span>
       {% if simple.pct == simple.pct %}
       <span class="note twr"><b class="{{ simple.pct|trend }}">{{ simple.pct|pct1 }}</b> {{ term("simple-return", "on the money you put in") }} ({{ simple.put_in|money }})</span>
@@ -67,10 +69,10 @@
     <div class="figure">
       <span class="label">You vs the {{ term("sti-etf", "STI") }}</span>
       {% if not vs %}
-      <span class="value">Not yet</span>
+      <span class="value">{{ term("not-yet", "Not yet") }}</span>
       <span class="note">No STI ETF prices saved yet</span>
       {% elif vs.too_short %}
-      <span class="value">Too soon</span>
+      <span class="value">{{ term("too-soon", "Too soon") }}</span>
       <span class="note">Needs a month of history to compare fairly</span>
       {% else %}
       {% set you = vs.you if vs.yearly else vs.you_period %}{% set them = vs.benchmark if vs.yearly else vs.benchmark_period %}
@@ -88,7 +90,7 @@
   {% if s.missing_prices or s.stale_prices %}
   <p class="muted" role="status" style="margin-bottom: var(--space-6)">
     {% for tk, name in waiting.items() %}{{ name }} ({{ tk }}) was bought today. Its first closing price comes after SGX closes, at about 5:30pm, and your worth and profit fill in then. {% endfor %}
-    {% set unknown = s.missing_prices|reject('in', waiting)|list %}{% if unknown %}No price yet for {{ unknown|join(', ') }}, so the totals can't be worked out. {% endif %}
+    {% for tk, name in no_price.items() %}No closing price is saved yet for {{ name }} ({{ tk }}). Its worth and profit, and your totals, fill in after the next price update. {% endfor %}
     {% if s.stale_prices %}Older prices for {{ s.stale_prices|join(', ') }}: their value may be out of date.{% endif %}
   </p>
   {% endif %}
@@ -156,7 +158,7 @@
           <b class="{{ (p.you - p.sti)|trend }}">{{ p.you|pct1 }}</b>
           <span class="period-sti">STI ETF {{ p.sti|pct1 }}</span>
           {% else %}
-          <b class="muted">too soon</b><span class="period-sti">not enough history yet</span>
+          <b class="muted">{{ term("too-soon", "too soon") }}</b><span class="period-sti">not enough history yet</span>
           {% endif %}
         </li>
         {% endfor %}
@@ -197,7 +199,7 @@
             <td><b>{{ r.ticker }}</b><span class="name">{{ r.name }}</span><button class="link-btn" type="button" data-chart="chart-{{ r.ticker|replace('.', '-') }}" aria-controls="chart-{{ r.ticker|replace('.', '-') }}" aria-expanded="false" hidden>Price chart</button></td>
             <td>{{ "{:,}".format(r.shares|int) }}</td>
             <td>{{ r.avg_cost|num(".3f") }}</td>
-            <td>{% if r.ticker in waiting %}<span class="sub">after today's close</span>{% else %}{{ r.price|num(".2f") }}{% endif %}</td>
+            <td>{% if r.ticker in waiting %}<span class="sub">{{ term("after-close", "after today's close") }}</span>{% else %}{{ r.price|num(".2f") }}{% endif %}</td>
             <td>{{ r.cost|money }}</td>
             <td>{{ r.value|money }}</td>
             <td>{{ r.weight|pct(signed=False) }}</td>
@@ -295,10 +297,10 @@
           {% for r in stocks %}
           <tr>
             <td><b>{{ r.ticker }}</b><span class="name">{{ r.name }}</span></td>
-            {% if r.too_short %}<td><span class="sub" title="Comparing needs at least a month of history">too soon</span></td><td><span class="sub" title="Comparing needs at least a month of history">too soon</span></td>
+            {% if r.too_short %}<td><span class="sub">{{ term("too-soon", "too soon") }}</span></td><td><span class="sub">{{ term("too-soon", "too soon") }}</span></td>
             {% else %}{% set when = "a year" if r.yearly else "in " ~ r.days|span %}
-            <td>{{ (r.you if r.yearly else r.you_period)|pct }}<span class="sub">{{ when }}</span></td>
-            <td>{{ (r.sti if r.yearly else r.sti_period)|pct }}<span class="sub">{{ when }}</span></td>{% endif %}
+            <td>{{ (r.you if r.yearly else r.you_period)|pct }}<span class="sub">{{ term("a-year", when) }}</span></td>
+            <td>{{ (r.sti if r.yearly else r.sti_period)|pct }}<span class="sub">{{ term("a-year", when) }}</span></td>{% endif %}
             <td>{{ r.your_profit|money(signed=True) }}</td>
             <td>{{ r.sti_profit|money(signed=True) }}</td>
             <td class="{{ '' if r.verdict == 'about level' else r.difference|trend }}">
@@ -342,7 +344,10 @@
         </tbody>
         {% if yields %}
         <tfoot>
-          <tr><th scope="row" colspan="3">Whole portfolio</th><td>{{ total_yield|pct(signed=False) }}</td><td colspan="2">{{ total_on_cost|pct(signed=False) }}<span class="sub">on what you paid</span></td><td>{{ income_12m|money }}</td></tr>
+          {# Every column gets its own cell (the page rule): ones with no whole-portfolio number say "per stock". #}
+          <tr><th scope="row">Whole portfolio</th><td>{{ term("per-stock", "per stock") }}</td><td>{{ term("per-stock", "per stock") }}</td>
+              <td>{{ total_yield|pct(signed=False) }}</td><td>{{ term("per-stock", "per stock") }}</td>
+              <td>{{ total_on_cost|pct(signed=False) }}</td><td>{{ income_12m|money }}</td></tr>
         </tfoot>
         {% endif %}
       </table>
@@ -416,7 +421,9 @@
           {% endfor %}
         </tbody>
         <tfoot>
-          <tr><th scope="row" colspan="4">Total over the next 12 months, about</th><td>{{ forecast_total|money }}</td><td><span class="sub">{{ forecast|length }} payout{{ "s" if forecast|length != 1 }}</span></td></tr>
+          <tr><th scope="row">Next 12 months</th><td>All stocks<span class="sub">{{ forecast|length }} payout{{ "s" if forecast|length != 1 }}</span></td>
+              <td>{{ term("per-stock", "per stock") }}</td><td>{{ term("per-stock", "per stock") }}</td>
+              <td>{{ forecast_total|money }}<span class="sub">about</span></td><td>{{ term("per-stock", "per stock") }}</td></tr>
         </tfoot>
       </table>
     </div>

@@ -25,7 +25,7 @@
 </svg>
 {% endmacro %}
 
-{% macro lightbox(patient, scan) %}
+{% macro lightbox(patient, scan, patient_from=None) %}
 <div class="lightbox" data-lightbox>
   <span class="screw screw-tl" aria-hidden="true"></span><span class="screw screw-tr" aria-hidden="true"></span>
   <span class="screw screw-bl" aria-hidden="true"></span><span class="screw screw-br" aria-hidden="true"></span>
@@ -33,7 +33,7 @@
     <span class="clip clip-left" aria-hidden="true"></span><span class="clip clip-right" aria-hidden="true"></span>
     <div class="film-edge" aria-hidden="true">
       <svg class="film-mark" viewBox="0 0 7 7" shape-rendering="crispEdges"><g fill="#9CC4FF"><rect x="0" y="0" width="1" height="1"/><rect x="6" y="0" width="1" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="5" y="1" width="1" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="4" y="2" width="1" height="1"/><rect x="2" y="4" width="1" height="1"/><rect x="4" y="4" width="1" height="1"/><rect x="1" y="5" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/><rect x="0" y="6" width="1" height="1"/><rect x="6" y="6" width="1" height="1"/></g><rect x="3" y="3" width="1" height="1" fill="#E3A35E"/></svg>
-      <span>SGXRAY</span><span class="film-caption">Patient: {{ patient }}</span><span class="film-scan">{{ scan }}</span>
+      <span>SGXRAY</span><span class="film-caption">Patient: <span{% if patient_from %} data-patient-from="{{ patient_from }}" data-unknown="{{ patient }}"{% endif %}>{{ patient }}</span></span><span class="film-scan">{{ scan }}</span>
     </div>
     <figure class="film-image">{{ film_chart() }}</figure>
     <div class="film-body">

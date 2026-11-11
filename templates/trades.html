@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_trade_form.html" import trade_form, problems_box with context %}
+{% from "_explain.html" import explain_buttons %}
 {% block title %}Your trades · SGXray{% endblock %}
 
 {% block content %}
@@ -37,7 +38,7 @@
   </section>
 
   <section class="block" aria-labelledby="list-title">
-    <div class="section-head"><h2 id="list-title">{{ trades|length }} trade{{ "s" if trades|length != 1 }}</h2></div>
+    <div class="section-head"><h2 id="list-title">{{ trades|length }} trade{{ "s" if trades|length != 1 }}</h2>{{ explain_buttons(trades_ex, "trades", "Your trades") }}</div>
     {% if trades %}
     <div class="panel table-wrap">
       <table class="data trades-table">

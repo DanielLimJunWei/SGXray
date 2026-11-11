@@ -76,5 +76,6 @@ def test_week52_range_and_position(conn, user_id):
 
 def test_explanations_never_show_nan_without_prices(conn, user_id):
     db.add_trade(conn, user_id, "D05.SI", "2024-01-02", "BUY", 100, 30.0, 10)
-    assert "can't be worked out yet" in explain_worth(conn, user_id, None).text
-    assert "can't be worked out yet" in explain_total_return(conn, user_id).text
+    for text in (explain_worth(conn, user_id, None).text, explain_total_return(conn, user_id).text):
+        assert "can't be added up yet" in text and "next price update" in text     # a reason, and when it fills in
+        assert "nan" not in text.lower()

@@ -34,12 +34,14 @@ import glossary  # noqa: E402
 from explain import (Explanation, explain_dividends_received, explain_forecast, explain_holdings,  # noqa: E402
                      explain_income_by_year,
                      explain_performance, explain_periods, explain_sold, explain_stock_chart,
-                     explain_total_return, explain_two_returns, explain_value_chart, explain_worth, explain_yields)
+                     explain_total_return, explain_trades, explain_two_returns, explain_value_chart, explain_worth,
+                     explain_yields)
 from history import period_returns, time_weighted, value_history  # noqa: E402
 import insights  # noqa: E402
 from importer import DEMO_EMAIL  # noqa: E402
 from income import by_year, forecast, portfolio_yield, yields  # noqa: E402
 import lookup  # noqa: E402
+import mailer  # noqa: E402
 from performance import compare, per_stock  # noqa: E402
 from portfolio import positions, summary  # noqa: E402
 from stocks import stock_history  # noqa: E402
@@ -59,6 +61,8 @@ def create_app(db_path=None):
         MAX_CONTENT_LENGTH=2 * 1024 * 1024,          # refuse uploads over 2 MB
         MARKET_DOWNLOAD=trades.download_market_data, # tests swap in a fake, so they never use the internet
         TICKER_LOOKUP=lookup.yahoo_info,              # the same for looking up a new SGX code
+        SEND_EMAIL=mailer.send,                       # tests swap in a fake inbox
+        EMAIL_IN_BACKGROUND=True,                     # so a real account doesn't answer slower than a made-up one
     )
 
     conn = db.get_connection(db_path)       # make sure the tables exist once, at start-up
@@ -67,12 +71,14 @@ def create_app(db_path=None):
     conn.close()
 
     _add_filters(app)
-    app.jinja_env.globals.update(glossary=glossary.TERMS, glossary_entry=glossary.entry)   # tap-a-term
+    app.jinja_env.globals.update(glossary=glossary.TERMS, glossary_entry=glossary.entry,
+                                 term_button=glossary.button)   # tap-a-term
     app.teardown_appcontext(_close_db)
     app.before_request(_load_user_and_check_csrf)
     app.after_request(_security_headers)
     app.context_processor(lambda: {"current_user": g.get("user"), "csrf_token": _csrf_token,
-                                   "csp_nonce": g.get("csp_nonce", ""), "today": date.today().isoformat()})
+                                   "csp_nonce": g.get("csp_nonce", ""), "today": date.today().isoformat(),
+                                   "minutes": auth.RESET_MINUTES})
 
     @app.get("/")
     def home():
@@ -192,7 +198,8 @@ def create_app(db_path=None):
         added = {"ticker": added, "name": names[added]} if added in names else None   # only a ticker that's really listed
         if added and request.method == "GET":
             values = {**values, "ticker": added["ticker"]}      # pick the stock that was just added
-        return render_template("trades.html", trades=rows, values=values, tickers=_tickers(conn), problems=problems,
+        return render_template("trades.html", trades=rows, trades_ex=explain_trades(rows), values=values,
+                               tickers=_tickers(conn), problems=problems,
                                saved=saved, deleted=request.args.get("deleted") == "1",
                                prices_later=request.args.get("prices") == "later",
                                prices_tonight=request.args.get("prices") == "tonight", added=added,
@@ -238,7 +245,7 @@ def create_app(db_path=None):
             return redirect(url_for("portfolio"))
         next_url = auth.safe_next(request.values.get("next"))
         if request.method == "GET":
-            return render_template("login.html", next=next_url)
+            return render_template("login.html", next=next_url, reset_done=session.pop("password_reset", False))
         email = request.form.get("email", "").strip().lower()[:254]
         password = request.form.get("password", "")[:auth.MAX_LENGTH]
         conn, ip = get_db(), request.remote_addr
@@ -264,33 +271,110 @@ def create_app(db_path=None):
             db.log_security_event(get_db(), "logout", g.user["id"], request.remote_addr)
         db.end_session(get_db(), session.get("sid"))     # the server forgets it: a copied cookie stops working
         session.clear()
+        if request.form.get("then") == "login":          # "Log in as someone else" on the account page.
+            return redirect(url_for("login"))            # A fixed choice, never a web address from the form.
         return redirect(url_for("home"))
 
-    @app.route("/account", methods=["GET", "POST"])
+    # ---------- Forgot your password? ----------
+    # You type your email; if it has an account, SGXray emails a one-time link that works for
+    # RESET_MINUTES. The page says the same thing either way, so it can't be used to find out who
+    # has an account. Opening the link moves its secret into your session and out of the address bar.
+
+    @app.route("/forgot", methods=["GET", "POST"])
+    def forgot():
+        if g.get("user"):
+            return redirect(url_for("account"))
+        if request.method == "GET":
+            return render_template("forgot.html")
+        conn, ip = get_db(), request.remote_addr or "?"
+        email = request.form.get("email", "").strip().lower()[:254]
+        if auth.email_problem(email):
+            return render_template("forgot.html", error=auth.email_problem(email), email=email), 422
+        if (auth.limited(conn, "reset-ip:" + ip, auth.RESETS_PER_HOUR_IP, 60)
+                or auth.limited(conn, "reset-email:" + email, auth.RESETS_PER_HOUR_EMAIL, 60)):
+            # The same for every email, so it reveals nothing about which ones have accounts.
+            return render_template("forgot.html", email=email,
+                                   error="Too many reset requests. Try again in an hour."), 429
+        auth.count(conn, "reset-ip:" + ip)
+        auth.count(conn, "reset-email:" + email)
+        user = db.get_user_by_email(conn, email)
+        if user is not None and not user["password_hash"].startswith("!"):     # not the no-login demo
+            base = _site_address()
+            if base is None:
+                db.log_security_event(conn, "reset_not_sent", user["id"], ip)
+            else:
+                token = db.create_password_reset(conn, user["id"], auth.RESET_MINUTES)
+                db.log_security_event(conn, "reset_requested", user["id"], ip)   # never the link itself
+                _email_later(email, "Reset your SGXray password", _reset_email(base + "/reset/" + token))
+        return render_template("forgot.html", sent=True, email=email)
+
+    @app.get("/reset/<token>")
+    def reset_link(token):
+        """The link from the email. Nothing is used up here (some email apps open links to scan them):
+        the secret goes into this browser's session, and the address bar is cleaned of it."""
+        session["reset_token"] = token[:100]
+        return redirect(url_for("reset_password"))
+
+    @app.route("/reset", methods=["GET", "POST"])
+    def reset_password():
+        conn, token = get_db(), session.get("reset_token")
+        user = db.password_reset_user(conn, token) if token else None
+        if user is None:
+            session.pop("reset_token", None)
+            return render_template("reset.html", expired=True), 410
+        if request.method == "GET":
+            return render_template("reset.html", email=user["email"])
+        new = request.form.get("password", "")
+        problem = auth.password_problem(new, user["email"])
+        if not problem and request.form.get("password2", "") != new:
+            problem = "The two passwords don't match."
+        if problem:
+            return render_template("reset.html", email=user["email"], error=problem), 422
+        if not db.use_password_reset(conn, token, user["id"], auth.hash_password(new)):
+            session.pop("reset_token", None)
+            return render_template("reset.html", expired=True), 410
+        db.clear_login_attempts(conn, "email:" + user["email"])
+        db.log_security_event(conn, "password_reset", user["id"], request.remote_addr)
+        session.clear()                                   # this browser too: log in with the new password
+        session["password_reset"] = True
+        return redirect(url_for("login"))
+
+    @app.get("/account")
     @login_required
     def account():
+        """The overview: your email, when you joined, and the way to change your password.
+        Later rows (export my data, delete my account: w411) go in the same list."""
+        return render_template("account.html", joined=_singapore_day(g.user["created_at"]),
+                               changed=session.pop("password_changed", False))
+
+    @app.route("/account/password", methods=["GET", "POST"])
+    @login_required
+    def account_password():
         if request.method == "GET":
-            return render_template("account.html")
+            return render_template("account_password.html")
         conn = get_db()
         current = request.form.get("current", "")[:auth.MAX_LENGTH]
         new = request.form.get("password", "")
         key = f"pwchange:{g.user['id']}"
         if auth.limited(conn, key, auth.PASSWORD_TRIES, auth.WINDOW_MINUTES):
-            return render_template("account.html", error=f"Too many tries. Wait {auth.WINDOW_MINUTES} minutes."), 429
+            return render_template("account_password.html", error=f"Too many tries. Wait {auth.WINDOW_MINUTES} minutes."), 429
         if auth.check_login(conn, g.user["email"], current) is None:
             auth.count(conn, key)
             db.log_security_event(conn, "password_change_failed", g.user["id"], request.remote_addr)
-            return render_template("account.html", error="Your current password isn't right."), 401
+            return render_template("account_password.html", error="Your current password isn't right."), 401
         problem = auth.password_problem(new, g.user["email"])
         if not problem and request.form.get("password2", "") != new:
             problem = "The two new passwords don't match."
         if problem:
-            return render_template("account.html", error=problem), 422
+            return render_template("account_password.html", error=problem), 422
         db.set_password_hash(conn, g.user["id"], auth.hash_password(new))
         db.log_security_event(conn, "password_changed", g.user["id"], request.remote_addr)
         _start_session(db.get_user(conn, g.user["id"]))                      # a fresh session for this device
         db.end_other_sessions(conn, g.user["id"], session.get("sid"))        # every other device is logged out
-        return render_template("account.html", done="Password changed. Any other devices have been logged out.")
+        # Back to the overview (post, then redirect: refreshing can't send the form twice). The note is a
+        # one-time flag in this device's signed session, so a link can't fake "Password changed".
+        session["password_changed"] = True
+        return redirect(url_for("account"))
 
     def _portfolio_page(uid, mode):
         conn = get_db()
@@ -316,11 +400,14 @@ def create_app(db_path=None):
         waiting = _waiting_for_close(conn, uid, s["missing_prices"])
         # Only when every missing price is a stock bought today: then unknown numbers read "pending".
         g.waiting_for_close = bool(waiting) and len(waiting) == len(s["missing_prices"])
+        g.no_price = bool(s["missing_prices"]) and not g.waiting_for_close      # then they read "no price yet"
+        no_price = {tk: names.get(tk, tk) for tk in s["missing_prices"] if tk not in waiting}
         return render_template(
             "dashboard.html",
             mode=mode,
             s=s,
             waiting=waiting,
+            no_price=no_price,
             vs=vs,
             twr=_or_none(time_weighted, conn, uid),
             # Every figure gets a "What does this mean?" box, whatever state it's in (the page rule).
@@ -561,19 +648,71 @@ def _security_headers(response):
     ])
     if os.environ.get("SGXRAY_HTTPS") == "1":                    # the live site: always HTTPS from now on
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    if request.endpoint in ("login", "signup", "account", "portfolio", "trades_page", "edit_trade", "delete_trade", "lookup_ticker"):
+    if request.endpoint in ("reset_link", "reset_password", "forgot"):
+        response.headers["Referrer-Policy"] = "no-referrer"       # the reset link's secret is never passed on
+    if request.endpoint in ("login", "signup", "account", "account_password", "forgot", "reset_link",
+                            "reset_password", "portfolio", "trades_page", "edit_trade", "delete_trade", "lookup_ticker"):
         response.headers["Cache-Control"] = "no-store"            # private pages aren't kept in the browser cache
     return response
 
 
+def _site_address():
+    """SGXray's own address for links in emails. On the live site it must come from SGXRAY_BASE_URL:
+    building it from the visitor's request would let an attacker send a reset email whose link
+    points at THEIR site (host-header poisoning). On your own computer, the address you're using."""
+    base = os.environ.get("SGXRAY_BASE_URL", "").rstrip("/")
+    if base:
+        return base
+    return None if mailer.live() else request.host_url.rstrip("/")
+
+
+def _email_later(to, subject, text):
+    """Sends in the background, so the page answers just as fast whether or not an email went out."""
+    send = current_app.config["SEND_EMAIL"]
+    if current_app.config["EMAIL_IN_BACKGROUND"]:
+        import threading
+        threading.Thread(target=send, args=(to, subject, text), daemon=True).start()
+    else:
+        send(to, subject, text)
+
+
+def _reset_email(link):
+    return (f"Someone (hopefully you) asked to reset the password for your SGXray account.\n\n"
+            f"To choose a new password, open this link within {auth.RESET_MINUTES} minutes. It works once:\n\n"
+            f"{link}\n\n"
+            f"If it wasn't you, ignore this email: your password stays the same.\n\n"
+            f"SGXray")
+
+
+def _singapore_day(stamp):
+    """'2026-11-10 17:30:00' (UTC, as SQLite saves it) -> '2026-11-11', the date in Singapore (UTC+8,
+    no daylight saving), so someone who joined at 1am Singapore time sees the right day."""
+    from datetime import datetime
+    try:
+        return (datetime.fromisoformat(str(stamp)[:19]) + timedelta(hours=8)).date().isoformat()
+    except ValueError:
+        return str(stamp)[:10]
+
+
 # ---------- Template filters: how numbers look, from fmt.py so every screen agrees ----------
 
+def _gap_word():
+    """What an unknown number says instead of "n/a" (the page rule): "pending" while every missing
+    price is a stock bought today, "no price yet" when a price is missing for any other reason.
+    Both are tap-a-terms. None when the page has no missing price (then the formatter decides)."""
+    if g.get("waiting_for_close"):
+        return glossary.button("pending", "pending")
+    if g.get("no_price"):
+        return glossary.button("no-price", "no price yet")
+    return None
+
+
 def _pending_or(formatter):
-    """While a stock bought today waits for its first close, numbers that need its price say
-    "pending" instead of "n/a", so the page reads as waiting, not broken. Anywhere else, "n/a" as before."""
+    """Numbers that need a missing price say why ("pending" / "no price yet"), so the page reads as
+    waiting, not broken."""
     def show(x, *args, **kwargs):
-        if fmt.missing(x) and g.get("waiting_for_close"):
-            return "pending"
+        if fmt.missing(x) and _gap_word():
+            return _gap_word()
         return formatter(x, *args, **kwargs)
     return show
 
@@ -611,7 +750,7 @@ def _add_filters(app):
     def pct1(x):
         """+75.7% (one decimal, for short labels) / n/a."""
         if fmt.missing(x):
-            return "pending" if g.get("waiting_for_close") else "n/a"
+            return _gap_word() or "n/a"
         return f"{x:+.1%}"
 
     @app.template_filter("shortdate")

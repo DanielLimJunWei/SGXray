@@ -46,6 +46,17 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE INDEX IF NOT EXISTS sessions_user ON sessions (user_id);
 
+-- "Forgot your password?" links. Only a SHA-256 hash of each link's secret is kept, so a leaked
+-- database can't be used to reset anyone's password. A link expires, and works once.
+CREATE TABLE IF NOT EXISTS password_resets (
+    token_hash TEXT PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now')),
+    expires_at TEXT NOT NULL,
+    used_at    TEXT
+);
+CREATE INDEX IF NOT EXISTS password_resets_user ON password_resets (user_id);
+
 -- Security events (sign-ups, logins, failed logins, password changes). NEVER passwords or tokens.
 CREATE TABLE IF NOT EXISTS security_log (
     id      INTEGER PRIMARY KEY,
@@ -245,9 +256,55 @@ def end_other_sessions(conn, user_id, keep_sid):
         conn.execute("DELETE FROM sessions WHERE user_id = ? AND id_hash != ?", (user_id, _sid_hash(keep_sid or "")))
 
 
-def prune(conn):
-    """Deletes what SGXray no longer needs: expired sessions, old failed-login counts and old security events."""
+def create_password_reset(conn, user_id, minutes):
+    """A new reset link's secret for this user (only its hash is stored). Any older link for the same
+    user stops working, so only the newest email counts."""
+    import secrets
+    token = secrets.token_urlsafe(32)                    # 256 random bits: can't be guessed
     with conn:
+        conn.execute("DELETE FROM password_resets WHERE user_id = ?", (user_id,))
+        conn.execute("INSERT INTO password_resets (token_hash, user_id, expires_at) "
+                     "VALUES (?, ?, strftime('%Y-%m-%dT%H:%M:%S', 'now', ?))",
+                     (_sid_hash(token), user_id, f"+{int(minutes)} minutes"))
+    return token
+
+
+def password_reset_user(conn, token):
+    """The user a reset link belongs to, if it's unused and unexpired; else None."""
+    return conn.execute(
+        """SELECT u.id, u.email, u.password_hash, u.created_at, u.session_version
+           FROM password_resets r JOIN users u ON u.id = r.user_id
+           WHERE r.token_hash = ? AND r.used_at IS NULL
+             AND r.expires_at > strftime('%Y-%m-%dT%H:%M:%S', 'now')""",
+        (_sid_hash(token or ""),),
+    ).fetchone()
+
+
+def use_password_reset(conn, token, user_id, password_hash):
+    """Sets the new password, if the link is still good, in one step: the link is marked used in the
+    same transaction, so two tabs submitting at once can't both use it. Then every session for that
+    user ends (every device is logged out) and every reset link is deleted. True if it worked."""
+    with conn:
+        used = conn.execute(
+            """UPDATE password_resets SET used_at = strftime('%Y-%m-%dT%H:%M:%S', 'now')
+               WHERE token_hash = ? AND user_id = ? AND used_at IS NULL
+                 AND expires_at > strftime('%Y-%m-%dT%H:%M:%S', 'now')""",
+            (_sid_hash(token or ""), user_id),
+        ).rowcount
+        if used != 1:
+            return False
+        conn.execute("UPDATE users SET password_hash = ?, session_version = session_version + 1 WHERE id = ?",
+                     (password_hash, user_id))
+        conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM password_resets WHERE user_id = ?", (user_id,))
+    return True
+
+
+def prune(conn):
+    """Deletes what SGXray no longer needs: expired sessions, old failed-login counts, old security
+    events, and reset links a day after they expire."""
+    with conn:
+        conn.execute("DELETE FROM password_resets WHERE expires_at < strftime('%Y-%m-%dT%H:%M:%S', 'now', '-1 day')")
         conn.execute("DELETE FROM sessions WHERE created_at < strftime('%Y-%m-%dT%H:%M:%S', 'now', ?)",
                      (f"-{SESSION_DAYS} days",))
         conn.execute("DELETE FROM login_attempts WHERE attempted_at < strftime('%Y-%m-%dT%H:%M:%S', 'now', ?)",

@@ -3,9 +3,10 @@
 {% block title %}Log in · SGXray{% endblock %}
 {% block content %}
 <div class="page wrap lightbox-page">
-  {% call lightbox("your portfolio", "Check-up due") %}
+  {% call lightbox("unidentified", "Check-up due", patient_from="email") %}
     <h1>Log in to see your own</h1>
-    <p class="film-lede">That's the demo portfolio's value over time. Log in and SGXray X-rays your own: what you put in, what you've made, and why.</p>
+    <p class="film-lede">This is the demo portfolio. Log in to X-ray yours.</p>
+    {% if reset_done %}<p class="form-ok" role="status">Password reset. Every device has been logged out, so log in with your new password.</p>{% endif %}
     {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
     <form method="post" action="{{ url_for('login') }}" class="auth-form" data-login-form>
       <input type="hidden" name="csrf" value="{{ csrf_token() }}">
@@ -14,6 +15,7 @@
       <input id="email" name="email" type="email" autocomplete="username" required maxlength="254" value="{{ email or '' }}" autofocus>
       <label for="password">Password</label>
       <input id="password" name="password" type="password" autocomplete="current-password" required maxlength="128" data-private>
+      <a class="form-aside" href="{{ url_for('forgot') }}">Forgot your password?</a>
       <button class="btn btn-primary" type="submit">Log in</button>
     </form>
     <p class="film-foot">New to SGXray? <a href="{{ url_for('signup') }}">Create an account</a></p>

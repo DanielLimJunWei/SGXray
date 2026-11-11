@@ -7,8 +7,7 @@
 {% from "_explain.html" import pop_head, pop_resize %}
 
 {% macro term(key, text=None) -%}
-  {%- set t = glossary_entry(key) -%}
-  <button class="term" type="button" popovertarget="term-{{ key }}" data-term="{{ key }}">{{ text or t[0] }}</button>
+  {{- term_button(key, text) -}}
 {%- endmacro %}
 
 {% macro term_popups() %}
