@@ -16,7 +16,7 @@
     <h1>See inside your portfolio.</h1>
     <p>Learn what the numbers mean before you invest a dollar. When you're ready, track your own stocks, with every figure explained in plain English: what you put in, what you've made, and whether you're beating the market.</p>
     <div class="ctas">
-      <a class="btn btn-primary" href="#learn">Start learning</a>
+      <a class="btn btn-primary" href="{{ url_for('learn') }}">Start learning</a>
       <a class="btn btn-ghost" href="{{ url_for('demo') }}">Try the demo, no sign-up</a>
     </div>
   </section>
@@ -48,6 +48,7 @@
       <h2>No stocks yet? Start here.</h2>
       <p class="muted">What to have in place before you invest, what fees really cost, how dividends and ex-dates work, and how to read every chart: taught with a real sample portfolio, not textbook examples. Then practise with pretend trades at real SGX prices, so your first real dollar goes in with confidence.</p>
       <p class="muted">Educational, not financial advice. SGXray never tells you what to buy.</p>
+      <div class="ctas"><a class="btn btn-ghost" href="{{ url_for('learn') }}">See the lessons</a></div>
     </div>
   </section>
 

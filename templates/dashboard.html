@@ -181,6 +181,7 @@
         </li>
         {% endfor %}
       </ul>
+      <p class="period-note">Past returns don't predict future ones.</p>
     </div>
     {% endif %}
     <details class="as-table">
@@ -314,7 +315,7 @@
     {% if stocks is none %}
     <p class="muted">No STI ETF prices saved yet, so there's nothing to compare with. Run <code>python src/market.py</code>.</p>
     {% else %}
-    <p class="muted lead">Each stock's own money in and out, replayed into the STI ETF on the same days with the same fees.</p>
+    <p class="muted lead">Each stock's own money in and out, replayed into the STI ETF on the same days with the same fees. What happened before doesn't tell you what happens next.</p>
     <div class="panel table-wrap">
       <table class="data">
         <thead>

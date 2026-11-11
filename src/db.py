@@ -116,6 +116,15 @@ CREATE TABLE IF NOT EXISTS corporate_actions (
     source   TEXT NOT NULL DEFAULT 'yfinance' CHECK (source IN ('yfinance', 'manual')),
     PRIMARY KEY (ticker, ex_date)
 );
+
+-- Which lessons on the Learn page (w313) each person has finished. Only the lesson's short name and
+-- when: nothing about how they answered. Deleted with the account.
+CREATE TABLE IF NOT EXISTS lesson_reads (
+    user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    lesson   TEXT    NOT NULL,           -- the lesson's slug, e.g. 'first-dollar'
+    read_at  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, lesson)        -- reading it twice still counts once
+);
 """
 
 
@@ -457,6 +466,20 @@ def get_trades(conn, user_id):
         """,
         (user_id,),
     ).fetchall()
+
+
+# ---------- Lessons read (w313) ----------
+
+def mark_lesson_read(conn, user_id, lesson):
+    """Remembers that this person finished a lesson. Doing it again changes nothing."""
+    with conn:
+        conn.execute("INSERT OR IGNORE INTO lesson_reads (user_id, lesson) VALUES (?, ?)", (user_id, lesson))
+
+
+def lessons_read(conn, user_id):
+    """The slugs of the lessons this person has finished, as a set."""
+    rows = conn.execute("SELECT lesson FROM lesson_reads WHERE user_id = ?", (user_id,)).fetchall()
+    return {r["lesson"] for r in rows}
 
 
 # ---------- Prices ----------

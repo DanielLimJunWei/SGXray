@@ -1,0 +1,57 @@
+{#
+  The layout every lesson shares (w313). A lesson template extends this and fills in:
+    body        2-3 short sections (h2 + paragraphs), with term() for key words
+    demo        the "In the demo" box: a live number from the demo portfolio, and a link to it
+    watch_out   the usual beginner mistake
+    question / answer   "Check yourself": the answer stays hidden until tapped. Nothing is scored.
+    sources     the official pages the facts come from
+#}
+{% extends "base.html" %}
+{% from "_term.html" import term, term_popups %}
+{% block title %}{{ lesson.title }} · Learn · SGXray{% endblock %}
+
+{% block content %}
+<article class="page wrap lesson" aria-labelledby="lesson-title">
+  <header class="lesson-head">
+    <p class="eyebrow"><a href="{{ url_for('learn') }}">Learn</a> · lesson {{ lesson.number }} of {{ total }} · about {{ lesson.minutes }} minutes{% if done %} · <span class="lesson-read">read</span>{% endif %}</p>
+    <h1 id="lesson-title">{{ lesson.title }}</h1>
+    <p class="lesson-idea">{{ lesson.idea }}</p>
+  </header>
+
+  <div class="lesson-body">
+    {% block body %}{% endblock %}
+  </div>
+
+  <aside class="panel lesson-demo" aria-labelledby="demo-title">
+    <h2 id="demo-title" class="eyebrow">In the demo</h2>
+    {% block demo %}{% endblock %}
+  </aside>
+
+  <aside class="lesson-watch" aria-labelledby="watch-title">
+    <h2 id="watch-title">Watch out</h2>
+    {% block watch_out %}{% endblock %}
+  </aside>
+
+  <details class="lesson-check">
+    <summary><span class="check-label">Check yourself</span> {% block question %}{% endblock %} <span class="check-cue">Show the answer</span></summary>
+    <div class="check-answer">{% block answer %}{% endblock %}</div>
+  </details>
+
+  <form class="lesson-next" method="post" action="{{ url_for('lesson_done', slug=lesson.slug) }}" data-lesson-done="{{ lesson.slug }}">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <button class="btn btn-primary" type="submit">{% if next %}Done · next: {{ next.title }}{% else %}Done · back to all lessons{% endif %}</button>
+    <a class="quiet-link" href="{{ url_for('learn') }}">All lessons</a>
+  </form>
+
+  <footer class="lesson-foot">
+    <p>Sources: {% block sources %}{% endblock %}</p>
+    <p>Educational, not financial advice. SGXray never tells you what to buy.</p>
+  </footer>
+</article>
+{{ term_popups() }}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/popups.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/learn.js') }}" defer></script>
+{% endblock %}

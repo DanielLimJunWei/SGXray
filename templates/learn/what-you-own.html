@@ -1,0 +1,48 @@
+{% extends "learn/_lesson.html" %}
+
+{% block body %}
+<section>
+  <h2>1. A share: a piece of a business</h2>
+  <p>Buy a {{ term("share") }} of DBS and you own a tiny part of the bank. When it makes a profit, part of that is paid to you as a {{ term("dividend") }}. Its price goes up and down with how the bank and the market are doing.</p>
+  <p>On SGX, shares usually trade in {{ term("board-lot", "board lots") }} of 100. You can buy fewer, from a single share, in SGX's unit share market.</p>
+</section>
+
+<section>
+  <h2>2. A REIT: a piece of buildings</h2>
+  <p>A {{ term("reit", "REIT") }} owns property, like malls, offices or warehouses, and collects the rent. Under Singapore's tax rules a REIT avoids tax at the trust level only if it pays out <b>at least 90%</b> of its taxable income, so REITs tend to pay bigger, steadier payouts than most companies.</p>
+  <p>The catch: paying almost everything out leaves little to grow with, so REITs often borrow or ask unitholders for more money to buy new buildings.</p>
+</section>
+
+<section>
+  <h2>3. An ETF: a basket of many</h2>
+  <p>An {{ term("etf", "ETF") }} is one fund holding many companies, bought like a single share. The STI ETF holds all 30 companies in the Straits Times Index, Singapore's 30 biggest listed companies, in one buy. If one company has a terrible year, the other 29 soften the blow.</p>
+</section>
+{% endblock %}
+
+{% block demo %}
+{% if owned %}
+<p>What the demo holds today:</p>
+<ul class="demo-list">
+  {% for h in owned %}
+  <li><b>{{ h.name }}</b> <span class="demo-kind">{{ h.kind }}</span>
+      <span class="demo-num">{{ h.value|money }} · {{ "%.0f%%"|format(h.weight * 100) }} of the portfolio</span></li>
+  {% endfor %}
+</ul>
+{% set big = owned[0] %}
+<p>{{ big.name }} alone is {{ "%.0f%%"|format(big.weight * 100) }} of the demo, so that one {{ big.noun }} moves most of it.{% for h in owned if h.ticker == "ES3.SI" %} The {{ h.value|money }} in the STI ETF, meanwhile, is spread over 30 companies.{% endfor %}</p>
+<a class="demo-link" href="{{ url_for('demo') }}#holdings-title">See them in the demo's holdings</a>
+{% else %}
+<p>The demo portfolio isn't loaded yet, so there are no holdings to show. They appear after the next price update.</p>
+{% endif %}
+{% endblock %}
+
+{% block watch_out %}
+<p>Buying a stock because "everyone knows the name" without knowing what the business does or how it makes money. A familiar brand isn't the same as a good investment, and if you can't say in one sentence what you own, you won't know whether to hold on when its price falls.</p>
+{% endblock %}
+
+{% block question %}You own one STI ETF unit and DBS has a bad year. Does it affect you?{% endblock %}
+{% block answer %}
+<p><b>Yes, but only a little.</b> DBS is one of the 30 companies inside the STI, and one of the biggest, so it's a larger slice of the ETF than most. But the other 29 companies make up the rest, so a bad year for DBS hurts far less than owning DBS shares alone.</p>
+{% endblock %}
+
+{% block sources %}<a href="https://www.sgx.com/" rel="noopener">SGX</a> (board lots, the STI), <a href="https://www.iras.gov.sg/" rel="noopener">IRAS</a> (the REIT 90% payout rule), checked November 2026{% endblock %}

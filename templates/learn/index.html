@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Learn before you invest · SGXray{% endblock %}
+
+{% block content %}
+<div class="page wrap learn" data-learn-index{% if not current_user %} data-local-progress{% endif %}>
+  <header class="page-head">
+    <p class="eyebrow">Learn</p>
+    <h1>Before you invest</h1>
+    <p class="muted">{{ lessons|length }} short lessons, each about four minutes, taught with the demo portfolio's real numbers. No account needed. Educational, not financial advice: SGXray never tells you what to buy.</p>
+    <p class="learn-progress" data-progress-total="{{ lessons|length }}"><span data-progress-count>{{ read_count }}</span> of {{ lessons|length }} read{% if not current_user %} <span class="muted">· remembered in this browser. <a href="{{ url_for('signup') }}">Create an account</a> to keep it everywhere.</span>{% endif %}</p>
+  </header>
+
+  {% if request.args.get("finished") %}<p class="form-ok" role="status">That's every lesson written so far. The rest are on their way.</p>{% endif %}
+
+  <ol class="lesson-list">
+    {% for x in lessons %}
+    <li class="lesson-item{% if x.slug in done %} is-read{% endif %}{% if not x.ready %} is-soon{% endif %}" data-lesson="{{ x.slug }}">
+      <span class="lesson-num" aria-hidden="true">{{ x.number }}</span>
+      <div class="lesson-text">
+        {% if x.ready %}<a class="lesson-link" href="{{ url_for('lesson', slug=x.slug) }}">{{ x.title }}</a>{% else %}<span class="lesson-link">{{ x.title }}</span>{% endif %}
+        <p>{{ x.idea }}</p>
+      </div>
+      <span class="lesson-state">{% if not x.ready %}Being written{% elif x.slug in done %}Read{% else %}{{ x.minutes }} min{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ol>
+
+  <div class="learn-actions">
+    {% if first_unread %}<a class="btn btn-primary" href="{{ url_for('lesson', slug=first_unread.slug) }}" data-start>{{ "Start with lesson 1" if read_count == 0 else "Carry on: " ~ first_unread.title }}</a>{% endif %}
+    <a class="btn btn-ghost" href="{{ url_for('demo') }}">Look at the demo</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}<script src="{{ url_for('static', filename='js/learn.js') }}" defer></script>{% endblock %}

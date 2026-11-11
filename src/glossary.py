@@ -173,6 +173,36 @@ TERMS = {
                  "none saved yet, so there's nothing to draw. The daily price update saves them after SGX "
                  "closes at about 5:30pm, and the chart appears after that.",
                  "Added Singapore Airlines this afternoon: its chart is ready after this evening's price update."),
+    # ---- Learn page (w313) ----
+    "emergency-fund": ("Emergency fund",
+                       "Cash kept aside for surprises like losing your job or a big medical bill, so you never have "
+                       "to sell investments at a bad time. MoneySense suggests 3 to 6 months of expenses (12 if "
+                       "your income is irregular), in a savings account or Singapore Savings Bonds.",
+                       "Spending $1,500 a month: an emergency fund of $4,500 to $9,000."),
+    "expensive-debt": ("Expensive debt",
+                       "Borrowing that charges a high interest rate, like an unpaid credit card bill. Paying it off "
+                       "is a guaranteed 'return' that investing rarely beats.",
+                       "A $2,000 card balance at 27.8% a year costs about $556 in a year if left unpaid."),
+    "dip": ("A fall (drawdown)",
+            "How far a portfolio dropped from its high point before climbing back. Falls are normal; "
+            "selling during one is what turns a paper loss into a real one.",
+            "$17,964 down to $15,197 is a $2,767 fall, about 15%."),
+    "share": ("Share (stock)",
+              "A small piece of ownership in a company. You get a part of its profits (as dividends) and its "
+              "price moves with how the business and the market are doing.",
+              "100 DBS shares = a tiny piece of DBS Group Holdings."),
+    "reit": ("REIT",
+             "A real estate investment trust: a trust that owns buildings (malls, offices, warehouses) and pays "
+             "out most of the rent. To avoid tax at the trust level it must pay out at least 90% of its taxable "
+             "income.",
+             "CapitaLand Integrated Commercial Trust owns malls and offices like Raffles City."),
+    "etf": ("ETF",
+            "An exchange-traded fund: one fund that holds many companies, bought and sold like a single share.",
+            "One STI ETF unit holds a slice of all 30 companies in the Straits Times Index."),
+    "board-lot": ("Board lot",
+                  "The usual trading size on SGX: 100 shares. You can also buy fewer (from 1 share) in SGX's "
+                  "unit share market, which has fewer buyers and sellers.",
+                  "DBS at $69.72: one board lot of 100 shares costs about $6,972 before fees."),
     "per-stock": ("Per stock",
                   "This column only has a number for one stock at a time (its own shares, price, cost or "
                   "dividend per share), so a whole-portfolio total wouldn't mean anything. Each stock's "

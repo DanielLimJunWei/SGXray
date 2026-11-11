@@ -1,0 +1,46 @@
+{% extends "learn/_lesson.html" %}
+
+{% block body %}
+<section>
+  <h2>1. A cushion first</h2>
+  <p>Before any investing, keep an {{ term("emergency-fund", "emergency fund") }}: cash for surprises like losing your job, a hospital bill or a broken laptop. MoneySense, the government's financial education site, suggests <b>3 to 6 months of your expenses</b>, or 12 months if your income goes up and down.</p>
+  <p>Keep it somewhere safe and quick to reach, like a savings account or Singapore Savings Bonds. Not in shares, and not in your CPF, which you can't take out for emergencies.</p>
+</section>
+
+<section>
+  <h2>2. Clear expensive debt</h2>
+  <p>An unpaid credit card bill at a big Singapore bank costs about <b>28% a year</b> in interest (POSB's rate is 27.8%). No sensible investment reliably earns that. Paying off {{ term("expensive-debt", "expensive debt") }} first is a guaranteed win; investing while carrying it is running up a down escalator.</p>
+</section>
+
+<section>
+  <h2>3. Only money you can leave alone</h2>
+  <p>Share prices go down as well as up, sometimes a lot, in a few days. Over many years the ups have usually won, but nobody knows what the next few months bring.</p>
+  <p>So invest only money you won't need for <b>at least five years</b>. Then a fall is something you can wait out, not something that forces you to sell at the bottom. School fees next year, a wedding, a flat deposit: that money belongs in savings, not shares.</p>
+</section>
+{% endblock %}
+
+{% block demo %}
+{% if dip %}
+<p class="demo-figure"><span class="down">▼ {{ dip.fall|money }}</span> <span class="demo-figure-sub">in {{ dip.days }} days</span></p>
+<p>On {{ dip.peak_day|longdate }} the demo portfolio was worth {{ dip.peak|money }}. On {{ dip.low_day|longdate }} it was worth {{ dip.low|money }}: {{ term("dip", "%.0f%% less"|format(-dip.fall_pct * 100)) }}, with no trades in between. That was the whole market falling, not a bad pick.</p>
+{% if dip.back_day %}
+<p>Anyone who had to sell on {{ dip.low_day|longdate }} for a bill would have come out {{ dip.fall|money }} short. Anyone who could wait saw it climb back above {{ dip.peak|money }} by {{ dip.back_day|longdate }}. It's worth {{ dip.now|money }} on {{ dip.now_day|longdate }}.</p>
+{% else %}
+<p>Anyone who had to sell on {{ dip.low_day|longdate }} for a bill would have come out {{ dip.fall|money }} short. It hasn't climbed back to {{ dip.peak|money }} yet, which is exactly why money you'll need soon shouldn't be in shares.</p>
+{% endif %}
+<a class="demo-link" href="{{ url_for('demo') }}#xray-title">See it on the demo's X-ray chart</a>
+{% else %}
+<p>The demo portfolio's history isn't loaded yet, so there's no real fall to show. It appears after the next price update.</p>
+{% endif %}
+{% endblock %}
+
+{% block watch_out %}
+<p>Putting your emergency fund into shares "because it's just sitting there". Emergencies tend to arrive when markets are down too: a job loss in a recession is the classic case. Then you're forced to sell low, at exactly the wrong time.</p>
+{% endblock %}
+
+{% block question %}You have $8,000 saved, spend $1,500 a month, and owe $1,200 on a credit card. What comes first?{% endblock %}
+{% block answer %}
+<p><b>Pay off the $1,200 card.</b> That stops a cost of about 28% a year. The $6,800 left covers about 4½ months of expenses: a good emergency fund. Only money saved on top of that is ready to invest.</p>
+{% endblock %}
+
+{% block sources %}<a href="https://www.moneysense.gov.sg/" rel="noopener">MoneySense</a> (emergency fund guidance), <a href="https://www.posb.com.sg/personal/support/card-charges-and-fees-finance-charge.html" rel="noopener">POSB card charges</a> (27.8% a year), checked November 2026{% endblock %}

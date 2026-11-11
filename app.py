@@ -40,6 +40,7 @@ from history import period_returns, time_weighted, value_history  # noqa: E402
 import insights  # noqa: E402
 from importer import DEMO_EMAIL  # noqa: E402
 from income import by_year, forecast, portfolio_yield, yields  # noqa: E402
+import lessons  # noqa: E402
 import lookup  # noqa: E402
 import mailer  # noqa: E402
 from performance import compare, per_stock  # noqa: E402
@@ -89,6 +90,43 @@ def create_app(db_path=None):
         """The sample portfolio: anyone can look, nobody can change it (GET only)."""
         user = db.get_user_by_email(get_db(), DEMO_EMAIL)
         return _portfolio_page(user["id"] if user else None, mode="demo")
+
+    # ---------- Learn: the "Before you invest" lesson path (w313) ----------
+    # Open to everyone, logged in or not. Logged in, finished lessons are saved to your account;
+    # logged out, static/js/learn.js remembers them in this browser only.
+
+    @app.get("/learn")
+    def learn():
+        done = db.lessons_read(get_db(), g.user["id"]) if g.get("user") else set()
+        ready = [x for x in lessons.LESSONS if x.ready]
+        first_unread = next((x for x in ready if x.slug not in done), None)
+        return render_template("learn/index.html", lessons=lessons.LESSONS, done=done,
+                               read_count=sum(1 for x in lessons.LESSONS if x.slug in done),
+                               first_unread=first_unread)
+
+    @app.get("/learn/<slug>")
+    def lesson(slug):
+        item = lessons.get(slug) or abort(404)
+        conn = get_db()
+        demo_uid = lessons.demo_user_id(conn)
+        facts = {}
+        if demo_uid is not None:
+            if slug == "first-dollar":
+                facts["dip"] = lessons.biggest_dip(conn, demo_uid)
+            elif slug == "what-you-own":
+                facts["owned"] = lessons.what_you_own(conn, demo_uid)
+        done = db.lessons_read(conn, g.user["id"]) if g.get("user") else set()
+        return render_template(f"learn/{item.slug}.html", lesson=item, total=len(lessons.LESSONS),
+                               next=lessons.next_lesson(item), done=item.slug in done, **facts)
+
+    @app.post("/learn/<slug>/done")
+    def lesson_done(slug):
+        """"Done, next lesson": saved to your account if you're logged in, then on to the next one."""
+        item = lessons.get(slug) or abort(404)
+        if g.get("user"):
+            db.mark_lesson_read(get_db(), g.user["id"], item.slug)
+        nxt = lessons.next_lesson(item)
+        return redirect(url_for("lesson", slug=nxt.slug) if nxt else url_for("learn", finished=item.slug))
 
     @app.get("/portfolio")
     @login_required
@@ -666,8 +704,8 @@ def _security_headers(response):
     response.headers["Content-Security-Policy"] = "; ".join([
         "default-src 'self'",
         f"script-src 'self' {CDN} 'nonce-{nonce}'",
-        f"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com {CDN}",
-        "font-src https://fonts.gstatic.com",
+        f"style-src 'self' 'unsafe-inline' {CDN}",
+        "font-src 'self'",                        # fonts are served by SGXray itself: no visitor data goes to Google
         "img-src 'self' data: blob:",
         f"connect-src 'self' {CDN}",
         "object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'",

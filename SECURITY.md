@@ -40,7 +40,7 @@ UNKNOWN = can only be checked on the live site; each has a Week 4 task.
 | 17 | SQL injection | PASS | Every query uses `?` placeholders; the one f-string (`PRAGMA table_info`) uses fixed table names from code; `test_sql_injection_in_the_login_form_does_nothing` |
 | 18 | NoSQL injection | N/A | No NoSQL database |
 | 19 | Cross-site scripting | PASS | Jinja escapes everything; scripts build the page with `textContent`; CSP with a per-page nonce (`test_security_headers_and_a_fresh_nonce...`). Trade notes, the first free text other than emails, are tested with a `<script>` note on both pages that show them (`test_a_note_is_shown_as_text_never_as_html`) |
-| 20 | CSRF | PASS | Token in every form, constant-time check, SameSite=Lax, logout POST-only (`test_forms_without_the_token...`, `test_logout_needs_a_post...`) |
+| 20 | CSRF | PASS | Token in every form, constant-time check, SameSite=Lax, logout POST-only (`test_forms_without_the_token...`, `test_logout_needs_a_post...`). The Learn page's "Done" button is a POST with the token too (`test_done_needs_the_form_token`); logged out it saves nothing on the server |
 | 21 | Insecure file uploads | N/A now | No uploads yet. CSV import in the app (w308) will cap size, accept only CSV text, never save the file or use its name |
 | 22 | Path traversal | PASS | The only file route uses `send_from_directory` (safe join) and is debug-only |
 | 23 | SSRF | PASS | SGXray never fetches a user-supplied URL. Ticker lookup only sends a code matching `^[A-Z0-9]{1,6}$` (+ `.SI`), only through yfinance to Yahoo, logged in only, 20 lookups an hour each; Yahoo's answer must say SGX and a share or ETF before anything is saved (`test_lookup.py`) |
@@ -89,11 +89,27 @@ UNKNOWN = can only be checked on the live site; each has a Week 4 task.
 | 65 | AI sensitive-information disclosure | N/A now / w412 | No AI yet. The "What is going on?" box will send only public news and the stock's public prices, never anyone's portfolio |
 | 66 | Unsafe use of AI output | N/A now / w412 | Its answer will be shown as plain text (escaped), never used as HTML, SQL, a link target or a command |
 | 67 | AI agents with excessive agency | N/A | SGXray's AI will have no tools: it can't trade, delete or spend |
-| 68 | Sensitive browser storage | PASS | The only thing in browser storage is the animation on/off choice (`sgxray-motion`); the login cookie is HttpOnly and holds only a random session id |
+| 68 | Sensitive browser storage | PASS | Browser storage holds only the animation on/off choice (`sgxray-motion`) and, when logged out, which lessons you've read (`sgxray-lessons-read`); the login cookie is HttpOnly and holds only a random session id |
 | 69 | Open redirects | PASS | `auth.safe_next` allows only paths inside SGXray; 4 attack forms tested (`test_login_never_redirects_to_another_site`) |
 | 70 | GraphQL / WebSocket / realtime endpoints | N/A | None |
 
 **Totals (70 checks):** 37 PASS (some to re-check on the live site; check 56 passes for login and is mitigated for sign-up until email verification), 7 FIXED in this audit, 22 N/A (features SGXray doesn't have, or doesn't have yet), 4 UNKNOWN (3 need the live site, 1 needs you).
+
+### Second pass: pre-launch checklist and "ways to get sued" (11 November 2026)
+
+Checked against a 30-point pre-launch security checklist and a 10-point list of ways apps get sued (both written for US law), plus Singapore's own rules. Almost everything was already covered above. New findings:
+
+| # | Check | Status | Evidence / plan |
+|---|---|---|---|
+| 71 | Visitor data sent to outside companies | FIXED | Google Fonts sent every visitor's network address to Google. The three fonts are now served by SGXray (`static/fonts/`, open licence), and the CSP allows fonts only from SGXray (`test_no_page_sends_visitors_to_google_fonts`). Still outside: jsDelivr on the home page (the 3D scene's code), Yahoo Finance (server only, stock codes, no personal data) |
+| 72 | Privacy policy matches what the code stores | TO DO / w409 | Must list every table with personal data and how long it's kept, every outside company, a named Data Protection Officer (PDPA requires one), and a breach plan (tell the PDPC within 3 days if a breach is notifiable) |
+| 73 | Deletion does what the policy promises | TO DO / w411 | Account deletion must remove trades, notes, lesson reads, sessions and reset links, and be as easy as signing up |
+| 74 | Licence for the price data | TO DO / w418 | yfinance's README says Yahoo's data is for personal use. Confirm Yahoo's terms allow a public site, or switch to a licensed provider before launch |
+| 75 | Someone else's trade mark | TO DO / w419 | "SGX" is Singapore Exchange's registered trade mark. The footer says "not affiliated"; ask a lawyer about the name before launch |
+| 76 | Bot protection on sign-up | PARTLY / w420 | Rate limits only (5 sign-ups an hour per address). Add email confirmation once the email service exists |
+| 77 | "Past returns" and advice wording | FIXED | Footer and the returns panels say past returns don't predict future ones; lessons only explain, never recommend (MAS: general education isn't financial advice) |
+| 78 | Fake reviews, subscriptions, chatbots | N/A now | No testimonials (and never invented ones), no payments. The AI explainer (w412) must say it's AI, and the privacy policy must name its provider |
+
 
 ## Your to-do (things only you can do)
 

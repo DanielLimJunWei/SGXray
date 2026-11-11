@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}SGXray{% endblock %}</title>
 <meta name="description" content="SGXray tracks your SGX stocks, REITs and ETFs and explains every number in plain English.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap">
+<link rel="preload" href="{{ url_for('static', filename='fonts/inter.woff2') }}" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
 {% block head %}{% endblock %}
@@ -30,6 +28,7 @@
   {% block navlinks %}{% endblock %}
   {% block navaction %}
   <div class="nav-actions">
+    <a class="nav-link" href="{{ url_for('learn') }}">Learn</a>
     {% if current_user %}
     <a class="nav-link" href="{{ url_for('portfolio') }}">Your portfolio</a>
     <a class="nav-link" href="{{ url_for('trades_page') }}">Trades</a>
@@ -51,7 +50,7 @@
   <div class="wrap">
     {% block footer_extra %}{% endblock %}
     <p>Prices and dividends from Yahoo Finance: end-of-day closes, not live.</p>
-    <p>SGXray is educational, not financial advice. Not affiliated with Singapore Exchange Limited.</p>
+    <p>SGXray is educational, not financial advice. Past returns don't predict future ones. Not affiliated with Singapore Exchange Limited.</p>
   </div>
 </footer>
 <script src="{{ url_for('static', filename='js/ambient.js') }}" defer></script>
