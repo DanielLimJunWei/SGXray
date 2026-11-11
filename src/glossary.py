@@ -203,6 +203,64 @@ TERMS = {
                   "The usual trading size on SGX: 100 shares. You can also buy fewer (from 1 share) in SGX's "
                   "unit share market, which has fewer buyers and sellers.",
                   "DBS at $69.72: one board lot of 100 shares costs about $6,972 before fees."),
+    "cdp": ("CDP account",
+            "An account at The Central Depository, run by SGX, that holds your Singapore shares in your own name. "
+            "Dividends go straight to your linked bank account, company letters come to you, and you can vote "
+            "at meetings. You can keep it if you change brokers.",
+            "Buy DBS through a CDP-linked broker: the shares show up under your name in your CDP statement."),
+    "custodian": ("Custodian account",
+                  "Your broker holds the shares for you, in the broker's (nominee's) name. You still own them, but "
+                  "dividends and company letters come through the broker, voting is usually indirect, and moving "
+                  "to another broker can cost a fee. Often cheaper per trade.",
+                  "Many app-based brokers use custodian accounts; some can also link to your CDP."),
+    "mas-directory": ("MAS Financial Institutions Directory",
+                      "The Monetary Authority of Singapore's public list of every firm it licenses, and what each "
+                      "is allowed to do. If a firm offering you an investment isn't on it, don't send money.",
+                      "Search the firm's exact name on mas.gov.sg/directories before you pay anything."),
+    "guaranteed-return": ("Guaranteed high returns",
+                          "A promise of big, steady profits with little or no risk. Real investments can't promise "
+                          "this: prices fall sometimes. It's the most common sign of a scam.",
+                          "\"3% a month, guaranteed\" works out to about 43% a year, every year. Nothing real does that."),
+    "commission": ("Broker commission",
+                   "What your broker charges for each buy or sell: usually a percentage of the trade, with a minimum "
+                   "fee per trade. On small trades the minimum is what you pay.",
+                   "0.1% with a $10 minimum: a $500 trade still costs $10, which is 2%."),
+    "sgx-fees": ("SGX fees",
+                 "Small fees SGX adds to every trade: a clearing fee of 0.0325% and a trading access fee of 0.0075% "
+                 "of the trade's value, plus 9% GST on them and on your broker's commission.",
+                 "On a $10,000 trade: $3.25 + $0.75 = $4.00, plus about $0.36 GST."),
+    "payment-date": ("Payment date",
+                     "The day the dividend cash actually reaches you, usually a few weeks after the ex-date. The "
+                     "company's announcement on SGX gives the exact date.",
+                     "Ex-date in early May, cash in your bank account later in May."),
+    "dividend-tax": ("Tax on dividends",
+                     "Dividends from Singapore companies are tax-free for you: the company has already paid tax on "
+                     "its profits. Many other countries take tax off dividends before they reach you.",
+                     "DBS pays $100 of dividends: you get the full $100. A US company's $100 usually arrives as $70."),
+    "inflation": ("Inflation",
+                  "Prices rising over time, so the same dollar buys less each year. Cash kept for years quietly "
+                  "loses spending power.",
+                  "At 2% inflation, $10,000 buys about what $8,200 does today after 10 years."),
+    "compounding": ("Compounding",
+                    "Earning returns on your past returns, not just on the money you put in. The longer it runs, "
+                    "the faster the pile grows.",
+                    "$10,000 growing 6% a year: $17,900 after 10 years, $32,100 after 20."),
+    "regular-investing": ("Investing every month",
+                          "Putting in the same amount on a schedule, whatever the price. You buy more shares when "
+                          "prices are low and fewer when they're high, and you never have to guess the right day.",
+                          "$200 a month into the STI ETF, through a bank's regular savings plan."),
+    "index-fund": ("Index fund",
+                   "A fund that simply buys everything in an index instead of picking. Low cost, and it gets the "
+                   "market's return, no better and no worse.",
+                   "The STI ETF holds all 30 STI companies in the same proportions as the index."),
+    "money-weighted": ("Money-weighted return",
+                       "Your own return, counting when your money went in and out. It answers \"how did MY money "
+                       "do?\" Also called XIRR.",
+                       "Adding a lot of money just before a rise makes your money-weighted return look better."),
+    "time-weighted": ("Time-weighted return",
+                      "How your picks did, ignoring when you added or took out money, as if one dollar had stayed "
+                      "in from the start. It's how funds report, so it's the fair way to compare picks.",
+                      "Funds and the STI ETF report time-weighted returns."),
     "per-stock": ("Per stock",
                   "This column only has a number for one stock at a time (its own shares, price, cost or "
                   "dividend per share), so a whole-portfolio total wouldn't mean anything. Each stock's "

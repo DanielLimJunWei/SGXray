@@ -1,0 +1,46 @@
+{% extends "learn/_lesson.html" %}
+
+{% block body %}
+<section>
+  <h2>1. Why not just keep cash?</h2>
+  <p>Because of {{ term("inflation") }}: prices creep up, so the same dollar buys a little less each year. At 2% a year, $10,000 left in cash for ten years buys only about what $8,200 buys today. Cash is safe from falls, but not from that slow leak.</p>
+  <p>Investing is how money can grow faster than prices. The price you pay for that is risk: the value goes down as well as up.</p>
+</section>
+
+<section>
+  <h2>2. Time does the heavy lifting</h2>
+  <p>{{ term("compounding", "Compounding") }} means earning returns on your past returns. $10,000 growing 6% a year becomes about $17,900 after 10 years, and about $32,100 after 20: the second ten years add far more than the first, from the same starting money. (6% is just an example, not a promise.)</p>
+  <p>Time also makes falls easier to sit through. A drop that looks frightening over a month is often a small dent over ten years. It isn't guaranteed to come back, but the longer you can wait, the less any one bad month decides your result.</p>
+</section>
+
+<section>
+  <h2>3. Three ways to make falls easier</h2>
+  <p><b>Spread your money out.</b> Many companies, or a fund like the STI ETF, so no single one can sink you.</p>
+  <p><b>{{ term("regular-investing", "Invest a fixed amount every month") }}.</b> You buy more shares when prices are low and fewer when they're high, and you never have to guess the right day.</p>
+  <p><b>Write down why you bought.</b> When prices fall, reread it. If the reason still holds, a lower price may not change anything. SGXray keeps your "Why I bought" note beside each stock for exactly this.</p>
+</section>
+{% endblock %}
+
+{% block demo %}
+{% if dip %}
+<p class="demo-figure"><span class="down">▼ {{ "%.0f%%"|format(-dip.fall_pct * 100) }}</span> <span class="demo-figure-sub">then back in {% if dip.back_day %}{{ (dip.back_day - dip.low_day).days }} days{% else %}time that hasn't come yet{% endif %}</span></p>
+<p>The demo's biggest fall: {{ dip.peak|money }} on {{ dip.peak_day|longdate }} down to {{ dip.low|money }} on {{ dip.low_day|longdate }}, with no trades in between.{% if dip.back_day %} By {{ dip.back_day|longdate }} it was back above where it started falling, and it's worth {{ dip.now|money }} now.{% endif %}</p>
+{% if sums and sums.last_buy and sums.last_buy != sums.first_day %}
+<p>It also didn't go in all at once: {{ sums.buys }} buys between {{ sums.first_day|longdate }} and {{ sums.last_buy|longdate }}, so no single day's price decided everything.</p>
+{% endif %}
+<a class="demo-link" href="{{ url_for('demo') }}#xray-title">See the fall and the recovery on the X-ray chart</a>
+{% else %}
+<p>The demo portfolio's history isn't loaded yet, so there's no real fall to show. It appears after the next price update.</p>
+{% endif %}
+{% endblock %}
+
+{% block watch_out %}
+<p>Checking prices every day. Daily moves are mostly noise, and watching them makes selling in a panic far more likely. SGXray shows end-of-day prices on purpose: once a day is plenty, and once a month is fine.</p>
+{% endblock %}
+
+{% block question %}You invest $5,000 once and it grows 6% a year for 30 years. Roughly how much is it worth, and where did most of it come from?{% endblock %}
+{% block answer %}
+<p><b>About $28,700.</b> Only $5,000 of that is your money and $9,000 is the 6% on your first $5,000 each year. The other $14,700 or so is returns earned on earlier returns: compounding. That's why starting early matters more than starting big.</p>
+{% endblock %}
+
+{% block sources %}<a href="https://www.moneysense.gov.sg/" rel="noopener">MoneySense</a> (investing basics), checked November 2026. The 2% and 6% are round examples, not forecasts.{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "learn/_lesson.html" %}
+
+{% block body %}
+<section>
+  <h2>1. The market is the bar to beat</h2>
+  <p>You can buy the whole Singapore market in one go: the {{ term("sti-etf", "STI ETF") }} holds all 30 STI companies. It's an {{ term("index-fund", "index fund") }}: no picking, low cost, and exactly the market's return.</p>
+  <p>So every stock you pick yourself has to answer one question: <b>did it do better than the same money in the STI ETF would have?</b> If not, the effort and the extra risk didn't pay.</p>
+</section>
+
+<section>
+  <h2>2. Most professionals don't beat it</h2>
+  <p>S&amp;P's SPIVA reports track this every year. In the 10 years to the end of 2024, <b>at least 80% of US share funds</b> run by full-time professionals did worse than their index after fees. Reports for other markets show similar results.</p>
+  <p>That doesn't mean picking is wrong, or that nobody can do it. It means beating the market is hard, and you should measure whether you are, instead of assuming.</p>
+</section>
+
+<section>
+  <h2>3. Luck or skill?</h2>
+  <p>A few good years can be luck. One great pick can carry a whole portfolio and hide that the others did worse. It takes many years, and looking stock by stock, to tell skill from a lucky streak.</p>
+</section>
+{% endblock %}
+
+{% block demo %}
+{% if returns %}
+<p class="demo-figure">{{ returns.your_profit|money }} <span class="demo-figure-sub">vs {{ returns.sti_profit|money }} for the same money in the STI ETF</span></p>
+<p>Overall, the demo {% if returns.your_profit >= returns.sti_profit %}beat the market{% else %}trailed the market{% endif %}. Stock by stock, the story is more mixed:</p>
+<ul class="demo-list">
+  {% for s in returns.stocks %}
+  <li><b>{{ s.name }}</b> <span class="demo-kind">{{ {"helped": "beat the STI ETF", "held back": "trailed the STI ETF", "about level": "about level with it"}.get(s.verdict, s.verdict) }}</span>
+      <span class="demo-num {{ s.difference|trend }}">{{ s.difference|money(signed=True) }}</span></li>
+  {% endfor %}
+</ul>
+{% set best = returns.stocks|sort(attribute="difference", reverse=True)|first %}
+{% if best and best.difference > (returns.your_profit - returns.sti_profit) %}
+<p>{{ best.name }} alone beat the market by {{ best.difference|money }}, more than the whole portfolio's lead of {{ (returns.your_profit - returns.sti_profit)|money }}. Without that one pick, the demo would have trailed the STI ETF.</p>
+{% endif %}
+<a class="demo-link" href="{{ url_for('demo') }}#vs-title">See each stock vs the STI ETF</a>
+{% else %}
+<p>The demo portfolio or the STI ETF's prices aren't loaded yet, so there's nothing to compare. They appear after the next price update.</p>
+{% endif %}
+{% endblock %}
+
+{% block watch_out %}
+<p>Judging your skill on a short good run, or on your total alone. Check each stock against the STI ETF: one winner can hide several picks that did worse than simply buying the market.</p>
+{% endblock %}
+
+{% block question %}You've beaten the STI ETF by 3% a year for two years, mostly thanks to one stock. Does that prove you're good at picking?{% endblock %}
+{% block answer %}
+<p><b>Not yet.</b> Two years is short, and one stock doing most of the work could easily be luck. Keep measuring each pick against the STI ETF for many years; only a long record across many stocks starts to show skill.</p>
+{% endblock %}
+
+{% block sources %}<a href="https://www.spglobal.com/spdji/en/research-insights/spiva/" rel="noopener">S&amp;P SPIVA scorecards</a> (US year-end 2024: at least 80% of equity funds trailed their benchmark over 10 years), <a href="https://www.sgx.com/" rel="noopener">SGX</a> (the STI), checked November 2026{% endblock %}

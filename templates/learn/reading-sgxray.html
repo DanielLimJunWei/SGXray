@@ -1,0 +1,54 @@
+{% extends "learn/_lesson.html" %}
+
+{% block body %}
+<section>
+  <h2>1. The X-ray: one line, split open</h2>
+  <p>A normal chart shows your portfolio's value going up or down. That line mixes three different things, so SGXray's X-ray chart splits it into layers:</p>
+  <p><b>{{ term("money-in", "Your own money") }}</b> at the bottom: what you put in. It's not profit.</p>
+  <p><b>{{ term("price-gains", "Price gains") }}</b> on top: what your shares have gained (or lost) in price.</p>
+  <p><b>{{ term("dividend", "Dividends") }}</b> on top of that: the cash paid to you along the way.</p>
+  <p>The dashed line is the same money put into the STI ETF on the same days: the market, for comparison.</p>
+</section>
+
+<section>
+  <h2>2. Why there are two returns</h2>
+  <p>A {{ term("money-weighted", "money-weighted return") }} answers "how did <b>my money</b> do?" It counts when you added it: money added just before a rise helps, money added just before a fall hurts.</p>
+  <p>A {{ term("time-weighted", "time-weighted return") }} answers "how did <b>my picks</b> do?" It ignores when money went in, so it's the fair way to compare your choices with a fund or the market. When the two differ a lot, your timing made the difference.</p>
+</section>
+
+<section>
+  <h2>3. Reading it calmly</h2>
+  <p>SGXray uses end-of-day closing prices, not live ones. Where a number can't be worked out yet, it says why in words (like {{ term("pending") }}) and you can tap the word. Every table has a "What does this mean?" box, and a "Watch out" box when something deserves a second look.</p>
+  <p>Past returns don't predict future ones. The point of all this is understanding what happened, not guessing what's next.</p>
+</section>
+{% endblock %}
+
+{% block demo %}
+{% if layers %}
+<ul class="demo-list">
+  <li><b>Your own money</b> <span class="demo-num">{{ layers.money|money }}</span></li>
+  <li><b>Price gains</b> <span class="demo-num {{ layers.gains|trend }}">{{ layers.gains|money(signed=True) }}</span></li>
+  <li><b>Dividends</b> <span class="demo-num">{{ layers.dividends|money }}</span></li>
+  <li><b>All together</b> <span class="demo-num">{{ layers.total|money }}</span></li>
+  {% if layers.sti %}<li><b>Same money in the STI ETF</b> <span class="demo-num">{{ layers.sti|money }}</span></li>{% endif %}
+</ul>
+<p>That's the demo's X-ray on {{ layers.day|longdate }}. The "all together" figure looks impressive, but {{ layers.money|money }} of it is just the money that went in.</p>
+{% if returns and returns.twr is not none %}
+<p>Its two returns: <b>{{ "%.1f%%"|format(returns.you * 100) }} a year</b> money-weighted, and <b>{{ "%.1f%%"|format(returns.twr * 100) }} a year</b> time-weighted. {% if returns.twr > returns.you %}The picks did a little better than the money did, because some money went in later, after part of the rise.{% elif returns.twr < returns.you %}The money did a little better than the picks, because more money went in before the rises.{% else %}They're the same, so timing made no difference.{% endif %}</p>
+{% endif %}
+<a class="demo-link" href="{{ url_for('demo') }}#xray-title">Open the demo's X-ray chart</a>
+{% else %}
+<p>The demo portfolio's history isn't loaded yet, so there's no X-ray to show. It appears after the next price update.</p>
+{% endif %}
+{% endblock %}
+
+{% block watch_out %}
+<p>Reading the big total as your profit. Always look for how much of it is simply your own money. SGXray puts that layer at the bottom of the chart for exactly this reason.</p>
+{% endblock %}
+
+{% block question %}Your time-weighted return is 12% a year but your money-weighted return is only 6%. What does that suggest?{% endblock %}
+{% block answer %}
+<p><b>Your picks did well, but your timing didn't.</b> Most of your money probably went in after the big rises, or came out before them. The stocks were fine; when you added money cost you.</p>
+{% endblock %}
+
+{% block sources %}<a href="https://www.gipsstandards.org/" rel="noopener">CFA Institute GIPS standards</a> (time-weighted returns, and not showing a yearly rate for under a year), checked November 2026{% endblock %}

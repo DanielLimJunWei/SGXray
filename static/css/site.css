@@ -563,3 +563,5 @@ a.lesson-link:hover { color: var(--color-glow-soft); }
 }
 
 .period-note { margin: var(--space-3) 0 0; font-size: var(--text-xs); color: var(--color-text-faint); }
+.demo-num.up { color: var(--color-up); }
+.demo-num.down { color: var(--color-down); }

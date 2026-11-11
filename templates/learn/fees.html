@@ -1,0 +1,47 @@
+{% extends "learn/_lesson.html" %}
+
+{% block body %}
+<section>
+  <h2>1. What one trade costs</h2>
+  <p>Every buy and every sell has three parts:</p>
+  <p><b>Your broker's {{ term("commission") }}:</b> usually a small percentage of the trade, but with a <b>minimum per trade</b>.</p>
+  <p><b>{{ term("sgx-fees", "SGX's fees") }}:</b> a clearing fee of 0.0325% and a trading access fee of 0.0075%, so about $4 on a $10,000 trade.</p>
+  <p><b>9% GST</b> on the commission and on SGX's fees.</p>
+</section>
+
+<section>
+  <h2>2. Why small trades cost the most</h2>
+  <p>The minimum fee is what catches beginners. With a $10 minimum, a $500 buy costs $10: <b>2% gone</b> before the price moves at all. The same $10 on a $5,000 buy is only 0.2%.</p>
+  <p>And you pay again when you sell. Buying and selling a $500 position costs about 4% in total, about as much as a year of dividends on many Singapore shares.</p>
+</section>
+
+<section>
+  <h2>3. The fees you don't see on the trade</h2>
+  <p>Some brokers also charge for holding your shares, for each dividend they pass on, or for moving your shares out. An ETF takes a small yearly fee from inside the fund, shown as its expense ratio. And buying shares in another currency usually costs a currency-exchange spread.</p>
+  <p>None of these is a reason not to invest. They're a reason to <b>trade less often and in bigger amounts</b>, and to read your broker's fee page once.</p>
+</section>
+{% endblock %}
+
+{% block demo %}
+{% if sums %}
+<p class="demo-figure">{{ sums.fees|money }} <span class="demo-figure-sub">in fees on {{ sums.trades }} trade{{ "s" if sums.trades != 1 }}</span></p>
+<p>The demo bought {{ sums.bought|money }} of shares and paid {{ sums.fees|money }} in fees altogether, about {{ sums.fee_each|money }} a trade. That's {{ "%.2f%%"|format(sums.fees_pct * 100) }} of what it bought: small, because each trade was a decent size.</p>
+{% if sums.smallest %}
+<p>Its smallest buy, {{ sums.smallest.amount|money }} of {{ sums.smallest.name }} on {{ sums.smallest.day|longdate }}, paid {{ sums.smallest.fees|money }}: {{ "%.2f%%"|format(sums.smallest.fees / sums.smallest.amount * 100) }}. Split into four trades of {{ (sums.smallest.amount / 4)|money }} instead, the same money would have paid the minimum fee four times: {{ (sums.smallest.fees * 4)|money }}.</p>
+{% endif %}
+<a class="demo-link" href="{{ url_for('trades_page') if current_user else url_for('demo') }}">{{ "See fees on your own trades" if current_user else "See the demo portfolio" }}</a>
+{% else %}
+<p>The demo portfolio isn't loaded yet, so there are no fees to show. They appear after the next price update.</p>
+{% endif %}
+{% endblock %}
+
+{% block watch_out %}
+<p>Trading often "to make the most of every move". Each round trip, buy then sell, pays fees twice. Over a year, frequent small trades can quietly cost more than they ever make.</p>
+{% endblock %}
+
+{% block question %}Your broker charges 0.08% with a $10 minimum. You buy $1,000 of shares. Roughly what does it cost?{% endblock %}
+{% block answer %}
+<p><b>About $11.30, around 1.1%.</b> 0.08% of $1,000 is only $0.80, so the $10 minimum applies. SGX adds about $0.40, and 9% GST on the $10.40 adds about $0.94.</p>
+{% endblock %}
+
+{% block sources %}<a href="https://www.sgx.com/" rel="noopener">SGX</a> (clearing and trading access fees), <a href="https://www.iras.gov.sg/" rel="noopener">IRAS</a> (GST on brokerage), checked November 2026{% endblock %}

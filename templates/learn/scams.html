@@ -1,0 +1,44 @@
+{% extends "learn/_lesson.html" %}
+
+{% block body %}
+<section>
+  <h2>1. What investment scams look like</h2>
+  <p>They rarely look like scams. Common ones in Singapore: a chat group sharing "insider tips", a stranger who becomes a friend online and then shows you a trading app, an advert with a famous face, or someone pretending to be from a real bank or broker.</p>
+  <p>The giveaway is almost always the same: {{ term("guaranteed-return", "high returns with little or no risk") }}, often with pressure to act fast. Real investments go up and down. Nobody can guarantee a big, steady profit.</p>
+</section>
+
+<section>
+  <h2>2. The check before you pay</h2>
+  <p><b>Look the firm up</b> in the {{ term("mas-directory", "MAS Financial Institutions Directory") }}. If it isn't there, or isn't allowed to do what it's offering, stop.</p>
+  <p><b>Contact it yourself</b> through the phone number on its official website, not one from the chat or advert: scammers copy real firms' names and logos.</p>
+  <p><b>Never pay into a personal bank account</b>, never share your Singpass or bank login, and be suspicious of any "fee" or "tax" you must pay before you can withdraw.</p>
+  <p>Not sure? Call the <b>ScamShield helpline, 1799</b>. It runs 24 hours a day.</p>
+</section>
+
+<section>
+  <h2>3. If you've already paid</h2>
+  <p>Call your bank straight away to try to stop the transfer, then make a police report. Speed matters: money that's still moving can sometimes be frozen.</p>
+</section>
+{% endblock %}
+
+{% block demo %}
+<p class="demo-figure"><span class="down">{{ "%.0f%%"|format(scam.yearly * 100) }} a year</span> <span class="demo-figure-sub">is what "3% a month, guaranteed" means</span></p>
+<p>At 3% a month, $10,000 would become {{ scam.on_10k|money }} in a year, and keep doing that every year, with no bad months.</p>
+{% if returns %}
+<p>{% if returns.you > 0.12 %}The demo had an unusually good run: {% else %}The demo, a real portfolio, made {% endif %}{{ "%.1f%%"|format(returns.you * 100) }} {{ "a year" if returns.yearly else "so far" }}, and the STI ETF {{ "%.1f%%"|format(returns.sti * 100) }}. Even so, it wasn't smooth or promised{% if dip %}: it fell {{ "%.0f%%"|format(-dip.fall_pct * 100) }} in {{ dip.days }} days, from {{ dip.peak_day|longdate }} to {{ dip.low_day|longdate }}{% endif %}. A real portfolio's line wobbles. A scam's line goes up perfectly, because it's made up.</p>
+<a class="demo-link" href="{{ url_for('demo') }}#xray-title">See the demo's real, wobbly line</a>
+{% else %}
+<p>The demo portfolio isn't loaded yet, so there's no real return to compare with. It appears after the next price update.</p>
+{% endif %}
+{% endblock %}
+
+{% block watch_out %}
+<p>"My friend already made money from it." Scams often pay out small amounts at first, so early people really do get paid, and tell others. The money comes from the newer people, until it stops.</p>
+{% endblock %}
+
+{% block question %}A chat group shares tips and a trading app where your balance grows 2% a week. To withdraw, you're told to pay a "tax" first. What's going on?{% endblock %}
+{% block answer %}
+<p><b>It's a scam, on three counts:</b> steady guaranteed-looking growth, tips from a chat group, and a fee before you can withdraw. The "balance" is just a number on their screen. Don't pay the fee; call your bank and make a police report.</p>
+{% endblock %}
+
+{% block sources %}<a href="https://www.moneysense.gov.sg/how-to-spot-an-investment-scam/" rel="noopener">MoneySense: how to spot an investment scam</a>, <a href="https://www.mas.gov.sg/directories" rel="noopener">MAS Financial Institutions Directory</a>, <a href="https://www.scamshield.gov.sg/" rel="noopener">ScamShield</a> (1799 helpline), checked November 2026{% endblock %}

@@ -108,13 +108,7 @@ def create_app(db_path=None):
     def lesson(slug):
         item = lessons.get(slug) or abort(404)
         conn = get_db()
-        demo_uid = lessons.demo_user_id(conn)
-        facts = {}
-        if demo_uid is not None:
-            if slug == "first-dollar":
-                facts["dip"] = lessons.biggest_dip(conn, demo_uid)
-            elif slug == "what-you-own":
-                facts["owned"] = lessons.what_you_own(conn, demo_uid)
+        facts = lessons.facts_for(conn, item.slug)          # the demo's live numbers for its "In the demo" box
         done = db.lessons_read(conn, g.user["id"]) if g.get("user") else set()
         return render_template(f"learn/{item.slug}.html", lesson=item, total=len(lessons.LESSONS),
                                next=lessons.next_lesson(item), done=item.slug in done, **facts)

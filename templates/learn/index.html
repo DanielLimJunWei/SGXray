@@ -10,7 +10,7 @@
     <p class="learn-progress" data-progress-total="{{ lessons|length }}"><span data-progress-count>{{ read_count }}</span> of {{ lessons|length }} read{% if not current_user %} <span class="muted">· remembered in this browser. <a href="{{ url_for('signup') }}">Create an account</a> to keep it everywhere.</span>{% endif %}</p>
   </header>
 
-  {% if request.args.get("finished") %}<p class="form-ok" role="status">That's every lesson written so far. The rest are on their way.</p>{% endif %}
+  {% if request.args.get("finished") %}<p class="form-ok" role="status">{% if lessons|selectattr("ready")|list|length == lessons|length %}That's all {{ lessons|length }} lessons. Next, look around the <a href="{{ url_for('demo') }}">demo portfolio</a>: every number on it should make sense now.{% else %}That's every lesson written so far. The rest are on their way.{% endif %}</p>{% endif %}
 
   <ol class="lesson-list">
     {% for x in lessons %}

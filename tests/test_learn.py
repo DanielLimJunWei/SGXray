@@ -71,7 +71,6 @@ def test_the_learn_page_lists_every_lesson_without_logging_in(app):
         assert lesson.title.replace("'", "&#39;") in page
     assert f"0 of {len(lessons.LESSONS)} read" in re.sub(r"<[^>]+>", "", page)
     assert "Start with lesson 1" in page
-    assert "Being written" in page                                   # unwritten lessons say so, they aren't blank
     assert "9 short lessons" in page and "Spotting investment scams" in page
 
 
@@ -164,10 +163,12 @@ def test_done_moves_to_the_next_lesson_and_saves_it_when_logged_in(app, db_path)
     assert f"1 of {len(lessons.LESSONS)} read" in re.sub(r"<[^>]+>", "", c.get("/learn").get_data(as_text=True))
 
 
-def test_the_last_written_lesson_goes_back_to_the_list(app):
+def test_the_last_lesson_goes_back_to_the_list_and_says_its_the_end(app):
     c = signed_up(app)
-    r = done(c, "what-you-own")
-    assert r.status_code == 302 and "/learn?finished=what-you-own" in r.headers["Location"]
+    last = lessons.LESSONS[-1].slug
+    r = done(c, last)
+    assert r.status_code == 302 and f"/learn?finished={last}" in r.headers["Location"]
+    assert f"all {len(lessons.LESSONS)} lessons" in c.get(r.headers["Location"]).get_data(as_text=True)
 
 
 def test_logged_out_progress_stays_in_the_browser_only(app, db_path):
@@ -190,9 +191,9 @@ def test_done_needs_the_form_token(app):
     assert app.test_client().post("/learn/first-dollar/done").status_code == 400
 
 
-def test_an_unwritten_lesson_cant_be_marked_done(app):
+def test_a_lesson_that_doesnt_exist_cant_be_marked_done(app):
     c = signed_up(app)
-    assert c.post("/learn/fees/done", data={"csrf": token(c, "/learn")}).status_code == 404
+    assert c.post("/learn/not-a-lesson/done", data={"csrf": token(c, "/learn")}).status_code == 404
 
 
 def test_no_page_sends_visitors_to_google_fonts(app):
@@ -203,3 +204,69 @@ def test_no_page_sends_visitors_to_google_fonts(app):
         assert "googleapis" not in r.get_data(as_text=True) and "gstatic" not in r.get_data(as_text=True), path
         assert "font-src 'self'" in r.headers["Content-Security-Policy"]
     assert c.get("/static/fonts/inter.woff2").status_code == 200
+
+
+# ---------- Lessons 3-9: real numbers from the demo ----------
+
+def test_every_lesson_shows_real_demo_numbers_once_the_demo_is_loaded(app, db_path):
+    load_demo(db_path)
+    conn = db.get_connection(db_path)
+    conn.execute("INSERT INTO dividends (ticker, ex_date, amount) VALUES ('D05.SI', '2025-04-07', 0.60)")
+    conn.commit()
+    conn.close()
+    c = app.test_client()
+    for lesson in lessons.LESSONS:
+        page = c.get(f"/learn/{lesson.slug}").get_data(as_text=True)
+        box = page[page.index('class="panel lesson-demo"'):page.index('class="lesson-watch"')]
+        assert "loaded yet" not in box, lesson.slug                   # every lesson finds its numbers
+        assert "n/a" not in box and not re.search(r"\bnan\b", box), lesson.slug
+        assert "$" in box, lesson.slug
+
+
+def test_the_fees_lesson_adds_up_the_demos_fees(app, db_path):
+    load_demo(db_path)
+    page = app.test_client().get("/learn/fees").get_data(as_text=True)
+    # Two buys: $4,000 of DBS and $3,500 of the STI ETF, $10 fees each -> $20, 0.27% of $7,500
+    assert "$20.00" in page and "$7,500.00" in page and "0.27%" in page
+    assert "$3,500.00 of SPDR Straits Times Index ETF" in page             # the smallest buy
+
+
+def test_the_scams_lesson_works_out_3_percent_a_month(app):
+    page = app.test_client().get("/learn/scams").get_data(as_text=True)    # needs no demo at all
+    assert "43% a year" in page and "$14,257.61" in page                   # 1.03^12 - 1 = 42.6%
+
+
+def test_the_dividends_lesson_counts_the_demos_dividends(app, db_path):
+    uid = load_demo(db_path)
+    conn = db.get_connection(db_path)
+    conn.execute("INSERT INTO dividends (ticker, ex_date, amount) VALUES ('D05.SI', '2025-04-07', 0.60)")
+    conn.commit()
+    sums = lessons.money_summary(conn, uid)
+    conn.close()
+    assert sums["dividends"] == pytest.approx(60.0)                         # 100 shares x $0.60
+    page = app.test_client().get("/learn/dividends").get_data(as_text=True)
+    assert "$60.00" in page and "tax-free" in page
+
+
+def test_the_stocks_vs_market_lesson_judges_each_stock(app, db_path):
+    load_demo(db_path)
+    page = app.test_client().get("/learn/stocks-vs-market").get_data(as_text=True)
+    assert "DBS Group Holdings" in page and "SPDR Straits Times Index ETF" in page
+    assert "the STI ETF" in page and ("beat the market" in page or "trailed the market" in page)
+
+
+def test_the_reading_sgxray_lesson_splits_the_demo_into_layers(app, db_path):
+    uid = load_demo(db_path)
+    conn = db.get_connection(db_path)
+    layers = lessons.xray_layers(conn, uid)
+    conn.close()
+    # Latest day: 100 x 45 + 1000 x 3.8 = 8,300 worth; 7,520 went in (incl. fees) -> +780 of price gains
+    assert layers["money"] == pytest.approx(7520.0) and layers["gains"] == pytest.approx(780.0)
+    page = app.test_client().get("/learn/reading-sgxray").get_data(as_text=True)
+    assert "$7,520.00" in page and "+$780.00" in page
+
+
+def test_a_demo_with_no_dividends_yet_says_so_instead_of_not_loaded(app, db_path):
+    load_demo(db_path)
+    page = app.test_client().get("/learn/dividends").get_data(as_text=True)
+    assert "hasn't been paid any dividends yet" in page and "isn't loaded yet" not in page

@@ -1,0 +1,49 @@
+{% extends "learn/_lesson.html" %}
+
+{% block body %}
+<section>
+  <h2>1. When you qualify</h2>
+  <p>A {{ term("dividend") }} is cash a company pays to its owners, usually from its profits. To get one, you must own the shares <b>before the {{ term("ex-date") }}</b>. Buy on the ex-date or later, and that dividend goes to the person who sold to you.</p>
+  <p>On the ex-date the price usually drops by about the dividend, because new buyers no longer get it. So buying just before the ex-date isn't free money: you get the dividend, but your shares are worth about that much less.</p>
+</section>
+
+<section>
+  <h2>2. When it arrives, and the tax</h2>
+  <p>The cash comes on the {{ term("payment-date") }}, usually a few weeks after the ex-date. The company's announcement on SGX gives the exact day.</p>
+  <p>{{ term("dividend-tax", "Dividends from Singapore companies are tax-free") }} for you: the company has already paid tax on its profits. Shares from other countries are different. The US, for example, usually keeps 30% of each dividend before it reaches a Singapore investor.</p>
+</section>
+
+<section>
+  <h2>3. When a big yield is a warning</h2>
+  <p>The {{ term("yield") }} is a year's dividends divided by today's price. A high yield can look like a bargain, but it's often high because the price has fallen, and the price usually falls because people expect the dividend to be cut. A yield far above similar companies is a question to ask, not a reason to buy.</p>
+  <p>Dividends are never promised. Companies can cut or stop them in a bad year.</p>
+</section>
+{% endblock %}
+
+{% block demo %}
+{% if sums and sums.dividends > 0 %}
+<p class="demo-figure">{{ sums.dividends|money }} <span class="demo-figure-sub">of dividends since {{ sums.first_day|longdate }}</span></p>
+<ul class="demo-list">
+  {% for s in sums.by_stock %}
+  <li><b>{{ s.name }}</b> <span class="demo-num">{{ s.dividends|money }}</span></li>
+  {% endfor %}
+</ul>
+{% if sums.profit > 0 %}<p>That's {{ "%.0f%%"|format(sums.dividends / sums.profit * 100) }} of the demo's {{ sums.profit|money }} total profit, all of it tax-free because these are Singapore companies and funds. A price chart alone would leave it out.</p>{% endif %}
+<a class="demo-link" href="{{ url_for('demo') }}#yields-title">See the demo's dividends and yields</a>
+{% elif sums %}
+<p>The demo hasn't been paid any dividends yet: none of its holdings has passed an ex-date since it bought them. Its first payment will show here.</p>
+{% else %}
+<p>The demo portfolio isn't loaded yet, so there are no dividends to show. They appear after the next price update.</p>
+{% endif %}
+{% endblock %}
+
+{% block watch_out %}
+<p>Buying a stock or REIT just for its high yield. If the yield is high because the price has dropped, the dividend may be cut next, and you lose on both the price and the payout.</p>
+{% endblock %}
+
+{% block question %}A REIT's ex-date is Monday 5 May. You buy on that Monday morning. Do you get this dividend?{% endblock %}
+{% block answer %}
+<p><b>No.</b> You must own the shares before the ex-date, so the last day to buy and still get it is the trading day before: Friday 2 May. Buying on 5 May means the seller keeps this dividend; you'll get the next one.</p>
+{% endblock %}
+
+{% block sources %}<a href="https://www.iras.gov.sg/" rel="noopener">IRAS</a> (Singapore's one-tier tax: dividends are tax-exempt), <a href="https://www.sgx.com/" rel="noopener">SGX</a> (dividend announcements), checked November 2026{% endblock %}

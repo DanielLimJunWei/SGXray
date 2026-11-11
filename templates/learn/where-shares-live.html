@@ -1,0 +1,51 @@
+{% extends "learn/_lesson.html" %}
+
+{% block body %}
+<section>
+  <h2>1. Two ways to hold Singapore shares</h2>
+  <p>When you buy a Singapore share, it has to be recorded somewhere. There are two ways:</p>
+  <p>In a {{ term("cdp", "CDP account") }}, the shares sit at The Central Depository, which SGX runs, <b>in your own name</b>. In a {{ term("custodian", "custodian account") }}, your <b>broker holds them for you</b>, in the broker's name. Either way they're yours; what changes is who the company sees as the holder.</p>
+</section>
+
+<section>
+  <h2>2. What changes for you</h2>
+  <p><b>Dividends:</b> with CDP they go straight into the bank account you link. With a custodian they land in your broker account first, and some brokers charge a fee each time.</p>
+  <p><b>Letters and votes:</b> with CDP, company notices come to you and you can vote at meetings. With a custodian, voting usually goes through the broker, if it's offered at all.</p>
+  <p><b>Changing brokers:</b> CDP shares stay put when you switch brokers. Moving custodian shares out can cost a transfer fee per stock.</p>
+  <p><b>Cost:</b> custodian brokers are often cheaper per trade, which is why many beginners start with one. Neither is wrong; just know which one you have.</p>
+</section>
+
+<section>
+  <h2>3. What if your broker goes bust?</h2>
+  <p>Licensed brokers in Singapore must keep customers' shares apart from their own money, so your shares aren't the broker's to lose. But getting them back through a failed broker can take time. With CDP, they're already recorded in your name.</p>
+  <p>The broker being <b>licensed by MAS</b> matters far more than which account it uses. The next lesson shows how to check.</p>
+</section>
+{% endblock %}
+
+{% block demo %}
+{% if sums and sums.dividends > 0 %}
+<p class="demo-figure">{{ sums.dividends|money }} <span class="demo-figure-sub">of dividends so far</span></p>
+<ul class="demo-list">
+  {% for s in sums.by_stock %}
+  <li><b>{{ s.name }}</b> <span class="demo-num">{{ s.dividends|money }}</span></li>
+  {% endfor %}
+</ul>
+<p>In a CDP account, each of those payments would have gone straight into the demo owner's bank account. In a custodian account, each would have arrived in the broker account first, possibly minus a handling fee. On a portfolio this size the fees are small, but they repeat with every payment, every year.</p>
+<a class="demo-link" href="{{ url_for('demo') }}#years-title">See the demo's dividends by year</a>
+{% elif sums %}
+<p>The demo hasn't been paid any dividends yet: none of its holdings has passed an ex-date since it bought them. Its first payment will show here.</p>
+{% else %}
+<p>The demo portfolio isn't loaded yet, so there are no dividends to show. They appear after the next price update.</p>
+{% endif %}
+{% endblock %}
+
+{% block watch_out %}
+<p>Choosing a broker only for the lowest fee per trade. Check three things first: that it's licensed by MAS, whether it uses CDP or a custodian account, and what it charges for dividends and for moving your shares out.</p>
+{% endblock %}
+
+{% block question %}You want company letters sent to you and a direct vote at DBS's yearly meeting. Which account makes that simplest?{% endblock %}
+{% block answer %}
+<p><b>A CDP account.</b> The shares are in your own name, so DBS sends letters to you and you can vote yourself. With a custodian account, DBS only sees your broker.</p>
+{% endblock %}
+
+{% block sources %}<a href="https://www.sgx.com/" rel="noopener">SGX</a> (The Central Depository), <a href="https://www.mas.gov.sg/directories" rel="noopener">MAS Financial Institutions Directory</a>, checked November 2026{% endblock %}
