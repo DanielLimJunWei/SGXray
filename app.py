@@ -112,7 +112,7 @@ def create_app(db_path=None):
         if problems:
             return _trades_page(conn, uid, values=values, problems=problems), 422
         tid = db.add_trade(conn, uid, trade["ticker"], trade["trade_date"], trade["side"],
-                           trade["quantity"], trade["price"], trade["fees"])
+                           trade["quantity"], trade["price"], trade["fees"], trade["note"])
         db.log_security_event(conn, "trade_added", uid, request.remote_addr)
         return redirect(url_for("trades_page", saved=tid, **_market_note(conn, trade)))
 
@@ -416,6 +416,7 @@ def create_app(db_path=None):
             divs_ex=explain_dividends_received(conn, uid),
             holdings=holdings,
             holdings_ex=explain_holdings(conn, uid),
+            why=_why_notes(conn, uid, holdings),
             stocks=_records(_or_none(per_stock, conn, uid), names),
             vs_ex=_or_none(explain_performance, conn, uid),
             yields=_records(y, names),
@@ -478,6 +479,31 @@ def _waiting_for_close(conn, uid, missing):
         first.setdefault(t["ticker"], t["trade_date"])        # trades come oldest first
     names = {r["ticker"]: r["name"] for r in db.get_instruments(conn)}
     return {tk: names.get(tk, tk) for tk in missing if first.get(tk, "") > last}
+
+
+def _why_notes(conn, uid, holdings):
+    """Your "why I bought / sold" notes, shown again beside each stock on the portfolio (w317).
+
+    Returns {ticker: {"id", "title", "link", "notes": [trades, oldest first], "now": price or None,
+    "held": bool}}. Only stocks with at least one note are in it. "now" is None when there's no saved
+    price yet, so the box says "no price yet" instead of a blank.
+    """
+    prices = {h["ticker"]: h["price"] for h in holdings}
+    names = {r["ticker"]: r["name"] for r in db.get_instruments(conn)}
+    out = {}
+    for t in db.get_trades(conn, uid):
+        if not t["note"]:
+            continue
+        tk = t["ticker"]
+        entry = out.setdefault(tk, {"id": "why-" + tk.replace(".", "-"), "notes": [], "held": tk in prices})
+        entry["notes"].append(dict(t))
+    for tk, entry in out.items():
+        only_buys = all(n["side"] == "BUY" for n in entry["notes"])
+        entry["link"] = "Why you bought" if only_buys else "Your notes"
+        entry["title"] = f"{entry['link']} {names.get(tk, tk)}" if only_buys else f"Your notes on {names.get(tk, tk)}"
+        p = prices.get(tk)
+        entry["now"] = p if p is not None and p == p else None          # NaN (no price saved) -> None
+    return out
 
 
 def _on_cost(y, positions_df):

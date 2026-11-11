@@ -17,15 +17,28 @@ MAX_TRADES = 5000            # per person. A real beginner portfolio has tens to
 ISO_DATE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
 
 
+NOTE_MAX = 280               # "Why I bought": about a tweet. Enough for a reason, short enough to reread.
+CONTROL = re.compile(r"[\x00-\x1f\x7f]+")   # line breaks, tabs and invisible control characters
+
+
+def clean_note(text):
+    """Your "why I bought / sold" as one tidy line: control characters and line breaks become spaces,
+    runs of spaces become one. It's only ever shown as escaped text, never as HTML."""
+    text = CONTROL.sub(" ", str(text)[: NOTE_MAX * 4])     # cap the work on a huge paste before tidying
+    return " ".join(text.split())
+
+
 def form_values(form):
-    """The trade's six fields from a submitted form, as short text."""
-    return {f: str(form.get(f, "")).strip()[:MAX_FIELD_LENGTH] for f in FIELDS}
+    """The trade's six fields from a submitted form, as short text, plus the optional note."""
+    values = {f: str(form.get(f, "")).strip()[:MAX_FIELD_LENGTH] for f in FIELDS}
+    values["note"] = clean_note(form.get("note", ""))
+    return values
 
 
 def trade_values(t):
     """A saved trade as form text, to fill in the edit form."""
     return {"ticker": t["ticker"], "date": t["trade_date"], "side": t["side"], "quantity": str(t["quantity"]),
-            "price": f"{t['price']:g}", "fees": f"{t['fees']:.2f}" if t["fees"] else ""}
+            "price": f"{t['price']:g}", "fees": f"{t['fees']:.2f}" if t["fees"] else "", "note": t["note"] or ""}
 
 
 def _sentence(text):
@@ -56,8 +69,12 @@ def check(conn, user_id, values, today=None, replacing=None):
     today = today or date.today()
     known = {i["ticker"] for i in db.get_instruments(conn)}
     trade, problems = check_fields(values, known, today)
+    note = values.get("note", "")
+    if len(note) > NOTE_MAX:
+        problems = [*problems, f"Your note is longer than {NOTE_MAX} characters. Shorten it a little."]
     if problems:
         return None, [_sentence(p) for p in problems]
+    trade["note"] = note or None
 
     others = [dict(t) for t in db.get_trades(conn, user_id) if t["id"] != replacing]
     if replacing is None and len(others) >= MAX_TRADES:

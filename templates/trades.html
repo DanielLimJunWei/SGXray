@@ -51,7 +51,7 @@
           {% set amount = t.quantity * t.price %}
           <tr{% if saved == t.id %} class="just-saved"{% endif %}>
             <td>{{ t.trade_date|shortdate }}</td>
-            <td><b>{{ t.ticker }}</b><span class="name">{{ t.name }}</span></td>
+            <td><b>{{ t.ticker }}</b><span class="name">{{ t.name }}</span>{% if t.note %}<q class="trade-note">{{ t.note }}</q>{% endif %}</td>
             <td><span class="side side-{{ t.side|lower }}">{{ "Bought" if t.side == "BUY" else "Sold" }}</span></td>
             <td>{{ "{:,}".format(t.quantity) }}</td>
             <td>{{ t.price|num(".3f") }}</td>

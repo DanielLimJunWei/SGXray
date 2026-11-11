@@ -145,6 +145,8 @@ def init_db(conn):
 MIGRATIONS = [
     ("dividends", "ignored", "ALTER TABLE dividends ADD COLUMN ignored INTEGER NOT NULL DEFAULT 0"),
     ("users", "session_version", "ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 1"),
+    # "Why I bought" (w317): your own reason for a trade, in your words. Optional, so NULL for most trades.
+    ("trades", "note", "ALTER TABLE trades ADD COLUMN note TEXT CHECK (note IS NULL OR length(note) <= 280)"),
 ]
 
 
@@ -343,15 +345,16 @@ def get_instruments(conn):
 
 # ---------- Trades ----------
 
-def add_trade(conn, user_id, ticker, trade_date, side, quantity, price, fees=0.0):
-    """Saves one trade and returns its id. The table's CHECK rules reject impossible values."""
+def add_trade(conn, user_id, ticker, trade_date, side, quantity, price, fees=0.0, note=None):
+    """Saves one trade and returns its id. The table's CHECK rules reject impossible values.
+    note is your "why I bought / sold", or None."""
     with conn:
         cur = conn.execute(
             """
-            INSERT INTO trades (user_id, ticker, trade_date, side, quantity, price, fees)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO trades (user_id, ticker, trade_date, side, quantity, price, fees, note)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (user_id, ticker, trade_date, side, quantity, price, fees),
+            (user_id, ticker, trade_date, side, quantity, price, fees, note or None),
         )
     return cur.lastrowid
 
@@ -380,7 +383,7 @@ def get_trade(conn, user_id, trade_id):
     """One trade, only if it belongs to this user. Someone else's trade id gives None, exactly like
     a trade that doesn't exist, so changing the number in the address shows nothing (no IDOR)."""
     return conn.execute(
-        "SELECT id, ticker, trade_date, side, quantity, price, fees FROM trades WHERE id = ? AND user_id = ?",
+        "SELECT id, ticker, trade_date, side, quantity, price, fees, note FROM trades WHERE id = ? AND user_id = ?",
         (trade_id, user_id),
     ).fetchone()
 
@@ -391,10 +394,11 @@ def update_trade(conn, user_id, trade_id, t):
     with conn:
         cur = conn.execute(
             """
-            UPDATE trades SET ticker = ?, trade_date = ?, side = ?, quantity = ?, price = ?, fees = ?
+            UPDATE trades SET ticker = ?, trade_date = ?, side = ?, quantity = ?, price = ?, fees = ?, note = ?
             WHERE id = ? AND user_id = ?
             """,
-            (t["ticker"], t["trade_date"], t["side"], t["quantity"], t["price"], t["fees"], trade_id, user_id),
+            (t["ticker"], t["trade_date"], t["side"], t["quantity"], t["price"], t["fees"], t.get("note") or None,
+             trade_id, user_id),
         )
     return cur.rowcount == 1
 
@@ -446,7 +450,7 @@ def get_trades(conn, user_id):
     """All of one user's trades, oldest first."""
     return conn.execute(
         """
-        SELECT id, ticker, trade_date, side, quantity, price, fees
+        SELECT id, ticker, trade_date, side, quantity, price, fees, note
         FROM trades
         WHERE user_id = ?
         ORDER BY trade_date, id

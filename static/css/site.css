@@ -273,6 +273,11 @@ footer.site p + p { margin-top: var(--space-2); }
   text-decoration-color: rgba(156, 196, 255, 0.35); text-underline-offset: 0.2em; }
 .link-btn:hover { text-decoration-color: var(--color-glow-soft); }
 .link-btn[aria-expanded="true"] { color: var(--color-text); }
+/* "Why you bought" box: each note in your own words, under the trade it belongs to. */
+.why-meta { margin: 0; font: 500 var(--text-xs)/1.4 var(--font-mono); color: var(--color-text-faint); }
+.why-note { margin: var(--space-1) 0 var(--space-4); padding-left: var(--space-3); border-left: 2px solid var(--color-lamp);
+  color: var(--color-text); }
+.why-now { margin: 0; padding-top: var(--space-3); border-top: 1px solid var(--color-line); color: var(--color-text-muted); }
 .stock-chart { margin-top: var(--space-8); }
 .stock-chart h3 { font-size: var(--text-lg); margin-right: auto; }
 .stock-chart h3:focus { outline: none; }
@@ -472,6 +477,14 @@ table.data .sub { display: block; font-size: var(--text-xs); }
 @media (max-width: 560px) {
   .trade-form .field, .trade-form .field-stock, .trade-form .trade-actions { grid-column: span 12; }
 }
+/* "Why I bought" (w317): a full-width line under the numbers. Its label follows Bought / Sold. */
+.trade-form .field-note { grid-column: span 12; }
+.trade-form .when-sell { display: none; }
+.trade-form:has(#tf-sell:checked) .when-buy { display: none; }
+.trade-form:has(#tf-sell:checked) .when-sell { display: inline; }
+/* Your note in the trades list: your own words, quoted, quiet under the stock's name. */
+.trade-note { display: block; max-width: 32ch; margin-top: var(--space-1); white-space: normal;
+  font-size: var(--text-xs); line-height: 1.45; color: var(--color-text-muted); }
 /* "Can't find your stock?": folded away under the form, since most people never need it. */
 .lookup { border-top: 1px solid var(--color-line); padding-top: var(--space-4); scroll-margin-top: 7rem; }   /* lands clear of the fixed top bar */
 .lookup summary { font-size: var(--text-sm); color: var(--color-glow-soft); width: fit-content; }

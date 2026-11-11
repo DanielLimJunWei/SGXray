@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_explain.html" import explain_buttons %}
+{% from "_explain.html" import explain_buttons, pop_head, pop_resize %}
 {% from "_term.html" import term, term_popups %}
 {% block title %}{{ "Demo portfolio" if mode == "demo" else "Your portfolio" }} · SGXray{% endblock %}
 {% block navlinks %}
@@ -12,6 +12,24 @@
 
 {# PAGE RULE (tests/test_page_rules.py checks it): every cell shows a value or a reason, never a blank or "n/a";
    an empty table shows one row saying why; every key figure and table has a "What does this mean?" box. #}
+{# "Why I bought" (w317): your own notes on a stock, shown again beside it. The link opens a box
+   with each note, the trade it belongs to, and today's price, so you can check the reason still holds. #}
+{% macro why_link(w) %}{% if w %}<button class="link-btn" type="button" popovertarget="{{ w.id }}-notes">{{ w.link }}</button>{% endif %}{% endmacro %}
+{% macro why_box(w) %}
+  <div class="pop why-pop" id="{{ w.id }}-notes" popover="manual" role="dialog" aria-label="{{ w.title }}">
+    {{ pop_head(w.id, w.title, "notes") }}
+    <div class="pop-body">
+      {% for n in w.notes %}
+      <p class="why-meta">{{ n.trade_date|longdate }} · {{ "bought" if n.side == "BUY" else "sold" }} {{ "{:,}".format(n.quantity) }} at {{ "$%.3f"|format(n.price) }}</p>
+      <blockquote class="why-note">{{ n.note }}</blockquote>
+      {% endfor %}
+      {% if not w.held %}<p class="why-now">You don't hold it any more. Did it turn out the way your note expected?</p>
+      {% elif w.now is none %}<p class="why-now">Price now: {{ term("no-price", "no price yet") }}. Does your reason still hold?</p>
+      {% else %}<p class="why-now">Price now: {{ "$%.2f"|format(w.now) }}. Does your reason still hold?</p>{% endif %}
+    </div>
+    {{ pop_resize() }}
+  </div>
+{% endmacro %}
 {% macro empty_row(cols, reason) %}<tr class="empty-row"><td colspan="{{ cols }}">{{ reason }}</td></tr>{% endmacro %}
 
 {% block content %}
@@ -203,7 +221,8 @@
               {%- else -%}
               {#- No saved prices yet, so no chart: the same link opens the reason instead of doing nothing. -#}
               <button class="link-btn" type="button" popovertarget="term-no-chart" data-term="no-chart">Price chart</button>
-              {%- endif -%}</td>
+              {%- endif -%}
+              {{- why_link(why.get(r.ticker)) -}}</td>
             <td>{{ "{:,}".format(r.shares|int) }}</td>
             <td>{{ r.avg_cost|num(".3f") }}</td>
             <td>{% if r.ticker in waiting %}<span class="sub">{{ term("after-close", "after today's close") }}</span>{% else %}{{ r.price|num(".2f") }}{% endif %}</td>
@@ -227,7 +246,7 @@
               <th scope="col">Got back</th><th scope="col">{{ term("realised", "Realised") }}</th><th scope="col">{{ term("dividend", "Dividends") }}</th><th scope="col">{{ term("total-profit", "Made in all") }}</th></tr></thead>
           <tbody>
             {% for r in sold %}
-            <tr><td><b>{{ r.ticker }}</b><span class="name">{{ r.name }}</span></td><td>{{ r.first_buy|shortdate }} to {{ r.last_sale|shortdate }}</td>
+            <tr><td><b>{{ r.ticker }}</b><span class="name">{{ r.name }}</span>{{ why_link(why.get(r.ticker)) }}</td><td>{{ r.first_buy|shortdate }} to {{ r.last_sale|shortdate }}</td>
                 <td>{{ r.put_in|money }}</td><td>{{ r.got_back|money }}</td><td class="{{ r.realised|trend }}">{{ r.realised|money(signed=True) }}</td>
                 <td>{{ r.dividends|money }}</td><td class="{{ r.total|trend }}">{{ r.total|arrow }} {{ r.total|money(signed=True) }}</td></tr>
             {% endfor %}
@@ -236,6 +255,8 @@
       </div>
     </details>
     {% endif %}
+
+    {% for w in why.values() %}{{ why_box(w) }}{% endfor %}
 
     {% for c in stock_charts %}
     <section class="stock-chart" id="{{ c.id }}" aria-labelledby="{{ c.id }}-title" hidden>

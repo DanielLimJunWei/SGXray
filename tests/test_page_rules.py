@@ -243,3 +243,15 @@ def test_a_stock_with_no_saved_prices_explains_its_missing_chart(app, monkeypatc
     assert 'popovertarget="term-no-chart"' in page and 'id="term-no-chart"' in page
     assert 'data-chart="chart-O39-SI"' not in page                 # no link to a chart that isn't there
     assert 'data-chart="chart-D05-SI"' in page and 'id="chart-D05-SI"' in page
+
+
+def test_a_portfolio_with_why_i_bought_notes_follows_the_rule(app, monkeypatch):
+    """w317: the "Why you bought" link and box add no blanks, and "no price yet" in the box is tappable."""
+    monkeypatch.setattr(app_module, "_last_close_day", lambda: "2025-06-24")
+    c = _client(app)
+    _add(c, note="Steady bank dividends")
+    _add(c, ticker="O39.SI", date="2025-06-24", price="14", note="Bought on the dip")    # no OCBC prices saved
+    page = c.get("/portfolio").get_data(as_text=True)
+    check_page_rules(page)
+    check_reason_words(page)
+    assert page.count(">Why you bought</button>") == 2

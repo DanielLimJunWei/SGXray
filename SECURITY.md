@@ -36,10 +36,10 @@ UNKNOWN = can only be checked on the live site; each has a Week 4 task.
 | 13 | Secrets in Git history | PASS | `git log -p --all` searched for keys, tokens, private keys and password assignments: none |
 | 14 | Secrets in frontend JavaScript | PASS | `static/js` holds no keys; nothing secret is sent to the browser |
 | 15 | Client-side-only checks | PASS | Form `minlength`/`required` are only hints; the server repeats every check (`auth.password_problem`, `email_problem`) |
-| 16 | Missing input validation | PASS | Length caps on every field, email format, password 12-128, 2 MB request cap (`MAX_CONTENT_LENGTH`). Trade forms reuse the importer's checks (`importer.check_fields`), each field is cut to 32 characters first, and quantity, price and fees have upper limits (`test_trades.py`) |
+| 16 | Missing input validation | PASS | Length caps on every field, email format, password 12-128, 2 MB request cap (`MAX_CONTENT_LENGTH`). Trade forms reuse the importer's checks (`importer.check_fields`), each field is cut to 32 characters first, and quantity, price and fees have upper limits (`test_trades.py`). The "Why I bought" note (w317) is capped at 280 characters in the form and by a CHECK rule in the table, with control characters removed (`test_notes.py`) |
 | 17 | SQL injection | PASS | Every query uses `?` placeholders; the one f-string (`PRAGMA table_info`) uses fixed table names from code; `test_sql_injection_in_the_login_form_does_nothing` |
 | 18 | NoSQL injection | N/A | No NoSQL database |
-| 19 | Cross-site scripting | PASS | Jinja escapes everything; scripts build the page with `textContent`; CSP with a per-page nonce (`test_security_headers_and_a_fresh_nonce...`) |
+| 19 | Cross-site scripting | PASS | Jinja escapes everything; scripts build the page with `textContent`; CSP with a per-page nonce (`test_security_headers_and_a_fresh_nonce...`). Trade notes, the first free text other than emails, are tested with a `<script>` note on both pages that show them (`test_a_note_is_shown_as_text_never_as_html`) |
 | 20 | CSRF | PASS | Token in every form, constant-time check, SameSite=Lax, logout POST-only (`test_forms_without_the_token...`, `test_logout_needs_a_post...`) |
 | 21 | Insecure file uploads | N/A now | No uploads yet. CSV import in the app (w308) will cap size, accept only CSV text, never save the file or use its name |
 | 22 | Path traversal | PASS | The only file route uses `send_from_directory` (safe join) and is debug-only |

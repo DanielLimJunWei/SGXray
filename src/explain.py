@@ -524,6 +524,15 @@ def explain_trades(rows):
            "(what you got back).",
            f"{buys} buy{'s' if buys != 1 else ''} and {len(rows) - buys} sell{'s' if len(rows) - buys != 1 else ''} "
            f"so far, with {money(fees)} paid in fees altogether."]
+    noted = sum(1 for t in rows if t.get("note"))
+    if noted:
+        out.append(f"The line in quotes under a stock is your own note on why you bought or sold ({noted} so far). "
+                   "Your portfolio shows it again beside that stock, so later you can check whether the reason "
+                   "still holds.")
+    else:
+        out.append("You can add a line on why you bought or sold to any trade (Change, then \"Why I bought\"). "
+                   "Your portfolio shows it again beside that stock, so later you can check whether the reason "
+                   "still holds.")
     watch = ["Copy each trade from your broker's contract note: the date, price and fees there are the real ones. "
              "A typo here changes every number on your portfolio."]
     return Explanation(out, watch)
