@@ -33,13 +33,13 @@
 {% macro empty_row(cols, reason) %}<tr class="empty-row"><td colspan="{{ cols }}">{{ reason }}</td></tr>{% endmacro %}
 
 {% block content %}
-<div class="page wrap">
+<div class="page wrap" data-live-prices="{{ prices_version or '' }}">
   <header class="page-head">
     <p class="eyebrow">{% if mode == "demo" %}Demo portfolio · sample trades, real SGX prices{% elif mode == "practice" %}Practice · pretend money, real SGX prices{% else %}Your portfolio · {{ current_user.email }}{% endif %}</p>
     <h1>{{ "Practice portfolio" if mode == "practice" else "Your portfolio" }}</h1>
     {% if mode == "practice" %}<p class="practice-cash">{{ term("practice-cash", "Pretend cash") }} <b>{{ cash|money }}</b> <span class="muted">of {{ start_cash|money }} to start · none of this is real money</span></p>{% endif %}
     {% if s %}
-    <p class="as-of">{% if s.prices_as_of %}Prices as of {{ s.prices_as_of|longdate }}{% elif waiting %}Prices: waiting for today's close{% else %}No prices downloaded yet{% endif %} · {{ term("closing-price", "closing prices") }}</p>
+    <p class="as-of" data-live-as-of>{% if s.prices_as_of %}Prices as of {{ s.prices_as_of|longdate }}{% elif waiting %}Prices: waiting for today's close{% else %}No prices downloaded yet{% endif %} · {{ term("closing-price", "closing prices") }}{% if not s.prices_as_of or s.prices_as_of < next_close %} <span class="as-of-next">· the newer close comes in by itself, usually after about 5:45pm</span>{% endif %}</p>
     {% endif %}
     {% if s and mode == "own" %}<p><a class="btn btn-well" href="{{ url_for('trades_page') }}">Add or change trades</a></p>{% endif %}
     {% if mode == "practice" %}<p><a class="btn btn-well" href="{{ url_for('practice_trades') }}">Make a practice trade</a></p>{% endif %}
@@ -232,9 +232,9 @@
               {{- why_link(why.get(r.ticker)) -}}</td>
             <td>{{ "{:,}".format(r.shares|int) }}</td>
             <td>{{ r.avg_cost|num(".3f") }}</td>
-            <td>{% if r.ticker in waiting %}<span class="sub">{{ term("after-close", "after today's close") }}</span>{% else %}{{ r.price|num(".2f") }}{% endif %}</td>
+            <td data-roll="{{ r.price|rawnum }}">{% if r.ticker in waiting %}<span class="sub">{{ term("after-close", "after today's close") }}</span>{% else %}{{ r.price|num(".2f") }}{% endif %}</td>
             <td>{{ r.cost|money }}</td>
-            <td>{{ r.value|money }}</td>
+            <td data-roll="{{ r.value|rawnum }}">{{ r.value|money }}</td>
             <td>{{ r.weight|pct(signed=False) }}</td>
             <td class="{{ r.unrealised|trend }}">{{ r.unrealised|arrow }} {{ r.unrealised|money(signed=True) }}<span class="sub">{{ r.unrealised_pct|pct }}</span></td>
           </tr>
@@ -476,4 +476,5 @@
 <script src="{{ url_for('static', filename='js/xray-chart.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/stock-chart.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/popups.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/live.js') }}" defer></script>
 {% endblock %}

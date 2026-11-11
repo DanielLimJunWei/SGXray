@@ -21,7 +21,7 @@ from functools import wraps
 from pathlib import Path
 
 import pandas as pd
-from flask import (Flask, abort, current_app, g, redirect, render_template, request, send_from_directory,
+from flask import (Flask, abort, jsonify, current_app, g, redirect, render_template, request, send_from_directory,
                    session, url_for)
 
 ROOT = Path(__file__).resolve().parent
@@ -49,6 +49,7 @@ from performance import compare, per_stock  # noqa: E402
 from portfolio import positions, summary  # noqa: E402
 from stocks import stock_history  # noqa: E402
 import trades  # noqa: E402
+import updater  # noqa: E402
 
 
 def create_app(db_path=None):
@@ -82,6 +83,18 @@ def create_app(db_path=None):
     app.context_processor(lambda: {"current_user": g.get("user"), "csrf_token": _csrf_token,
                                    "csp_nonce": g.get("csp_nonce", ""), "today": date.today().isoformat(),
                                    "minutes": auth.RESET_MINUTES})
+
+    if updater.enabled():
+        updater.start(db_path)          # new closing prices arrive by themselves after about 5:45pm (w410)
+
+    @app.get("/prices/latest")
+    def prices_latest():
+        """A label that changes whenever new closing prices are saved, e.g. {"version": "2026-11-12/6043"}. Open portfolio pages
+        ask this every couple of minutes (static/js/live.js) and update themselves when it changes. It
+        carries no personal data, so it needs no login."""
+        response = jsonify(version=updater.prices_version(get_db()))
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.get("/")
     def home():
@@ -502,6 +515,8 @@ def create_app(db_path=None):
     def _portfolio_page(uid, mode, **extra):
         """extra: anything else the page needs (the practice portfolio passes its pretend cash)."""
         conn = get_db()
+        extra.setdefault("prices_version", updater.prices_version(conn))          # for live.js to notice new prices
+        extra.setdefault("next_close", updater.last_trading_day().isoformat())  # the close it should have by now
         df = positions(conn, uid) if uid else None
         if df is None or df.empty:
             return render_template("dashboard.html", s=None, mode=mode, **extra)

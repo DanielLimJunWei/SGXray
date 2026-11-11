@@ -657,3 +657,8 @@ a.lesson-link:hover { color: var(--color-glow-soft); }
 .clip-switch[aria-pressed="true"] { transform: translateY(1px); background: #1d2842; }
 .lightbox.off::before { opacity: 0.04; }
 .lightbox.off .film { border-color: rgba(156, 196, 255, 0.08); }
+
+/* ---------- New closing prices arriving on an open page (w410, static/js/live.js) ---------- */
+.as-of-next { color: var(--color-text-faint); }
+.as-of { transition: text-shadow var(--duration-slow) var(--ease-out), color var(--duration-slow) var(--ease-out); }
+.as-of.as-of-new { color: var(--color-text); text-shadow: 0 0 8px rgba(156, 196, 255, 0.22); }   /* one faint glow, then gone */
