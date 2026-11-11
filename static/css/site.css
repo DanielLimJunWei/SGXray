@@ -423,7 +423,12 @@ table.data .sub { display: block; font-size: var(--text-xs); }
 .side-toggle label { text-align: center; padding: var(--space-3) 0; font: 500 var(--text-base)/1.4 var(--font-sans);
   color: var(--color-text-muted); background: rgba(5, 8, 16, 0.72); cursor: pointer; }
 .side-toggle label + input + label { border-left: 1px solid rgba(156, 196, 255, 0.18); }
+/* The chosen side lights up in its own calm colour, matching the trades list: Bought green, Sold rose. */
 .side-toggle input:checked + label { color: var(--color-text); background: rgba(156, 196, 255, 0.14); }
+.side-toggle #tf-buy:checked + label { color: var(--color-buy); background: var(--color-up-wash); }
+.side-toggle #tf-sell:checked + label { color: var(--color-sell); background: var(--color-down-wash); }
+.side-toggle #tf-buy:not(:checked) + label:hover { color: var(--color-buy); }
+.side-toggle #tf-sell:not(:checked) + label:hover { color: var(--color-sell); }
 .side-toggle input:focus-visible + label { outline: 2px solid var(--color-glow-soft); outline-offset: -2px; }
 .trade-form .trade-actions { grid-column: span 3; }
 .trade-actions { display: flex; align-items: center; gap: var(--space-4); }
@@ -442,8 +447,10 @@ table.data .sub { display: block; font-size: var(--text-xs); }
 .trades-table td:nth-child(2) { font-family: var(--font-sans); }
 .trade-form input::placeholder { color: var(--color-text-faint); opacity: 0.6; }   /* an example, not a value */
 .trades-table .side { font-family: var(--font-sans); }
-.trades-table .side-buy { color: var(--color-glow-soft); }
-.trades-table .side-sell { color: var(--color-lamp); }
+/* Bought = the calm gain green, Sold = the calm loss rose: the same muted pair as profit and loss,
+   easy on the eyes. The words still say Bought / Sold, so colour is never the only clue. */
+.trades-table .side-buy { color: var(--color-buy); }
+.trades-table .side-sell { color: var(--color-sell); }
 .trades-table tr.just-saved td { background: rgba(156, 196, 255, 0.06); }
 .row-actions { white-space: nowrap; font-family: var(--font-sans); }
 .row-actions a + a { margin-left: var(--space-4); }

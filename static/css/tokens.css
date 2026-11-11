@@ -30,6 +30,11 @@
   /* ---- Colour: meaning (muted, calm: a bad day doesn't shout) ---- */
   --color-up: #7BC4A0;
   --color-down: #D98282;
+  /* Bought / Sold: a touch brighter than the profit/loss pair, still soft on the eyes. */
+  --color-buy: #8FD9B4;
+  --color-sell: #EC9A9A;
+  --color-up-wash: rgba(143, 217, 180, 0.16);     /* a faint green behind a chosen "Bought" */
+  --color-down-wash: rgba(236, 154, 154, 0.16);   /* a faint rose behind a chosen "Sold" */
   --color-caution: #E3A35E;          /* Watch out: same warm amber, never alarm red */
 
   /* ---- Colour: chart layers ---- */
