@@ -109,6 +109,7 @@ Checked against a 30-point pre-launch security checklist and a 10-point list of 
 | 76 | Bot protection on sign-up | PARTLY / w420 | Rate limits only (5 sign-ups an hour per address). Add email confirmation once the email service exists |
 | 77 | "Past returns" and advice wording | FIXED | Footer and the returns panels say past returns don't predict future ones; lessons only explain, never recommend (MAS: general education isn't financial advice) |
 | 78 | Fake reviews, subscriptions, chatbots | N/A now | No testimonials (and never invented ones), no payments. The AI explainer (w412) must say it's AI, and the privacy policy must name its provider |
+| 79 | Sensitive answers in the self-check | PASS | "Am I ready to start?" asks about savings, debt and insurance. Nothing is stored: answers come in the POST body (never the address, history or server logs), the page is `no-store`, no database write or log event; tested by counting every table's rows before and after (`test_nothing_anyone_answers_is_saved`). Only listed answers are accepted (`test_tampered_answers_are_ignored`) |
 
 
 ## Your to-do (things only you can do)

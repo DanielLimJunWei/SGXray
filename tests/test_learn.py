@@ -163,12 +163,11 @@ def test_done_moves_to_the_next_lesson_and_saves_it_when_logged_in(app, db_path)
     assert f"1 of {len(lessons.LESSONS)} read" in re.sub(r"<[^>]+>", "", c.get("/learn").get_data(as_text=True))
 
 
-def test_the_last_lesson_goes_back_to_the_list_and_says_its_the_end(app):
+def test_the_last_lesson_leads_to_the_self_check(app):
     c = signed_up(app)
     last = lessons.LESSONS[-1].slug
     r = done(c, last)
-    assert r.status_code == 302 and f"/learn?finished={last}" in r.headers["Location"]
-    assert f"all {len(lessons.LESSONS)} lessons" in c.get(r.headers["Location"]).get_data(as_text=True)
+    assert r.status_code == 302 and r.headers["Location"].endswith("/learn/ready")   # on to the self-check
 
 
 def test_logged_out_progress_stays_in_the_browser_only(app, db_path):

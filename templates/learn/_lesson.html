@@ -39,7 +39,7 @@
 
   <form class="lesson-next" method="post" action="{{ url_for('lesson_done', slug=lesson.slug) }}" data-lesson-done="{{ lesson.slug }}">
     <input type="hidden" name="csrf" value="{{ csrf_token() }}">
-    <button class="btn btn-primary" type="submit">{% if next %}Done · next: {{ next.title }}{% else %}Done · back to all lessons{% endif %}</button>
+    <button class="btn btn-primary" type="submit">{% if next %}Done · next: {{ next.title }}{% else %}Done · next: Am I ready to start?{% endif %}</button>
     <a class="quiet-link" href="{{ url_for('learn') }}">All lessons</a>
   </form>
 

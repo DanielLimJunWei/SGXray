@@ -1,0 +1,67 @@
+{#
+  "Am I ready to start?" (w321). A checklist, never a verdict: no "you're ready", no score or grade.
+  Nothing here is saved: the answers come in the POST body, are used once for the result, and are gone.
+#}
+{% extends "base.html" %}
+{% block title %}Am I ready to start? · Learn · SGXray{% endblock %}
+
+{% block content %}
+<div class="page wrap ready">
+  <header class="page-head">
+    <p class="eyebrow"><a href="{{ url_for('learn') }}">Learn</a> · self-check</p>
+    <h1>Am I ready to start?</h1>
+    <p class="muted">Eight quick questions about the basics most people have in place before investing. Each answer links to the lesson that explains it. Your answers aren't saved anywhere: they're used once to show your list, then gone.</p>
+  </header>
+
+  {% if result %}
+  <section class="panel ready-result" aria-labelledby="result-title" tabindex="-1" id="result">
+    <h2 id="result-title"><span class="ready-count">{{ result.in_place }} of {{ result.total }}</span> in place{% if result.skipped %} <span class="muted">· {{ result.skipped }} skipped</span>{% endif %}</h2>
+    <ul class="ready-list">
+      {% for r in result.rows %}
+      <li class="ready-row is-{{ r.state|replace(' ', '-') }}">
+        <span class="ready-state">{{ {"in place": "In place", "first": "Usually sorted first", "skipped": "Skipped"}[r.state] }}</span>
+        <div>
+          <b>{{ r.title }}</b>{% if r.answer %} <span class="ready-answer">· you said: {{ r.answer|lower }}</span>{% endif %}
+          <p>{{ r.why }}{% if r.state != "in place" %}
+            {% if r.lesson %} <a href="{{ url_for('lesson', slug=r.lesson) }}">Read "{{ r.lesson_title }}"</a>{% endif %}
+            {% if r.outside %} <a href="{{ r.outside }}" rel="noopener">MoneySense: basic financial planning</a>{% endif %}
+          {% endif %}</p>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="ready-end">These are the basics most people have before investing. They're not rules, and SGXray can't see your whole situation. Only you can decide when to start.</p>
+    <div class="learn-actions">
+      <a class="btn btn-ghost" href="{{ url_for('ready') }}">Start again</a>
+      <a class="btn btn-ghost" href="{{ url_for('learn') }}">All lessons</a>
+      <a class="btn btn-ghost" href="{{ url_for('demo') }}">Look at the demo</a>
+    </div>
+  </section>
+  {% endif %}
+
+  <form class="ready-form" method="post" action="{{ url_for('ready') }}#result" autocomplete="off">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    {% for q in questions %}
+    <fieldset class="ready-q">
+      <legend><span class="ready-num">{{ loop.index }}</span> {{ q.ask.format(fall=fall) }}</legend>
+      <div class="ready-options">
+        {% for value, label in q.options %}
+        <label class="ready-option"><input type="radio" name="{{ q.key }}" value="{{ value }}"{% if chosen.get(q.key) == value %} checked{% endif %}> {{ label }}</label>
+        {% endfor %}
+      </div>
+      {% if q.key == "fund" %}
+      <label class="ready-extra"><input type="checkbox" name="irregular" value="yes"{% if chosen.get("irregular") %} checked{% endif %}> My income goes up and down (freelance, commission, gig work)</label>
+      {% elif q.key == "fall" and dip %}
+      <p class="ready-hint">That's what the demo did between {{ dip.peak_day|longdate }} and {{ dip.low_day|longdate }}.</p>
+      {% endif %}
+    </fieldset>
+    {% endfor %}
+    <div class="learn-actions">
+      <button class="btn btn-primary" type="submit">{{ "Check again" if result else "Show my list" }}</button>
+      <span class="muted ready-note">You can skip any question.</span>
+    </div>
+  </form>
+
+  <p class="lesson-foot">Educational, not financial advice. SGXray never tells you what to buy, or whether to invest.</p>
+</div>
+{% endblock %}

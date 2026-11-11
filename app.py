@@ -41,6 +41,7 @@ import insights  # noqa: E402
 from importer import DEMO_EMAIL  # noqa: E402
 from income import by_year, forecast, portfolio_yield, yields  # noqa: E402
 import lessons  # noqa: E402
+import readiness  # noqa: E402
 import lookup  # noqa: E402
 import mailer  # noqa: E402
 from performance import compare, per_stock  # noqa: E402
@@ -120,7 +121,21 @@ def create_app(db_path=None):
         if g.get("user"):
             db.mark_lesson_read(get_db(), g.user["id"], item.slug)
         nxt = lessons.next_lesson(item)
-        return redirect(url_for("lesson", slug=nxt.slug) if nxt else url_for("learn", finished=item.slug))
+        return redirect(url_for("lesson", slug=nxt.slug) if nxt else url_for("ready"))
+
+    @app.route("/learn/ready", methods=["GET", "POST"])
+    def ready():
+        """"Am I ready to start?" (w321). The answers are personal, so nothing is saved: they arrive in the
+        POST body (never the address, so not in history or server logs), the result is shown once, and they're
+        gone. No database write, no security-log event."""
+        conn = get_db()
+        demo_uid = lessons.demo_user_id(conn)
+        dip = lessons.biggest_dip(conn, demo_uid) if demo_uid else None     # the "a fall" question uses the demo's
+        fall = "%.0f%%" % (-dip["fall_pct"] * 100) if dip else "15%"
+        answers = readiness.answers_from(request.form) if request.method == "POST" else {}
+        return render_template("learn/ready.html", questions=readiness.QUESTIONS, fall=fall, dip=dip,
+                               result=readiness.check(answers) if request.method == "POST" else None,
+                               chosen=answers)
 
     @app.get("/portfolio")
     @login_required
@@ -709,7 +724,8 @@ def _security_headers(response):
     if request.endpoint in ("reset_link", "reset_password", "forgot"):
         response.headers["Referrer-Policy"] = "no-referrer"       # the reset link's secret is never passed on
     if request.endpoint in ("login", "signup", "account", "account_password", "forgot", "reset_link",
-                            "reset_password", "portfolio", "trades_page", "edit_trade", "delete_trade", "lookup_ticker"):
+                            "reset_password", "portfolio", "trades_page", "edit_trade", "delete_trade", "lookup_ticker",
+                            "ready"):
         response.headers["Cache-Control"] = "no-store"            # private pages aren't kept in the browser cache
     return response
 

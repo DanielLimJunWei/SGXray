@@ -7,6 +7,7 @@
     <p class="eyebrow">Learn</p>
     <h1>Before you invest</h1>
     <p class="muted">{{ lessons|length }} short lessons, each about four minutes, taught with the demo portfolio's real numbers. No account needed. Educational, not financial advice: SGXray never tells you what to buy.</p>
+    <p class="learn-ready"><a href="{{ url_for('ready') }}">Am I ready to start?</a> <span class="muted">Eight quick questions about the basics, with nothing saved.</span></p>
     <p class="learn-progress" data-progress-total="{{ lessons|length }}"><span data-progress-count>{{ read_count }}</span> of {{ lessons|length }} read{% if not current_user %} <span class="muted">· remembered in this browser. <a href="{{ url_for('signup') }}">Create an account</a> to keep it everywhere.</span>{% endif %}</p>
   </header>
 
