@@ -907,3 +907,37 @@ def explain_allocation(a):
         out.append(f"Not counted yet: {', '.join(a['missing'])}, which {'has' if one else 'have'} no closing price "
                    f"saved. {'It is' if one else 'They are'} added after the next price update.")
     return Explanation(out, list(a["warnings"]))
+
+
+def explain_risk(r):
+    """Explains "Ups and downs" (w305): the biggest fall and how bumpy the ride has been, vs the STI ETF."""
+    if not r:
+        return Explanation(["This shows your biggest fall and how bumpy the ride has been, once you've held "
+                            "something for a few days with closing prices."])
+    you, sti = r["you"], r["sti"]
+    out = ["Both figures follow how your investments did day by day, with money you added or took out "
+           "removed, so a deposit never looks like a gain and a sale never looks like a fall. Dividends count.",
+           "Biggest fall: the deepest drop from a high point before it climbed back. "
+           + (f"Yours was {-you['pct']:.1%}, from {_short_day(you['peak_day'])} to {_short_day(you['low_day'])}"
+              + (f", and it was back above that high by {_short_day(you['back_day'])}."
+                 if you["back_day"] else ", and it hasn't climbed back yet.")
+              if you["peak_day"] else "Yours hasn't fallen below a high point yet.")
+           + (f" The STI ETF's biggest fall over the same time was {-sti['pct']:.1%}." if sti["peak_day"] else ""),
+           "How bumpy: how much the value usually swings, as a yearly figure (the daily ups and downs, scaled to "
+           "a year; professionals call it volatility). As a rough guide, in about two years out of three a "
+           "portfolio's result lands within that many percent of its average year, above or below. Bigger means "
+           "a rougher ride."]
+    watch = []
+    if you["vol"] == you["vol"] and sti["vol"] == sti["vol"]:
+        out.append(f"Yours is {you['vol']:.1%} a year; the STI ETF's, on the same days, {sti['vol']:.1%}.")
+        if sti["vol"] > 0 and you["vol"] > sti["vol"] * 1.25:
+            watch.append(f"Your portfolio swings about {you['vol'] / sti['vol']:.1f} times as much as the market. "
+                         f"Fewer, more similar holdings usually mean a bumpier ride: see \"Where your money is\".")
+    else:
+        out.append("How bumpy needs at least 60 trading days of history to mean anything, so it shows \"too "
+                   "soon\" until then.")
+    if you["now_pct"] < -0.10:
+        watch.append(f"Right now you're {-you['now_pct']:.0%} below your high. Falls like this are normal; "
+                     f"selling in one is what turns a paper loss into a real one.")
+    watch.append("Past ups and downs don't predict future ones. They show what holding this has felt like.")
+    return Explanation(out, watch)

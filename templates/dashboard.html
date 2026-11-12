@@ -37,6 +37,11 @@
   <header class="page-head">
     <p class="eyebrow">{% if mode == "demo" %}Demo portfolio · sample trades, real SGX prices{% elif mode == "practice" %}Practice · pretend money, real SGX prices{% else %}Your portfolio · {{ current_user.email }}{% endif %}</p>
     <h1>{{ "Practice portfolio" if mode == "practice" else "Your portfolio" }}</h1>
+    {% if s %}{#- Simple / Detailed (w315): shown only when its script runs; without it, everything shows. -#}
+    <div class="view-switch" role="group" aria-label="How much to show" data-view-switch hidden>
+      <button type="button" data-view="simple" aria-pressed="false">Simple</button>
+      <button type="button" data-view="detailed" aria-pressed="true">Detailed</button>
+    </div>{% endif %}
     {% if mode == "practice" %}<p class="practice-cash">{{ term("practice-cash", "Pretend cash") }} <b>{{ cash|money }}</b> <span class="muted">of {{ start_cash|money }} to start · none of this is real money</span></p>{% endif %}
     {% if s %}
     <p class="as-of" data-live-as-of>{% if s.prices_as_of %}Prices as of {{ s.prices_as_of|longdate }}{% elif waiting %}Prices: waiting for today's close{% else %}No prices downloaded yet{% endif %} · {{ term("closing-price", "closing prices") }}{% if not s.prices_as_of or s.prices_as_of < next_close %} <span class="as-of-next">· the newer close comes in by itself, usually after about 5:45pm</span>{% endif %}</p>
@@ -169,7 +174,7 @@
       {% if last.sti is not none %}<li class="step" data-at="0.8"><b><span class="key key-dash"></span>The market: {{ term("sti-etf", "STI ETF") }}</b><span class="muted">Same money in the STI ETF: {{ last.sti|money }}.</span></li>{% endif %}
     </ol>
     {% if periods %}
-    <div class="periods" aria-labelledby="periods-title">
+    <div class="periods" aria-labelledby="periods-title" data-detail>
       <div class="periods-head">
         <h3 id="periods-title">{{ term("periods", "How you did over time") }}</h3>
         {% if periods_ex %}{{ explain_buttons(periods_ex, "periods", "Period returns", compact=True) }}{% endif %}
@@ -244,7 +249,7 @@
     </div>
 
     {% if sold %}
-    <details class="as-table sold">
+    <details class="as-table sold" data-detail>
       <summary>{{ term("sold", "Sold") }}: {{ sold|length }} stock{{ "s" if sold|length != 1 }} you no longer hold</summary>
       <div class="section-head" style="margin-top: var(--space-3)">{{ explain_buttons(sold_ex, "sold", "Sold", compact=True) }}</div>
       <div class="panel table-wrap">
@@ -347,7 +352,51 @@
   </section>
   {% endif %}
 
-  <section class="block" aria-labelledby="vs-title">
+  {#- Ups and downs (w305): the biggest fall and how bumpy, from day-by-day growth with deposits removed. -#}
+  <section class="block" aria-labelledby="risk-title" data-detail>
+    <div class="section-head">
+      <h2 id="risk-title">Ups and downs</h2>
+    </div>
+    {% if risk_view %}
+    {% set you, mkt = risk_view.you, risk_view.sti %}
+    <div class="panel figures risk-figures">
+      <div class="figure">
+        <span class="label">{{ term("dip", "Biggest fall") }}</span>
+        {% if you.peak_day %}
+        <span class="value down">▼ {{ "%.1f%%"|format(-you.pct * 100) }}</span>
+        <span class="sub">{{ you.peak_day|shortdate }} to {{ you.low_day|shortdate }} · {% if you.back_day %}back by {{ you.back_day|shortdate }}{% else %}not back yet{% endif %}</span>
+        {% else %}
+        <span class="value">None yet</span><span class="sub">it hasn't dropped below a high point</span>
+        {% endif %}
+        <span class="sub">STI ETF: {% if mkt.peak_day %}▼ {{ "%.1f%%"|format(-mkt.pct * 100) }}{% else %}no fall{% endif %}</span>
+        <span class="figure-explain">{{ explain_buttons(risk_ex, "risk-fall", "Biggest fall", compact=True) }}</span>
+      </div>
+      <div class="figure">
+        <span class="label">{{ term("volatility", "How bumpy") }}</span>
+        {% if you.vol == you.vol %}
+        <span class="value">{{ "%.1f%%"|format(you.vol * 100) }} <span class="unit">per year</span></span>
+        <span class="sub">STI ETF: {{ "%.1f%%"|format(mkt.vol * 100) }} per year, on the same days</span>
+        {% else %}
+        <span class="value">{{ term("too-soon", "too soon") }}</span><span class="sub">needs 60 trading days of history</span>
+        {% endif %}
+        <span class="figure-explain">{{ explain_buttons(risk_ex, "risk-vol", "How bumpy", compact=True) }}</span>
+      </div>
+      <div class="figure">
+        <span class="label">{{ term("below-high", "Below its high") }}</span>
+        {% if you.now_pct < -0.0005 %}
+        <span class="value">{{ "%.1f%%"|format(-you.now_pct * 100) }}</span><span class="sub">under its best point so far</span>
+        {% else %}
+        <span class="value up">At its high</span><span class="sub">its best point so far</span>
+        {% endif %}
+        <span class="figure-explain">{{ explain_buttons(risk_ex, "risk-high", "Below its high", compact=True) }}</span>
+      </div>
+    </div>
+    {% else %}
+    <p class="muted">Your biggest fall and how bumpy the ride has been appear after a few days of closing prices for what you hold. {{ term("too-soon", "Too soon") }} for now.</p>
+    {% endif %}
+  </section>
+
+  <section class="block" aria-labelledby="vs-title" data-detail>
     <div class="section-head">
       <h2 id="vs-title">Each stock vs the {{ term("sti-etf", "STI ETF") }}</h2>
       {% if vs_ex %}{{ explain_buttons(vs_ex, "vs", "You vs the STI ETF") }}{% endif %}
@@ -384,7 +433,7 @@
     {% endif %}
   </section>
 
-  <section class="block" aria-labelledby="yields-title">
+  <section class="block" aria-labelledby="yields-title" data-detail>
     <div class="section-head">
       <h2 id="yields-title">{{ term("yield", "Dividend yields") }}</h2>
       {{ explain_buttons(yields_ex, "yields", "Dividend yields") }}
@@ -424,7 +473,7 @@
   </section>
 
   {% if years %}
-  <section class="block" aria-labelledby="years-title">
+  <section class="block" aria-labelledby="years-title" data-detail>
     <div class="section-head">
       <h2 id="years-title">{{ term("dividend", "Dividend") }} income by year</h2>
       {{ explain_buttons(years_ex, "years", "Dividend income by year") }}
@@ -462,7 +511,7 @@
   </section>
   {% endif %}
 
-  <section class="block" aria-labelledby="forecast-title">
+  <section class="block" aria-labelledby="forecast-title" data-detail>
     <div class="section-head">
       <h2 id="forecast-title">{{ term("forecast", "Dividends expected") }} over the next 12 months</h2>
       {{ explain_buttons(forecast_ex, "forecast", "Dividends expected") }}
@@ -511,4 +560,5 @@
 <script src="{{ url_for('static', filename='js/stock-chart.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/popups.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/live.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/view.js') }}" defer></script>
 {% endblock %}

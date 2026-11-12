@@ -40,3 +40,20 @@ def test_the_menu_marks_the_page_you_are_on(app):
     assert 'href="/practice" aria-current="page">Practice' in menu(c.get("/practice/trades").get_data(as_text=True))
     assert 'href="/learn" aria-current="page">Learn' in menu(c.get("/learn/scams").get_data(as_text=True))
     assert menu(c.get("/trades").get_data(as_text=True)).count('aria-current="page"') == 1
+
+
+def test_detailed_only_sections_are_marked_and_the_essentials_are_not(app):
+    from test_trades import add
+    c = signed_up(app)
+    add(c)
+    page = c.get("/portfolio").get_data(as_text=True)
+    assert 'data-view-switch hidden' in page and 'js/view.js' in page          # only appears once its script runs
+    for marked in ('aria-labelledby="risk-title" data-detail', 'aria-labelledby="vs-title" data-detail',
+                   'aria-labelledby="yields-title" data-detail', 'aria-labelledby="forecast-title" data-detail'):
+        assert marked in page, marked
+    for essential in ('aria-labelledby="holdings-title">', 'aria-labelledby="alloc-title">'):
+        assert essential in page, essential                                      # never hidden in Simple
+
+
+def test_an_empty_portfolio_has_no_view_switch(app):
+    assert "data-view-switch" not in signed_up(app).get("/portfolio").get_data(as_text=True)

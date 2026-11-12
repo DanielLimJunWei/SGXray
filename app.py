@@ -32,7 +32,7 @@ import auth  # noqa: E402
 import db  # noqa: E402
 import fmt  # noqa: E402
 import glossary  # noqa: E402
-from explain import (Explanation, explain_allocation, explain_dividends_received, explain_forecast, explain_holdings,  # noqa: E402
+from explain import (Explanation, explain_allocation, explain_dividends_received, explain_risk, explain_forecast, explain_holdings,  # noqa: E402
                      explain_income_by_year,
                      explain_performance, explain_periods, explain_sold, explain_stock_chart,
                      explain_total_return, explain_trades, explain_two_returns, explain_value_chart, explain_worth,
@@ -42,8 +42,10 @@ import insights  # noqa: E402
 from importer import DEMO_EMAIL  # noqa: E402
 from income import by_year, forecast, portfolio_yield, yields  # noqa: E402
 import lessons  # noqa: E402
+import plans  # noqa: E402
 import practice  # noqa: E402
 import readiness  # noqa: E402
+import risk  # noqa: E402
 import lookup  # noqa: E402
 import mailer  # noqa: E402
 from performance import compare, per_stock  # noqa: E402
@@ -273,12 +275,56 @@ def create_app(db_path=None):
         trade = db.get_trade(conn, uid, trade_id) or abort(404)
         names = {r["ticker"]: r["name"] for r in db.get_instruments(conn)}
         problems = trades.check_delete(conn, uid, trade_id)
+        if trade["plan_id"]:                          # deleting it alone would just be recorded again next update
+            problems = ["This buy was recorded by your monthly plan, so deleting it on its own would bring it "
+                        "back at the next price update. To match your bank's statement, change it instead; to "
+                        "end the plan, stop or delete it under Monthly plans."]
         if request.method == "GET" or problems:
             return render_template("trade_delete.html", trade=trade, name=names.get(trade["ticker"], ""),
                                    problems=problems), (422 if problems and request.method == "POST" else 200)
         db.delete_trade(conn, uid, trade_id)
         db.log_security_event(conn, "trade_deleted", uid, request.remote_addr)
         return redirect(url_for("trades_page", deleted=1))
+
+    # ---------- Regular savings plans (w314) ----------
+
+    @app.post("/plans")
+    @login_required
+    def add_plan():
+        conn, uid = get_db(), g.user["id"]
+        v, problems = plans.from_form(conn, request.form)
+        if problems:
+            return _trades_page(conn, uid, values={"side": "BUY", "date": date.today().isoformat()},
+                                plan_problems=problems, plan_values=request.form), 422
+        needed = trades.needs_market_data(conn, v["ticker"], v["start_month"] + "-01")
+        if needed:
+            current_app.config["MARKET_DOWNLOAD"](conn, needed)      # its past prices, so past months can be filled in
+        pid = plans.add(conn, uid, v)
+        added = plans.catch_up(conn, plans.get(conn, uid, pid))
+        db.log_security_event(conn, "plan_added", uid, request.remote_addr)
+        return redirect(url_for("trades_page", plan_added=added) + "#plans")
+
+    @app.post("/plans/<int:plan_id>/stop")
+    @login_required
+    def stop_plan(plan_id):
+        conn, uid = get_db(), g.user["id"]
+        plans.get(conn, uid, plan_id) or abort(404)
+        plans.stop(conn, uid, plan_id)
+        return redirect(url_for("trades_page", plan_stopped=1) + "#plans")
+
+    @app.route("/plans/<int:plan_id>/delete", methods=["GET", "POST"])
+    @login_required
+    def delete_plan(plan_id):
+        """GET asks "are you sure?"; only the POST from that page deletes the plan and its trades."""
+        conn, uid = get_db(), g.user["id"]
+        plan = plans.get(conn, uid, plan_id) or abort(404)
+        if request.method == "GET":
+            summary_ = next(p for p in plans.for_user(conn, uid) if p["id"] == plan_id)
+            names = {r["ticker"]: r["name"] for r in db.get_instruments(conn)}
+            return render_template("plan_delete.html", plan=summary_, name=names.get(plan["ticker"], ""))
+        plans.delete(conn, uid, plan_id)
+        db.log_security_event(conn, "plan_deleted", uid, request.remote_addr)
+        return redirect(url_for("trades_page", plan_deleted=1) + "#plans")
 
     @app.post("/trades/lookup")
     @login_required
@@ -326,8 +372,11 @@ def create_app(db_path=None):
             return {"prices": "tonight"}            # bought today: its first close doesn't exist until ~5:30pm
         return {} if ok else {"prices": "later"}
 
-    def _trades_page(conn, uid, values, problems=None, lookup_error=None, lookup_code=None):
+    def _trades_page(conn, uid, values, problems=None, lookup_error=None, lookup_code=None,
+                     plan_problems=None, plan_values=None):
         names = {r["ticker"]: r["name"] for r in db.get_instruments(conn)}
+        for p in conn.execute("SELECT * FROM plans WHERE user_id = ?", (uid,)).fetchall():
+            plans.catch_up(conn, p)                    # any month whose close has arrived since
         rows = [{**dict(t), "name": names.get(t["ticker"], "")} for t in db.get_trades(conn, uid)]
         rows.reverse()                                          # newest first: the one you just added is on top
         saved = request.args.get("saved", type=int)
@@ -340,7 +389,13 @@ def create_app(db_path=None):
                                saved=saved, deleted=request.args.get("deleted") == "1",
                                prices_later=request.args.get("prices") == "later",
                                prices_tonight=request.args.get("prices") == "tonight", added=added,
-                               lookup_error=lookup_error, lookup_code=lookup_code)
+                               lookup_error=lookup_error, lookup_code=lookup_code,
+                               plans=[{**p, "name": names.get(p["ticker"], "")} for p in plans.for_user(conn, uid)],
+                               plan_problems=plan_problems, plan_values=plan_values or {},
+                               plan_added=request.args.get("plan_added", type=int),
+                               plan_stopped=request.args.get("plan_stopped") == "1",
+                               plan_deleted=request.args.get("plan_deleted") == "1",
+                               this_month=date.today().strftime("%Y-%m"))
 
     # ---------- Accounts ----------
 
@@ -559,6 +614,8 @@ def create_app(db_path=None):
             why=_why_notes(conn, uid, holdings),
             alloc=(alloc := allocation.split(df, {r["ticker"]: dict(r) for r in db.get_instruments(conn)})),
             alloc_ex=explain_allocation(alloc),
+            risk_view=(risk_view := risk.risk(conn, uid, h) if h is not None else None),
+            risk_ex=explain_risk(risk_view),
             stocks=_records(_or_none(per_stock, conn, uid), names),
             vs_ex=_or_none(explain_performance, conn, uid),
             yields=_records(y, names),

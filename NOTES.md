@@ -418,3 +418,21 @@ Both checks partly existed (a yield over 7% got a gentle warning; fees only came
 - Fees: `explain.fee_summary` adds up every trade's fees (sales included) against what the buys cost. The "Total profit" and Trades boxes say "Fees so far: $60.00 on $15,157.00 of buys, 0.40%". "Watch out" when fees are over 0.5% of everything bought, and names any single buy that lost over 1% to fees ("Your C38U.SI buy on 11 Jun 2024 paid $10.00 in fees on $1,930.00..." only if over 1%). The demo is under both lines, so it gets the fee line with no warnings.
 - Yield traps: a yield over 6% together with a price at least 20% below its 52-week high is the classic pattern (the market expecting a dividend cut), so it gets a specific warning with the drop and the high. A high yield on a steady price keeps the gentler "unusually high" note (over 7%). Skipped when a bonus issue or split happened inside the 52 weeks, since those make the price drop without any loss.
 Tests: `tests/test_insights_w304.py`.
+
+## Ups and downs (w305, 12 Nov 2026)
+
+`src/risk.py`, a section on every portfolio page (Detailed view): three figures, each with its own explanation buttons (the page rule).
+- Biggest fall (drawdown): the deepest drop from a high in the day-by-day growth used for the time-weighted return (`history._growth`), so money added or taken out never counts as a rise or a fall, and dividends count. With its dates, when it climbed back (or "not back yet"), and the STI ETF's biggest fall.
+- How bumpy (volatility): the standard deviation of daily growth on days you held something, x the square root of 252 trading days. "Too soon" under 60 trading days. Shown "per year" (not "a year", which on this site is the tappable reason word for yearly-rate returns).
+- Below its high: how far it is now under its best point.
+- Cross-checked on the demo with a completely separate calculation built straight from value, money in and dividends: biggest fall 14.73% (27 Mar to 9 Apr 2025, back by 6 Jun 2025), bumpiness 13.50% per year; the STI ETF 14.3% and 12.4%. Lesson 1's 15% differs on purpose: it's the portfolio's value alone, without dividends.
+- Found by tests: a divide-by-zero when the STI ETF didn't move at all, and the section vanishing with one day of prices (now it says "Too soon").
+Tests: `tests/test_risk.py`, each figure against hand or plain-arithmetic answers.
+
+## Monthly plans (w314, 12 Nov 2026)
+
+On the Trades page, "Monthly plans": stock, amount, buy day (1-28), start month, your bank's fee (% and minimum). `src/plans.py` records each month's buy itself, the way Singapore banks' plans work (POSB Invest-Saver, OCBC Blue Chip Investment Plan, checked 12 Nov 2026): on the buy day or the next trading day with a close, at that close; fee = max(rate x amount, minimum), taken first; whole shares only; the leftover cash isn't invested (POSB refunds it). A month with no close on or after its buy day yet waits; each month is recorded once (`trades.plan_month`). New months are added after every daily price update (`updater.download_all` -> `plans.catch_up_all`) and when the Trades page opens. Stop: no more months (it ends at the last month actually bought); past buys stay. Delete: the plan and every buy it recorded (for a plan typed in by mistake), after an are-you-sure page. One plan buy can be changed (to match the bank's statement, which can differ by a few cents) but not deleted on its own, since it would be recorded again. Checked on a scratch copy: a $100 / 15th / 0.82% STI ETF plan since June 2025 recorded 17 months, every one identical to an independent recalculation from the saved prices (342 shares, $1,668.99), none on a weekend. Tests: `tests/test_plans.py`.
+
+## Simple / Detailed (w315, 12 Nov 2026)
+
+A switch under the portfolio title (`static/js/view.js`). Simple: the key figures, the X-ray, Holdings, Where your money is. Detailed adds everything marked `data-detail`: Ups and downs, period returns, each stock vs the STI, yields, dividends by year, the forecast, Sold. Remembered on the device only (localStorage); starts on Detailed so nothing disappears until someone chooses; without JavaScript, everything shows. A link to a Detailed-only section (from a lesson, or within the page) shows Detailed for that visit without changing the saved choice. It survives live.js swapping in new prices.

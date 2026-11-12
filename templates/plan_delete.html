@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Delete plan · SGXray{% endblock %}
+{% block content %}
+<div class="page wrap trades">
+  <header class="page-head">
+    <p class="eyebrow"><a href="{{ url_for('trades_page') }}#plans">Your trades</a> · delete a monthly plan</p>
+    <h1>Delete this plan and its buys?</h1>
+    <p class="muted">{{ plan.amount|money }} a month into {{ name }} ({{ plan.ticker }}). This deletes the plan and the {{ plan.months }} buy{{ "s" if plan.months != 1 }} it recorded. Use this for a plan typed in by mistake; if the plan really ran and has now ended, choose Stop instead, so its past buys stay. This can't be undone.</p>
+  </header>
+  <form method="post" action="{{ url_for('delete_plan', plan_id=plan.id) }}" class="trade-actions">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <button class="btn btn-primary" type="submit">Yes, delete the plan and its buys</button>
+    <a class="quiet-link" href="{{ url_for('trades_page') }}#plans">Cancel</a>
+  </form>
+</div>
+{% endblock %}

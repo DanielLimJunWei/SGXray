@@ -37,6 +37,56 @@
     </details>
   </section>
 
+  {#- Regular savings plans (w314): SGXray records each month's buy itself. -#}
+  <section class="panel trade-add plans" id="plans" aria-labelledby="plans-title">
+    <h2 id="plans-title">Monthly plans</h2>
+    <p class="muted">Investing a fixed amount every month through your bank, like POSB Invest-Saver or OCBC's Blue Chip Investment Plan? Add the plan once and SGXray records each month's buy for you: on your buy day (or the next trading day), at that day's closing price, in whole shares after the fee, like the banks do. Your bank's own price can differ by a few cents; change any month's trade to match your statement.</p>
+    {% if plan_added is not none %}<p class="form-ok" role="status">Plan added. {{ plan_added }} past month{{ "s" if plan_added != 1 }} recorded{% if plan_added %} in your trades below{% endif %}.</p>{% endif %}
+    {% if plan_stopped %}<p class="form-ok" role="status">Plan stopped. Its past buys stay in your trades.</p>{% endif %}
+    {% if plan_deleted %}<p class="form-ok" role="status">Plan and its buys deleted.</p>{% endif %}
+    {% if plans %}
+    <ul class="plan-list">
+      {% for p in plans %}
+      <li class="plan-row">
+        <div><b>{{ p.name }}</b> <span class="muted">({{ p.ticker }})</span>
+          <p>{{ p.amount|money }} on the {{ p.day_words }} of each month since {{ (p.start_month ~ "-01")|shortdate|replace("1 ", "", 1) }} · fee {{ "%g"|format(p.fee_rate * 100) }}%{% if p.fee_min %}, at least {{ p.fee_min|money }}{% endif %}{% if p.end_month %} · <span class="plan-stopped">stopped</span>{% endif %}</p>
+          <p class="muted">{{ p.months }} month{{ "s" if p.months != 1 }} bought: {{ "{:,}".format(p.shares|int) }} shares for {{ p.paid|money }}, fees included</p>
+        </div>
+        <div class="plan-actions">
+          {% if not p.end_month %}<form method="post" action="{{ url_for('stop_plan', plan_id=p.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="link-btn" type="submit">Stop</button></form>{% endif %}
+          <a class="quiet-link" href="{{ url_for('delete_plan', plan_id=p.id) }}">Delete</a>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    <details class="lookup"{% if plan_problems %} open{% endif %}>
+      <summary>Add a monthly plan</summary>
+      {{ problems_box(plan_problems) }}
+      <form method="post" action="{{ url_for('add_plan') }}#plans" class="trade-form plan-form" novalidate>
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <div class="field field-stock">
+          <label for="pl-ticker">Stock, REIT or ETF</label>
+          <select id="pl-ticker" name="ticker" required>
+            <option value="" {% if not plan_values.get("ticker") %}selected{% endif %} disabled>Choose one</option>
+            {% for group, label in [("etf", "ETFs"), ("stock", "Stocks"), ("reit", "REITs")] %}
+            <optgroup label="{{ label }}">
+              {% for t in tickers if t.type == group %}<option value="{{ t.ticker }}" {% if plan_values.get("ticker") == t.ticker %}selected{% endif %}>{{ t.name }} ({{ t.ticker }})</option>{% endfor %}
+            </optgroup>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field"><label for="pl-amount">Each month (S$)</label><input id="pl-amount" name="amount" type="text" inputmode="decimal" autocomplete="off" value="{{ plan_values.get('amount', '') }}" placeholder="100" required></div>
+        <div class="field"><label for="pl-day">Buy day <span class="optional">1 to 28</span></label><input id="pl-day" name="day" type="text" inputmode="numeric" autocomplete="off" value="{{ plan_values.get('day', '') }}" placeholder="15" required></div>
+        <div class="field"><label for="pl-start">Started</label><input id="pl-start" name="start" type="month" value="{{ plan_values.get('start', this_month) }}" max="{{ this_month }}" required></div>
+        <div class="field"><label for="pl-rate">Fee (%) <span class="optional">from your bank</span></label><input id="pl-rate" name="fee_rate" type="text" inputmode="decimal" autocomplete="off" value="{{ plan_values.get('fee_rate', '') }}" placeholder="0.82" required></div>
+        <div class="field"><label for="pl-min">Minimum fee (S$) <span class="optional">0 if none</span></label><input id="pl-min" name="fee_min" type="text" inputmode="decimal" autocomplete="off" value="{{ plan_values.get('fee_min', '') }}" placeholder="0" required></div>
+        <div class="trade-actions"><button class="btn btn-primary" type="submit">Add plan</button></div>
+      </form>
+      <p class="practice-fee">Check your bank's fee page: plans usually charge a percentage of each month's amount, sometimes with a minimum (for example 0.3% or $5, whichever is higher). With a minimum, small monthly amounts cost the most.</p>
+    </details>
+  </section>
+
   <section class="block" aria-labelledby="list-title">
     <div class="section-head"><h2 id="list-title">{{ trades|length }} trade{{ "s" if trades|length != 1 }}</h2>{{ explain_buttons(trades_ex, "trades", "Your trades") }}</div>
     {% if trades %}

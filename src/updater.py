@@ -133,6 +133,8 @@ def download_all(conn):
     tickers = sorted(set(db.get_traded_tickers(conn)) | {market.BENCHMARK})
     results = (market.update_actions(conn, tickers) + market.update_prices(conn, tickers)
                + market.update_dividends(conn, tickers))
+    import plans
+    plans.catch_up_all(conn)                 # monthly plans: record any month whose buy day now has a close
     return not any(r.error for r in results)
 
 

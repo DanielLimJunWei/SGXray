@@ -273,6 +273,14 @@ TERMS = {
                "The industry a company is in, like banks, telecoms or property. Companies in the same sector "
                "often rise and fall together, because the same news hits them all.",
                "DBS, OCBC and UOB are all banks: an interest-rate cut affects all three."),
+    "volatility": ("How bumpy (volatility)",
+                   "How much a portfolio's value usually swings up and down, as a yearly figure. Bigger means a "
+                   "rougher ride: larger rises and larger falls. It measures the bumps, not which way they go.",
+                   "13.5% a year: as a rough guide, about two years in three end within 13.5% of an average year."),
+    "below-high": ("Below its high",
+                   "How far the portfolio is now under its best point so far, counting how the investments did "
+                   "(money added or taken out doesn't count).",
+                   "At its high it was 100; now it's 92: 8% below its high."),
     "per-stock": ("Per stock",
                   "This column only has a number for one stock at a time (its own shares, price, cost or "
                   "dividend per share), so a whole-portfolio total wouldn't mean anything. Each stock's "

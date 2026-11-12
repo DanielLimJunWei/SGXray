@@ -117,6 +117,21 @@ CREATE TABLE IF NOT EXISTS corporate_actions (
     PRIMARY KEY (ticker, ex_date)
 );
 
+-- Regular savings plans (w314): "I invest $X in this stock every month, on this day". SGXray records each
+-- month's purchase itself (src/plans.py). Stopping a plan sets end_month; deleting it deletes its trades.
+CREATE TABLE IF NOT EXISTS plans (
+    id          INTEGER PRIMARY KEY,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    ticker      TEXT    NOT NULL REFERENCES instruments(ticker),
+    amount      REAL    NOT NULL CHECK (amount >= 1 AND amount <= 100000),
+    day         INTEGER NOT NULL CHECK (day BETWEEN 1 AND 28),
+    start_month TEXT    NOT NULL,        -- 'YYYY-MM'
+    end_month   TEXT,                    -- the last month it bought, once stopped; NULL while running
+    fee_rate    REAL    NOT NULL DEFAULT 0 CHECK (fee_rate >= 0 AND fee_rate <= 0.05),
+    fee_min     REAL    NOT NULL DEFAULT 0 CHECK (fee_min >= 0 AND fee_min <= 100),
+    created_at  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Which lessons on the Learn page (w313) each person has finished. Only the lesson's short name and
 -- when: nothing about how they answered. Deleted with the account.
 CREATE TABLE IF NOT EXISTS lesson_reads (
@@ -161,6 +176,9 @@ MIGRATIONS = [
     ("users", "practice_of", "ALTER TABLE users ADD COLUMN practice_of INTEGER REFERENCES users(id) ON DELETE CASCADE"),
     ("users", "fee_rate", "ALTER TABLE users ADD COLUMN fee_rate REAL CHECK (fee_rate IS NULL OR (fee_rate >= 0 AND fee_rate <= 0.02))"),
     ("users", "fee_min", "ALTER TABLE users ADD COLUMN fee_min REAL CHECK (fee_min IS NULL OR (fee_min >= 0 AND fee_min <= 100))"),
+    # Regular savings plans (w314): a trade the plan recorded, and the month it was for (so it's made once).
+    ("trades", "plan_id", "ALTER TABLE trades ADD COLUMN plan_id INTEGER REFERENCES plans(id) ON DELETE CASCADE"),
+    ("trades", "plan_month", "ALTER TABLE trades ADD COLUMN plan_month TEXT"),
 ]
 
 
@@ -397,7 +415,7 @@ def get_trade(conn, user_id, trade_id):
     """One trade, only if it belongs to this user. Someone else's trade id gives None, exactly like
     a trade that doesn't exist, so changing the number in the address shows nothing (no IDOR)."""
     return conn.execute(
-        "SELECT id, ticker, trade_date, side, quantity, price, fees, note FROM trades WHERE id = ? AND user_id = ?",
+        "SELECT id, ticker, trade_date, side, quantity, price, fees, note, plan_id FROM trades WHERE id = ? AND user_id = ?",
         (trade_id, user_id),
     ).fetchone()
 
