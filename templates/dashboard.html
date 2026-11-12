@@ -313,6 +313,40 @@
     {% endfor %}
   </section>
 
+  {#- Where your money is (s02): the same worth, split by type and by sector, with calm warnings. -#}
+  {% if alloc %}
+  <section class="block" aria-labelledby="alloc-title">
+    <div class="section-head">
+      <h2 id="alloc-title">Where your money is</h2>
+      {{ explain_buttons(alloc_ex, "alloc", "Where your money is") }}
+    </div>
+    {% if alloc.by_type %}
+    <div class="alloc-grid">
+      {% for title, rows, word in [("By type", alloc.by_type, "Type"), ("By sector", alloc.by_sector, "Sector")] %}
+      <div class="panel alloc-card">
+        <h3>{{ title }}</h3>
+        <svg class="alloc-bar" viewBox="0 0 400 12" preserveAspectRatio="none" role="img" aria-label="{{ title }}: {% for g in rows %}{{ g.label }} {{ '%.0f%%'|format(g.share * 100) }}{{ ', ' if not loop.last }}{% endfor %}">
+          {% set ns = namespace(x=0) %}
+          {% for g in rows %}<rect class="{{ ('split-' ~ g.kind) if word == 'Type' else ('sec-' ~ (loop.index0 % 6)) }}" x="{{ '%.1f'|format(ns.x) }}" y="0" width="{{ '%.1f'|format([g.share * 400 - 2, 1]|max) }}" height="12" rx="2"/>{% set ns.x = ns.x + g.share * 400 %}{% endfor %}
+        </svg>
+        <table class="data alloc-table">
+          <thead><tr><th scope="col">{{ term("holding-type", word) if word == "Type" else term("sector", word) }}</th><th scope="col">{{ term("worth", "Worth") }}</th><th scope="col">{{ term("weight", "Share") }}</th></tr></thead>
+          <tbody>
+            {% for g in rows %}
+            <tr><td><span class="key-swatch {{ ('split-' ~ g.kind) if word == 'Type' else ('sec-' ~ (loop.index0 % 6)) }}" aria-hidden="true"></span>{{ g.label }}</td><td>{{ g.value|money }}</td><td>{{ "%.0f%%"|format(g.share * 100) }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endfor %}
+    </div>
+    {% if alloc.warnings %}<p class="alloc-note">⚠ {{ alloc.warnings|length }} thing{{ "s" if alloc.warnings|length != 1 }} to look at in "Watch out" above. <a href="{{ url_for('lesson', slug='risk-and-time') }}">Why spreading out helps</a></p>{% endif %}
+    {% else %}
+    <p class="muted">None of what you hold has a closing price saved yet, so it can't be split up. It appears after the next price update.</p>
+    {% endif %}
+  </section>
+  {% endif %}
+
   <section class="block" aria-labelledby="vs-title">
     <div class="section-head">
       <h2 id="vs-title">Each stock vs the {{ term("sti-etf", "STI ETF") }}</h2>

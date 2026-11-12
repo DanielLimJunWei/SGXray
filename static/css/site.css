@@ -652,7 +652,7 @@ a.lesson-link:hover { color: var(--color-glow-soft); }
 .split-money { fill: var(--chart-money-in); }
 .split-gains { fill: var(--chart-gains); opacity: 0.85; }
 .split-dividends { fill: var(--chart-dividends); opacity: 0.85; }
-.key-swatch { display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 1px; margin-right: var(--space-2); align-self: center; }
+.key-swatch { display: inline-block; flex-shrink: 0; width: 0.5rem; height: 0.5rem; border-radius: 1px; margin-right: var(--space-2); align-self: center; }
 .key-swatch.split-stock { background: var(--color-glow-soft); opacity: 0.7; }
 .key-swatch.split-etf { background: var(--chart-sti); opacity: 0.7; }
 .key-swatch.split-reit { background: var(--color-lamp); opacity: 0.7; }
@@ -688,3 +688,21 @@ a.lesson-link:hover { color: var(--color-glow-soft); }
 .as-of-next { color: var(--color-text-faint); }
 .as-of { transition: text-shadow var(--duration-slow) var(--ease-out), color var(--duration-slow) var(--ease-out); }
 .as-of.as-of-new { color: var(--color-text); text-shadow: 0 0 8px rgba(156, 196, 255, 0.22); }   /* one faint glow, then gone */
+
+/* ---------- Where your money is (s02) ---------- */
+.alloc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+.alloc-card { display: grid; gap: var(--space-3); padding: var(--space-5); min-width: 0; }   /* lets it shrink to a phone's width */
+.alloc-table { width: 100%; }
+.alloc-table td:first-child { white-space: normal; }
+.alloc-card h3 { font-size: var(--text-base); }
+.alloc-bar { display: block; width: 100%; height: 0.75rem; }
+.alloc-table td:first-child { display: flex; align-items: center; }
+.alloc-note { margin: var(--space-3) 0 0; font-size: var(--text-sm); color: var(--color-text-muted); }
+/* Sector colours: a quiet set from the site's palette, in order of size. */
+.sec-0 { fill: var(--color-glow-soft); background: var(--color-glow-soft); opacity: 0.75; }
+.sec-1 { fill: var(--color-lamp); background: var(--color-lamp); opacity: 0.75; }
+.sec-2 { fill: var(--chart-sti); background: var(--chart-sti); opacity: 0.75; }
+.sec-3 { fill: var(--color-up); background: var(--color-up); opacity: 0.75; }
+.sec-4 { fill: var(--chart-money-in); background: var(--chart-money-in); }
+.sec-5 { fill: var(--color-down); background: var(--color-down); opacity: 0.6; }
+@media (max-width: 720px) { .alloc-grid { grid-template-columns: 1fr; } }

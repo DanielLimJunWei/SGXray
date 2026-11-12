@@ -401,3 +401,13 @@ Checked every page at 375px wide (a typical phone) on a scratch copy, logged in 
 - Wide tables kept scrolling the stock's name out of view. On phones the first column is pinned (`position: sticky`), so you always know which row you're reading.
 - The tappable words inside sentences are under 24px tall; that's allowed for links inside text (WCAG 2.2 target size has an exception for them), so they stay.
 Tests: `tests/test_phone.py`.
+
+## Where your money is (s02, 12 Nov 2026)
+
+A section on every portfolio page (yours, practice, demo), after Holdings: the same worth split by type (shares in companies, REITs, ETFs) and by sector, each as a split bar plus a small table, with its own explanation box. `src/allocation.py` does the maths; `explain.explain_allocation` the words.
+- Warnings (his choice, a common beginner rule of thumb): one company over 25% of what you hold, one sector over 50%. ETFs never count as "one company" and count as "Whole market (index fund)" in the sector split, since they already hold many companies. Exactly 25% doesn't warn.
+- "Everything is Singapore" is a note in the explanation, not a warning: it's true for everyone on SGXray, and the fix (overseas funds) is outside the app.
+- A holding with no price yet is left out and named in the explanation ("Not counted yet: ..."), never a blank.
+- The demo shows both warnings: DBS 65%, banks 65%.
+- Found on the phone check: the cards wouldn't shrink below their tables' width (a grid item's default `min-width: auto`), which pushed the Menu button off-screen; fixed with `min-width: 0`.
+Tests: `tests/test_allocation.py`.

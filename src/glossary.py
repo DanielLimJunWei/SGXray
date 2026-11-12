@@ -265,6 +265,14 @@ TERMS = {
                       "The practice portfolio's money. You start with $10,000 of it; buys and their fees take it "
                       "away, sales and dividends add it back. It isn't real and can't be withdrawn.",
                       "Buy 100 DBS at $69.72: $6,972.00 plus $13.94 of fees, so $10,000 becomes $3,014.06."),
+    "holding-type": ("Type",
+                     "What kind of thing you own: shares in one company, a REIT (a trust that owns buildings), or "
+                     "an ETF (one fund holding many companies). Each behaves differently in good and bad years.",
+                     "DBS = shares in a company; CICT = a REIT; the STI ETF = an ETF."),
+    "sector": ("Sector",
+               "The industry a company is in, like banks, telecoms or property. Companies in the same sector "
+               "often rise and fall together, because the same news hits them all.",
+               "DBS, OCBC and UOB are all banks: an interest-rate cut affects all three."),
     "per-stock": ("Per stock",
                   "This column only has a number for one stock at a time (its own shares, price, cost or "
                   "dividend per share), so a whole-portfolio total wouldn't mean anything. Each stock's "

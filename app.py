@@ -27,11 +27,12 @@ from flask import (Flask, abort, jsonify, current_app, g, redirect, render_templ
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))      # let the app import db, portfolio, ... from src/
 
+import allocation  # noqa: E402
 import auth  # noqa: E402
 import db  # noqa: E402
 import fmt  # noqa: E402
 import glossary  # noqa: E402
-from explain import (Explanation, explain_dividends_received, explain_forecast, explain_holdings,  # noqa: E402
+from explain import (Explanation, explain_allocation, explain_dividends_received, explain_forecast, explain_holdings,  # noqa: E402
                      explain_income_by_year,
                      explain_performance, explain_periods, explain_sold, explain_stock_chart,
                      explain_total_return, explain_trades, explain_two_returns, explain_value_chart, explain_worth,
@@ -556,6 +557,8 @@ def create_app(db_path=None):
             holdings=holdings,
             holdings_ex=explain_holdings(conn, uid),
             why=_why_notes(conn, uid, holdings),
+            alloc=(alloc := allocation.split(df, {r["ticker"]: dict(r) for r in db.get_instruments(conn)})),
+            alloc_ex=explain_allocation(alloc),
             stocks=_records(_or_none(per_stock, conn, uid), names),
             vs_ex=_or_none(explain_performance, conn, uid),
             yields=_records(y, names),

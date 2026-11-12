@@ -823,3 +823,23 @@ def main(argv):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
+
+
+def explain_allocation(a):
+    """Explains "Where your money is" (s02): the split by type and by sector, and its warnings."""
+    if not a or not a["by_type"]:
+        return Explanation(["This shows how your money is split between companies, REITs and funds, and between "
+                            "industries, once you hold something with a closing price."])
+    out = ["The same money as \"Worth now\", split two ways: by what kind of thing you own (shares in a "
+           "company, a REIT, or a fund) and by industry (the sector).",
+           "Spreading money across companies and sectors means one bad year for one business, or one industry, "
+           "can't sink everything. An ETF like the STI ETF does that in one buy, so it counts as the whole "
+           "market rather than one sector.",
+           "Everything SGXray tracks is listed in Singapore. Many investors also hold some overseas funds, so "
+           "that their money isn't tied to one country's economy: worth knowing, even though SGXray can't "
+           "track those yet."]
+    if a["missing"]:
+        one = len(a["missing"]) == 1
+        out.append(f"Not counted yet: {', '.join(a['missing'])}, which {'has' if one else 'have'} no closing price "
+                   f"saved. {'It is' if one else 'They are'} added after the next price update.")
+    return Explanation(out, list(a["warnings"]))
