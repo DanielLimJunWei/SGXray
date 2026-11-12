@@ -26,6 +26,47 @@ from history import value_history
 from portfolio import dividends_received, positions, summary, trades_frame
 
 HIGH_YIELD = 0.07           # a yield above 7% gets a "could be a yield trap" warning
+TRAP_YIELD = 0.06           # a yield above 6% AND ...
+TRAP_FALL = 0.20            # ... a price 20%+ below its 52-week high: the classic yield-trap pattern (w304)
+FEES_HIGH = 0.005           # fees over 0.5% of everything bought gets a "Watch out"
+FEE_ONE_BUY = 0.01          # one buy losing over 1% to fees gets named
+
+
+def fee_summary(rows):
+    """Fees on all trades against what the buys cost (w304). rows: trades as dicts. Returns
+    {"fees", "bought", "pct", "worst": the buy with the biggest fee share, or None}, or None without buys."""
+    buys = [t for t in rows if t["side"] == "BUY"]
+    bought = sum(t["quantity"] * t["price"] for t in buys)
+    if not buys or not bought:
+        return None
+    fees = sum(float(t["fees"]) for t in rows)
+    worst = max(buys, key=lambda t: t["fees"] / (t["quantity"] * t["price"]))
+    share = worst["fees"] / (worst["quantity"] * worst["price"])
+    return {"fees": fees, "bought": bought, "pct": fees / bought,
+            "worst": {"ticker": worst["ticker"], "day": worst["trade_date"], "amount": worst["quantity"] * worst["price"],
+                      "fees": float(worst["fees"]), "pct": share} if share > FEE_ONE_BUY else None}
+
+
+def _fee_words(f):
+    """The fee line and, if they're high, the Watch out lines, from fee_summary."""
+    line = (f"Fees so far: {money(f['fees'])} on {money(f['bought'])} of buys, {f['pct']:.2%}. Every trade pays "
+            f"them, so they quietly come off your profit.")
+    watch = []
+    if f["pct"] > FEES_HIGH:
+        watch.append(f"Fees are {f['pct']:.2%} of everything you've bought, more than many investors pay. Small "
+                     f"trades with a minimum fee cost the most: fewer, bigger trades usually cost less.")
+    if f["worst"]:
+        w = f["worst"]
+        watch.append(f"Your {w['ticker']} buy on {_short_day(w['day'])} paid {money(w['fees'])} in fees on "
+                     f"{money(w['amount'])}: {w['pct']:.1%} gone before the price moved at all.")
+    return line, watch
+
+
+def _short_day(iso):
+    """'2025-01-02' -> '2 Jan 2025'."""
+    from datetime import date as _date
+    d = _date.fromisoformat(str(iso)[:10])
+    return f"{d.day} {d:%b %Y}"
 BIG_MONTH_MOVE = 0.05       # a monthly profit swing above 5% of the value gets a "one month is noisy" note
 ONE_STOCK_SHARE = 0.5       # one stock giving over half the expected income gets a concentration warning
 
@@ -237,7 +278,20 @@ def explain_yields(conn, user_id, as_of=None):
             bought_cheap.append(f"{r.ticker} ({r.yield_on_cost:.2%} on cost, {r.div_yield:.2%} for a new buyer)")
         elif r.yield_on_cost < r.div_yield * 0.95:
             out.append(f"  Your 'On cost' is lower because you paid more than today's price for {r.ticker}.")
-        if r.div_yield > HIGH_YIELD:
+        w52 = None
+        if r.div_yield > TRAP_YIELD:
+            from insights import week52
+            day = as_of or db.get_latest_price_date(conn, r.ticker)
+            w52 = week52(conn, r.ticker, day) if day else None
+        fell = (w52 and not w52["action_inside"] and w52["high"] and r.price <= (1 - TRAP_FALL) * w52["high"])
+        if fell:
+            drop = 1 - r.price / w52["high"]
+            watch.append(f"{r.ticker}'s {r.div_yield:.2%} yield is high partly because its price is {drop:.0%} below "
+                         f"its 52-week high (${w52['high']:.2f}). That's the classic yield-trap pattern: when a "
+                         f"price falls this far, investors often expect the dividend to be cut, and a cut would "
+                         f"bring the yield back down. Check the company's latest results before buying for "
+                         f"the yield.")
+        elif r.div_yield > HIGH_YIELD:
             watch.append(f"{r.ticker}'s {r.div_yield:.2%} yield is unusually high. That can be a warning sign "
                          f"(a 'yield trap'): sometimes the price has fallen because investors expect the "
                          f"dividend to be cut. Check why before buying for the yield.")
@@ -465,6 +519,11 @@ def explain_total_return(conn, user_id):
            f"still hold) + {money(s['realised'])} realised (locked in by selling) + {money(s['dividends'])} of "
            f"dividends = {up_down(s['total_profit'])}."]
     watch = []
+    f = fee_summary([dict(t) for t in db.get_trades(conn, user_id)])
+    if f:
+        line, fee_watch = _fee_words(f)
+        out.append(line)
+        watch.extend(fee_watch)
     if r["pct"] == r["pct"]:
         out.append(f"The line under it is your simple total return: that profit divided by all the money you've put "
                    f"in ({money(r['put_in'])} of buys, fees included) = {r['pct']:+.1%}, over {_span(r['days'])}.")
@@ -533,7 +592,12 @@ def explain_trades(rows):
         out.append("You can add a line on why you bought or sold to any trade (Change, then \"Why I bought\"). "
                    "Your portfolio shows it again beside that stock, so later you can check whether the reason "
                    "still holds.")
-    watch = ["Copy each trade from your broker's contract note: the date, price and fees there are the real ones. "
+    f = fee_summary(rows)
+    fee_watch = []
+    if f:
+        line, fee_watch = _fee_words(f)
+        out.append(line)
+    watch = fee_watch + ["Copy each trade from your broker's contract note: the date, price and fees there are the real ones. "
              "A typo here changes every number on your portfolio."]
     return Explanation(out, watch)
 

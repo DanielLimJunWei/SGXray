@@ -411,3 +411,10 @@ A section on every portfolio page (yours, practice, demo), after Holdings: the s
 - The demo shows both warnings: DBS 65%, banks 65%.
 - Found on the phone check: the cards wouldn't shrink below their tables' width (a grid item's default `min-width: auto`), which pushed the Menu button off-screen; fixed with `min-width: 0`.
 Tests: `tests/test_allocation.py`.
+
+## Insights: fees and yield traps (w304, 12 Nov 2026)
+
+Both checks partly existed (a yield over 7% got a gentle warning; fees only came up in the monthly summary). Now:
+- Fees: `explain.fee_summary` adds up every trade's fees (sales included) against what the buys cost. The "Total profit" and Trades boxes say "Fees so far: $60.00 on $15,157.00 of buys, 0.40%". "Watch out" when fees are over 0.5% of everything bought, and names any single buy that lost over 1% to fees ("Your C38U.SI buy on 11 Jun 2024 paid $10.00 in fees on $1,930.00..." only if over 1%). The demo is under both lines, so it gets the fee line with no warnings.
+- Yield traps: a yield over 6% together with a price at least 20% below its 52-week high is the classic pattern (the market expecting a dividend cut), so it gets a specific warning with the drop and the high. A high yield on a steady price keeps the gentler "unusually high" note (over 7%). Skipped when a bonus issue or split happened inside the 52 weeks, since those make the price drop without any loss.
+Tests: `tests/test_insights_w304.py`.
