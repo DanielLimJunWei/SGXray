@@ -32,7 +32,7 @@ import auth  # noqa: E402
 import db  # noqa: E402
 import fmt  # noqa: E402
 import glossary  # noqa: E402
-from explain import (Explanation, explain_allocation, explain_dividends_received, explain_risk, explain_forecast, explain_holdings,  # noqa: E402
+from explain import (Explanation, explain_allocation, explain_dividends_received, explain_news, explain_risk, explain_forecast, explain_holdings,  # noqa: E402
                      explain_income_by_year,
                      explain_performance, explain_periods, explain_sold, explain_stock_chart,
                      explain_total_return, explain_trades, explain_two_returns, explain_value_chart, explain_worth,
@@ -42,6 +42,7 @@ import insights  # noqa: E402
 from importer import DEMO_EMAIL  # noqa: E402
 from income import by_year, forecast, portfolio_yield, yields  # noqa: E402
 import lessons  # noqa: E402
+import news  # noqa: E402
 import plans  # noqa: E402
 import practice  # noqa: E402
 import readiness  # noqa: E402
@@ -616,6 +617,8 @@ def create_app(db_path=None):
             alloc_ex=explain_allocation(alloc),
             risk_view=(risk_view := risk.risk(conn, uid, h) if h is not None else None),
             risk_ex=explain_risk(risk_view),
+            headlines=(headlines := news.for_tickers(conn, [r["ticker"] for r in holdings])),
+            news_ex=explain_news(headlines),
             stocks=_records(_or_none(per_stock, conn, uid), names),
             vs_ex=_or_none(explain_performance, conn, uid),
             yields=_records(y, names),
@@ -739,6 +742,7 @@ def _stock_charts(conn, uid, holdings, as_of):
     for r in holdings:
         h = stock_history(conn, uid, r["ticker"])
         if h and h["prices"]:
+            h["news"] = news.for_chart(conn, r["ticker"], h["prices"][0][0])        # markers along the top
             charts.append({"ticker": r["ticker"], "name": r["name"], "id": "chart-" + r["ticker"].replace(".", "-"),
                            "data": h, "ex": explain_stock_chart(conn, uid, r["ticker"], h),
                            "w52": insights.week52(conn, r["ticker"], as_of) if as_of else None})

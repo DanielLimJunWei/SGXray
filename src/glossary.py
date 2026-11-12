@@ -281,6 +281,12 @@ TERMS = {
                    "How far the portfolio is now under its best point so far, counting how the investments did "
                    "(money added or taken out doesn't count).",
                    "At its high it was 100; now it's 92: 8% below its high."),
+    "in-the-news": ("In the news",
+                    "Headlines that mention this stock, from CNA, The Business Times, The Straits Times and The Edge "
+                    "Singapore. SGXray shows each headline as published, with a link to the full article: it "
+                    "doesn't summarise or judge them. News often moves a price for a few days; the question is "
+                    "whether it changes your reason for owning it.",
+                    "A headline about a bank's quarterly results: read it, then reread your Why I bought note."),
     "per-stock": ("Per stock",
                   "This column only has a number for one stock at a time (its own shares, price, cost or "
                   "dividend per share), so a whole-portfolio total wouldn't mean anything. Each stock's "

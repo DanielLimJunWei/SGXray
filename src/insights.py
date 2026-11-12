@@ -30,12 +30,17 @@ def day_change(conn, user_id, history):
             movers.append({"ticker": p.ticker, "change": p.shares * (closes[-1] - closes[0]),
                            "pct": closes[-1] / closes[0] - 1})
     movers.sort(key=lambda m: abs(m["change"]), reverse=True)
+    # The market on the same day (w302): the STI ETF's close on the same two days, if it has both.
+    from market import BENCHMARK
+    sti = {r["price_date"]: r["close"] for r in db.get_prices(conn, BENCHMARK, h.index[-2].date().isoformat())}
+    a, b = sti.get(h.index[-2].date().isoformat()), sti.get(h.index[-1].date().isoformat())
     return {
         "date": h.index[-1].date().isoformat(),
         "previous": h.index[-2].date().isoformat(),
         "change": change,
         "pct": change / before.value if before.value else float("nan"),
         "movers": movers,
+        "sti_pct": (b / a - 1) if a and b else float("nan"),
     }
 
 

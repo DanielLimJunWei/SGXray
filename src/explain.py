@@ -941,3 +941,18 @@ def explain_risk(r):
                      f"selling in one is what turns a paper loss into a real one.")
     watch.append("Past ups and downs don't predict future ones. They show what holding this has felt like.")
     return Explanation(out, watch)
+
+
+def explain_news(headlines):
+    """Explains "In the news" (w312)."""
+    out = ["Recent headlines that mention a stock you hold, from CNA, The Business Times, The Straits Times and "
+           "The Edge Singapore. Each one is shown exactly as published, with its source and a link to the full "
+           "article. SGXray doesn't summarise, rate or recommend anything based on them.",
+           "Matching is by the company's name or short form (like DBS or Singtel), so now and then a headline "
+           "only mentions a company in passing. The same headlines appear as small squares along the top of each "
+           "stock's price chart, so you can see what was in the news when the price moved."]
+    watch = ["A headline can move a price for a few days without changing the business. Before acting on one, "
+             "reread your reason for owning the stock (your Why I bought note) and ask whether it's still true."]
+    if not headlines:
+        out.append("Nothing from the last 30 days mentions what you hold right now.")
+    return Explanation(out, watch)

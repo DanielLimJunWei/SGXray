@@ -89,6 +89,11 @@
         fill: up ? "#9CC4FF" : "#F2C1A0", stroke: "#0A0F1E", "stroke-width": 1.5 }));
     });
     D.dividends.forEach(d => marks.append(el("circle", { cx: x(d.date), cy: H - 6, r: 3.5, fill: "#E3A35E" })));
+    // News (w312): a small hollow square along the top on each day a headline mentioned this stock. Point at
+    // that day to read the headlines; the dashboard's "In the news" list has the links.
+    const newsFrom = P[0][0], newsTo = P[P.length - 1][0];
+    [...new Set((D.news || []).map(n => n.date))].filter(d => d >= newsFrom && d <= newsTo).forEach(d =>
+      marks.append(el("rect", { class: "news-mark", x: x(d) - 3, y: TOP - 9, width: 6, height: 6, rx: 1 })));
     svg.append(marks);
 
     // Cursor for reading any day.
@@ -127,6 +132,7 @@
       D.trades.filter(between).forEach(t => rows.push([t.side === "BUY" ? "You bought" : "You sold", `${t.qty.toLocaleString("en-SG")} at ${fmt(t.price)}`]));
       D.dividends.filter(between).forEach(x2 => rows.push(["Dividend", `${x2.shares.toLocaleString("en-SG")} x $${x2.amount} = ${fmt(x2.total)}`]));
       D.actions.filter(between).forEach(a => rows.push([a.factor > 1 ? "Bonus issue" : "Consolidation", "x" + a.factor]));
+      (D.news || []).filter(between).slice(0, 3).forEach(n => rows.push(["In the news", `${n.source}: ${n.title}`]));
       tip.textContent = "";
       const head = document.createElement("b"); head.textContent = longDate(d); tip.append(head);
       rows.forEach(([k, val]) => {

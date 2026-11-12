@@ -731,3 +731,29 @@ a.lesson-link:hover { color: var(--color-glow-soft); }
 .view-switch button + button { border-left: 1px solid var(--color-line-strong); }
 .view-switch button[aria-pressed="true"] { color: var(--color-text); background: rgba(156, 196, 255, 0.08); }
 .view-simple [data-detail] { display: none !important; }
+
+/* ---------- News (w312) ---------- */
+.news-mark { fill: none; stroke: var(--color-glow-soft); stroke-width: 1.25; opacity: 0.85; }
+.mk-news { width: 8px; height: 8px; border: 1.25px solid var(--color-glow-soft); border-radius: 1px; }
+.news-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.news-item { display: grid; grid-template-columns: 7.5rem 1fr; gap: var(--space-1) var(--space-4); padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-line); }
+.news-item:first-child { border-top: 0; }
+.news-when { font: 400 var(--text-xs)/1.6 var(--font-mono); color: var(--color-text-faint); }
+.news-item a { color: var(--color-text); text-decoration: none; }
+.news-item a:hover { color: var(--color-glow-soft); text-decoration: underline; text-underline-offset: 0.2em; }
+.news-meta { grid-column: 2; font-size: var(--text-xs); color: var(--color-text-muted); }
+.news-tag { font-family: var(--font-mono); color: var(--color-text-faint); }
+@media (max-width: 560px) { .news-item { grid-template-columns: 1fr; } .news-meta { grid-column: 1; } }
+
+/* ---------- Empty screens (w319): one faint trace drifting slowly behind the message ----------
+   Decoration only: no numbers or axes. The path is two identical waves side by side; moving it left by one
+   wave's width (800) and looping makes an endless drift with no jump. 40s a loop: noticed on a close look. */
+.panel.empty { position: relative; overflow: hidden; }
+.panel.empty > :not(.empty-trace) { position: relative; }
+.empty-trace { position: absolute; left: 0; right: 0; bottom: 4%; width: 100%; height: 30%; pointer-events: none; opacity: 0.3; }   /* low, under the text */
+.empty-trace path { fill: none; stroke: var(--color-glow-soft); stroke-width: 1; vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 1px rgba(120, 170, 255, 0.22)); }
+.empty-trace-move { animation: empty-drift 40s linear infinite; }
+@keyframes empty-drift { from { transform: translateX(0); } to { transform: translateX(-800px); } }
+@media (prefers-reduced-motion: reduce) { .empty-trace-move { animation: none; } }

@@ -57,3 +57,16 @@ def test_detailed_only_sections_are_marked_and_the_essentials_are_not(app):
 
 def test_an_empty_portfolio_has_no_view_switch(app):
     assert "data-view-switch" not in signed_up(app).get("/portfolio").get_data(as_text=True)
+
+
+def test_empty_screens_get_a_decorative_trace_that_hides_from_screen_readers(app):
+    page = signed_up(app).get("/portfolio").get_data(as_text=True)                # no trades yet
+    assert '<svg class="empty-trace"' in page and 'aria-hidden="true" focusable="false"' in page
+    assert "<text" not in page.split('class="empty-trace"')[1].split("</svg>")[0]   # no numbers or labels
+
+
+def test_pages_with_data_have_no_decorative_trace(app):
+    from test_trades import add
+    c = signed_up(app)
+    add(c)
+    assert "empty-trace" not in c.get("/portfolio").get_data(as_text=True)

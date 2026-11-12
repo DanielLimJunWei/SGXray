@@ -138,6 +138,32 @@ def download_all(conn):
     return not any(r.error for r in results)
 
 
+NEWS_EVERY = timedelta(hours=3)
+
+
+def news_once(conn, now=None, update=None):
+    """Fetches headlines if the last try was 3 hours ago or more. Returns "not due", "updated" or "failed"."""
+    import news
+    now = now or singapore_now()
+    conn.execute(JOB_SQL)
+    with conn:
+        conn.execute("INSERT OR IGNORE INTO jobs (name) VALUES ('news')")
+    job = conn.execute("SELECT last_try FROM jobs WHERE name = 'news'").fetchone()
+    if job["last_try"] and datetime.fromisoformat(job["last_try"]) > now - NEWS_EVERY:
+        return "not due"
+    stamp = now.isoformat(timespec="seconds")
+    with conn:                                      # mark the try first, so two processes don't both fetch
+        conn.execute("UPDATE jobs SET last_try = ? WHERE name = 'news'", (stamp,))
+    try:
+        ok = (update or news.update)(conn)
+    except Exception:
+        ok = False
+    if ok:
+        with conn:
+            conn.execute("UPDATE jobs SET last_ok = ? WHERE name = 'news'", (stamp,))
+    return "updated" if ok else "failed"
+
+
 def enabled():
     """On by default when the app runs; off in the tests (they must never reach the internet), or with
     SGXRAY_AUTO_PRICES=0."""
@@ -156,6 +182,8 @@ def start(db_path):
                 result = run_once(conn)
                 if result not in ("not due", "busy"):
                     print(f"[prices] {singapore_now():%d %b %H:%M} SGT: {result}", flush=True)
+                if news_once(conn) == "failed":
+                    print(f"[news] {singapore_now():%d %b %H:%M} SGT: no feed answered", flush=True)
                 conn.close()
             except Exception as e:     # a locked or missing database: try again next time
                 print(f"[prices] check skipped: {type(e).__name__}", flush=True)

@@ -52,6 +52,13 @@
 
   {% if not s %}
   <div class="panel empty">
+    {#- Decoration only (w319): a faint trace drifting slowly behind the message, like a film being scanned.
+        No numbers or axes, so it can't be mistaken for data; still with "reduce motion"; hidden from screen readers. -#}
+    <svg class="empty-trace" viewBox="0 0 800 120" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      <g class="empty-trace-move">
+        <path d="M0 50 C20 44 90 70 140 72 S220 96 280 80 S360 40 420 46 S500 78 560 64 S660 30 720 38 S780 56 800 50 C820 44 890 70 940 72 S1020 96 1080 80 S1160 40 1220 46 S1300 78 1360 64 S1460 30 1520 38 S1580 56 1600 50"/>
+      </g>
+    </svg>
     {% if mode == "demo" %}
     <h2>The demo portfolio isn't loaded yet</h2>
     <p class="muted">Load the sample trades, then download their prices:</p>
@@ -76,7 +83,7 @@
       <span class="value" data-count="{{ s.value|rawnum }}">{% if all_waiting %}{{ term("pending", "Waiting") }}{% elif s.missing_prices %}{{ term("no-price", "No price yet") }}{% else %}{{ s.value|money }}{% endif %}</span>
       <span class="note">{% if all_waiting %}Today's closing price comes at about 5:30pm{% elif s.missing_prices %}Fills in with the next price update{% else %}What you hold, at the latest closing prices{% endif %}</span>
       {% if day %}
-      <span class="note twr">{{ term("day-change", "Day's change") }} <b class="{{ day.change|trend }}">{{ day.change|arrow }} {{ day.change|money(signed=True) }}</b> ({{ day.pct|pct }}) on {{ day.date|shortdate }}</span>
+      <span class="note twr">{{ term("day-change", "Day's change") }} <b class="{{ day.change|trend }}">{{ day.change|arrow }} {{ day.change|money(signed=True) }}</b> ({{ day.pct|pct }}) on {{ day.date|shortdate }}{% if day.sti_pct == day.sti_pct %} · {{ term("sti-etf", "STI ETF") }} {{ day.sti_pct|pct }}{% endif %}</span>
       {% endif %}
       <span class="figure-explain">{{ explain_buttons(worth_ex, "worth", "Worth now", compact=True) }}</span>
     </div>
@@ -297,6 +304,7 @@
         <li><span class="mk mk-buy" aria-hidden="true"></span>{{ term("buy", "Buy") }}</li>
         {% if c.data.trades|selectattr("side", "equalto", "SELL")|list %}<li><span class="mk mk-sell" aria-hidden="true"></span>{{ term("sell", "Sell") }}</li>{% endif %}
         {% if c.data.dividends %}<li><span class="mk mk-div" aria-hidden="true"></span>{{ term("ex-date", "Dividend ex-date") }}</li>{% endif %}
+        {% if c.data.news %}<li><span class="mk mk-news" aria-hidden="true"></span>{{ term("in-the-news", "In the news") }}</li>{% endif %}
         <li><span class="mk mk-avg" aria-hidden="true"></span>{{ term("avg-cost-line", "Your average cost") }}</li>
         <li><span class="mk mk-line" aria-hidden="true"></span>{{ term("price-line", "Closing price") }}</li>
       </ul>
@@ -393,6 +401,27 @@
     </div>
     {% else %}
     <p class="muted">Your biggest fall and how bumpy the ride has been appear after a few days of closing prices for what you hold. {{ term("too-soon", "Too soon") }} for now.</p>
+    {% endif %}
+  </section>
+
+  {#- In the news (w312): headlines that mention what you hold, each as published, with its source and link. -#}
+  <section class="block" aria-labelledby="news-title" data-detail>
+    <div class="section-head">
+      <h2 id="news-title">{{ term("in-the-news", "In the news") }}</h2>
+      {{ explain_buttons(news_ex, "news", "In the news") }}
+    </div>
+    {% if headlines %}
+    <ul class="panel news-list">
+      {% for n in headlines %}
+      <li class="news-item">
+        <span class="news-when">{{ n.published[:10]|shortdate }}</span>
+        <a href="{{ n.url }}" target="_blank" rel="noopener noreferrer nofollow" referrerpolicy="no-referrer">{{ n.title }}</a>
+        <span class="news-meta">{{ n.source }} · <span class="news-tag">{{ n.tickers|select("in", holdings|map(attribute="ticker")|list)|join(", ") }}</span></span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">No headlines from the last 30 days mention what you hold. SGXray checks CNA, The Business Times, The Straits Times and The Edge Singapore every few hours.</p>
     {% endif %}
   </section>
 

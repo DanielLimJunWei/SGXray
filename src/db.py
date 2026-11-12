@@ -132,6 +132,24 @@ CREATE TABLE IF NOT EXISTS plans (
     created_at  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- News headlines (w312) from a few credible publishers' public feeds: only the headline as published, the
+-- source, the date and the link to the full article. Shared by everyone; kept 60 days.
+CREATE TABLE IF NOT EXISTS news (
+    id         INTEGER PRIMARY KEY,
+    url        TEXT NOT NULL UNIQUE,
+    title      TEXT NOT NULL,
+    source     TEXT NOT NULL,
+    published  TEXT NOT NULL,            -- 'YYYY-MM-DDTHH:MM' Singapore time
+    fetched_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+-- Which stocks each headline mentions.
+CREATE TABLE IF NOT EXISTS news_tickers (
+    news_id INTEGER NOT NULL REFERENCES news(id) ON DELETE CASCADE,
+    ticker  TEXT    NOT NULL,
+    PRIMARY KEY (news_id, ticker)
+);
+CREATE INDEX IF NOT EXISTS idx_news_tickers_ticker ON news_tickers (ticker);
+
 -- Which lessons on the Learn page (w313) each person has finished. Only the lesson's short name and
 -- when: nothing about how they answered. Deleted with the account.
 CREATE TABLE IF NOT EXISTS lesson_reads (
