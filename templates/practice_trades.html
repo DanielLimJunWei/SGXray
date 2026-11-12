@@ -56,8 +56,8 @@
         <input id="tf-qty" name="quantity" type="text" inputmode="numeric" autocomplete="off" value="{{ values.quantity or '' }}" placeholder="100" required>
       </div>
       <div class="field field-note">
-        <label for="tf-note"><span class="when-buy">Why I bought</span><span class="when-sell">Why I sold</span> <span class="optional">optional · a line for future you</span></label>
-        <input id="tf-note" name="note" type="text" maxlength="280" autocomplete="off" value="{{ values.note or '' }}" placeholder="Practising with a bank: steady dividends">
+        <label for="tf-note"><span class="when-buy">Why I bought</span><span class="when-sell">Why I sold</span> <span class="optional">optional · a line for future you · press Tab for an example</span></label>
+        <input id="tf-note" name="note" type="text" maxlength="280" autocomplete="off" value="{{ values.note or '' }}" placeholder="A business I understand, with steady profits; holding for 5+ years" data-note-suggest>
       </div>
       <div class="trade-actions">
         <button class="btn btn-primary" type="submit">Place practice trade</button>
@@ -136,4 +136,5 @@
 {{ term_popups() }}
 {% endblock %}
 {% block scripts %}<script src="{{ url_for('static', filename='js/popups.js') }}" defer></script>
-<script src="{{ url_for('static', filename='js/lookup.js') }}" defer></script>{% endblock %}
+<script src="{{ url_for('static', filename='js/lookup.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/notes.js') }}" defer></script>{% endblock %}

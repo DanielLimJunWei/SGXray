@@ -757,3 +757,23 @@ a.lesson-link:hover { color: var(--color-glow-soft); }
 .empty-trace-move { animation: empty-drift 40s linear infinite; }
 @keyframes empty-drift { from { transform: translateX(0); } to { transform: translateX(-800px); } }
 @media (prefers-reduced-motion: reduce) { .empty-trace-move { animation: none; } }
+
+/* ---------- Jump to a section ---------- */
+.jump-btn { position: fixed; right: var(--space-4); bottom: var(--space-4); z-index: 9; min-height: 40px; padding: 0 var(--space-4);
+  font: 500 var(--text-sm)/1 var(--font-sans); color: var(--color-text); cursor: pointer;
+  background: rgba(10, 15, 30, 0.82); border: 1px solid var(--color-line-strong); border-radius: var(--radius-md);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.jump-btn:hover { border-color: var(--color-glow-soft); }
+.jump-menu { inset: auto; right: var(--space-4); bottom: calc(var(--space-4) + 48px); margin: 0; padding: var(--space-2);
+  width: min(16rem, calc(100% - 2 * var(--space-4))); display: none; flex-direction: column; color: var(--color-text);
+  background: var(--color-surface-raised); border: 1px solid var(--color-line-strong); border-radius: var(--radius-lg);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45); }
+.jump-menu:popover-open { display: flex; }
+.jump-menu a { display: flex; align-items: center; min-height: 40px; padding: 0 var(--space-3); border-radius: var(--radius-sm);
+  font: 500 var(--text-sm)/1.2 var(--font-sans); color: var(--color-text-muted); text-decoration: none; }
+.jump-menu a[hidden] { display: none; }
+.jump-menu a:hover, .jump-menu a:focus-visible { color: var(--color-text); background: rgba(156, 196, 255, 0.06); }
+.jump-menu .jump-top { margin-top: var(--space-1); border-top: 1px solid var(--color-line); border-radius: 0; }
+
+.view-note { margin: 0; max-width: 46rem; font-size: var(--text-sm); color: var(--color-text-muted); }
+.view-note[hidden] { display: none; }

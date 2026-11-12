@@ -70,3 +70,27 @@ def test_pages_with_data_have_no_decorative_trace(app):
     c = signed_up(app)
     add(c)
     assert "empty-trace" not in c.get("/portfolio").get_data(as_text=True)
+
+
+def test_portfolio_pages_have_the_sections_menu_with_back_to_top(app):
+    from test_trades import add
+    c = signed_up(app)
+    add(c)
+    page = c.get("/portfolio").get_data(as_text=True)
+    assert 'popovertarget="jump-menu">Sections</button>' in page and 'data-jump="top"' in page
+    assert 'data-jump="holdings-title"' in page and "js/jump.js" in page
+
+
+def test_the_note_boxes_offer_a_tab_suggestion(app):
+    page = signed_up(app).get("/trades").get_data(as_text=True)
+    assert "data-note-suggest" in page and "press Tab for an example" in page and "js/notes.js" in page
+
+
+def test_the_account_page_has_the_light_switch_and_login_doesnt(app):
+    c = signed_up(app)
+    assert page_has_switch(c.get("/account").get_data(as_text=True))
+    assert not page_has_switch(app.test_client().get("/login").get_data(as_text=True))
+
+
+def page_has_switch(page):
+    return page.count("data-light-switch") == 2

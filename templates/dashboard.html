@@ -41,10 +41,11 @@
     <div class="view-switch" role="group" aria-label="How much to show" data-view-switch hidden>
       <button type="button" data-view="simple" aria-pressed="false">Simple</button>
       <button type="button" data-view="detailed" aria-pressed="true">Detailed</button>
-    </div>{% endif %}
+    </div>
+    <p class="view-note" data-view-note hidden></p>{% endif %}
     {% if mode == "practice" %}<p class="practice-cash">{{ term("practice-cash", "Pretend cash") }} <b>{{ cash|money }}</b> <span class="muted">of {{ start_cash|money }} to start · none of this is real money</span></p>{% endif %}
     {% if s %}
-    <p class="as-of" data-live-as-of>{% if s.prices_as_of %}Prices as of {{ s.prices_as_of|longdate }}{% elif waiting %}Prices: waiting for today's close{% else %}No prices downloaded yet{% endif %} · {{ term("closing-price", "closing prices") }}{% if not s.prices_as_of or s.prices_as_of < next_close %} <span class="as-of-next">· the newer close comes in by itself, usually after about 5:45pm</span>{% endif %}</p>
+    <p class="as-of" data-live-as-of>{% if s.prices_as_of %}Prices as of {{ s.prices_as_of|longdate }}{% elif waiting %}Prices: waiting for today's close{% else %}No prices downloaded yet{% endif %} · {{ term("closing-price", "closing prices") }}{% set behind = not s.prices_as_of or s.prices_as_of < next_close %} <span class="as-of-next">· {% if behind %}catching up: newer prices within about 15 minutes{% else %}next update {{ next_update }}{% endif %}</span></p>
     {% endif %}
     {% if s and mode == "own" %}<p><a class="btn btn-well" href="{{ url_for('trades_page') }}">Add or change trades</a></p>{% endif %}
     {% if mode == "practice" %}<p><a class="btn btn-well" href="{{ url_for('practice_trades') }}">Make a practice trade</a></p>{% endif %}
@@ -81,7 +82,7 @@
       {# A missing price: the big figures say why in words, capitalised like a value (the page rule). #}
       {% set all_waiting = waiting and s.missing_prices|length == waiting|length %}
       <span class="value" data-count="{{ s.value|rawnum }}">{% if all_waiting %}{{ term("pending", "Waiting") }}{% elif s.missing_prices %}{{ term("no-price", "No price yet") }}{% else %}{{ s.value|money }}{% endif %}</span>
-      <span class="note">{% if all_waiting %}Today's closing price comes at about 5:30pm{% elif s.missing_prices %}Fills in with the next price update{% else %}What you hold, at the latest closing prices{% endif %}</span>
+      <span class="note">{% if all_waiting %}Today's closing price comes at about 5:45pm{% elif s.missing_prices %}Fills in with the next price update{% else %}What you hold, at the latest closing prices{% endif %} · next update {{ next_update }}</span>
       {% if day %}
       <span class="note twr">{{ term("day-change", "Day's change") }} <b class="{{ day.change|trend }}">{{ day.change|arrow }} {{ day.change|money(signed=True) }}</b> ({{ day.pct|pct }}) on {{ day.date|shortdate }}{% if day.sti_pct == day.sti_pct %} · {{ term("sti-etf", "STI ETF") }} {{ day.sti_pct|pct }}{% endif %}</span>
       {% endif %}
@@ -125,7 +126,7 @@
 
   {% if s.missing_prices or s.stale_prices %}
   <p class="muted" role="status" style="margin-bottom: var(--space-6)">
-    {% for tk, name in waiting.items() %}{{ name }} ({{ tk }}) was bought today. Its first closing price comes after SGX closes, at about 5:30pm, and your worth and profit fill in then. {% endfor %}
+    {% for tk, name in waiting.items() %}{{ name }} ({{ tk }}) was bought today. Its first closing price comes after SGX closes, at about 5:45pm, and your worth and profit fill in then. {% endfor %}
     {% for tk, name in no_price.items() %}No closing price is saved yet for {{ name }} ({{ tk }}). Its worth and profit, and your totals, fill in after the next price update. {% endfor %}
     {% if s.stale_prices %}Older prices for {{ s.stale_prices|join(', ') }}: their value may be out of date.{% endif %}
   </p>
@@ -578,6 +579,21 @@
   </section>
   {% endif %}
 </div>
+{% if s %}
+{#- Jump to a section: a quick smooth scroll (static/js/jump.js). Only sections actually on the page are listed. -#}
+<div class="jump">
+  <button class="jump-btn" type="button" popovertarget="jump-menu">Sections</button>
+  <div class="jump-menu" id="jump-menu" popover>
+    {% for id, label in [("xray-title", "Your portfolio, X-rayed"), ("holdings-title", "Holdings"), ("alloc-title", "Where your money is"),
+                         ("risk-title", "Ups and downs"), ("news-title", "In the news"), ("vs-title", "Each stock vs the STI ETF"),
+                         ("yields-title", "Dividend yields"), ("years-title", "Dividend income by year"),
+                         ("forecast-title", "Dividends expected")] %}
+    <a href="#{{ id }}" data-jump="{{ id }}">{{ label }}</a>
+    {% endfor %}
+    <a href="#main" data-jump="top" class="jump-top">Back to top</a>
+  </div>
+</div>
+{% endif %}
 {{ term_popups() }}
 {% endblock %}
 
@@ -590,4 +606,5 @@
 <script src="{{ url_for('static', filename='js/popups.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/live.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/view.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/jump.js') }}" defer></script>
 {% endblock %}

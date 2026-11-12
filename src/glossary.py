@@ -153,7 +153,7 @@ TERMS = {
     # The reason words: what a cell says instead of a number (the page rule in NOTES.md).
     "pending": ("Pending",
                 "Waiting for tonight's closing price. You bought a stock today, and SGX publishes its first "
-                "closing price at about 5:30pm, so numbers that need that price fill in then.",
+                "closing price at about 5:45pm, so numbers that need that price fill in then.",
                 "Bought OCBC this morning: worth and profit say pending until the evening price update."),
     "too-soon": ("Too soon",
                  "Not enough history yet to work this out fairly. Comparing returns needs at least a month, and "
@@ -161,17 +161,17 @@ TERMS = {
                  "Bought 3 weeks ago: too soon to compare with the STI ETF. In a week it fills in."),
     "after-close": ("After today's close",
                     "A stock you bought today has no closing price yet. SGX closes at 5pm and SGXray gets the "
-                    "price at about 5:30pm.",
+                    "price at about 5:45pm.",
                     "Bought DBS at 10am: its price shows after today's close."),
     "no-price": ("No price yet",
                  "SGXray hasn't saved a closing price for this stock yet, so numbers that need it (its worth, "
                  "profit and weight, and your totals) wait for it. Prices are saved by the daily price update, "
-                 "after SGX closes at about 5:30pm.",
+                 "after SGX closes at about 5:45pm.",
                  "Added Singapore Airlines this afternoon: its price comes with this evening's price update."),
     "no-chart": ("No price chart yet",
                  "A price chart is drawn from the closing prices SGXray has saved for a stock. This one has "
                  "none saved yet, so there's nothing to draw. The daily price update saves them after SGX "
-                 "closes at about 5:30pm, and the chart appears after that.",
+                 "closes at about 5:45pm, and the chart appears after that.",
                  "Added Singapore Airlines this afternoon: its chart is ready after this evening's price update."),
     # ---- Learn page (w313) ----
     "emergency-fund": ("Emergency fund",

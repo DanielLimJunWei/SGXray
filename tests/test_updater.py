@@ -111,7 +111,8 @@ def test_portfolio_pages_listen_for_new_prices_and_say_when_theyre_behind(app):
     from test_trades import add
     add(c)                                                       # the test prices are from January 2025
     page = c.get("/portfolio").get_data(as_text=True)
-    assert "the newer close comes in by itself" in page
+    assert "catching up: newer prices within about 15 minutes" in page          # the test prices are old
+    assert "next update about 5:45pm" in page                                    # under Worth now
     assert 'data-roll="' in page                                 # the holdings' price and worth can roll
 
 
@@ -128,3 +129,14 @@ def test_the_daily_update_covers_every_held_stock_real_and_practice(db_path, mon
     assert updater.download_all(conn) is True
     assert seen["update_prices"] == ["D05.SI", "ES3.SI"]           # practice stocks get prices too
     conn.close()
+
+
+
+@pytest.mark.parametrize("now, words", [
+    (datetime(2026, 11, 12, 10, 0, tzinfo=SGT), "about 5:45pm today"),         # Thursday morning
+    (datetime(2026, 11, 12, 19, 0, tzinfo=SGT), "about 5:45pm tomorrow"),      # Thursday evening
+    (datetime(2026, 11, 13, 19, 0, tzinfo=SGT), "about 5:45pm on Monday"),     # Friday evening
+    (datetime(2026, 11, 14, 9, 0, tzinfo=SGT), "about 5:45pm on Monday"),      # Saturday
+])
+def test_the_next_update_is_said_in_words(now, words):
+    assert updater.next_update(now) == words

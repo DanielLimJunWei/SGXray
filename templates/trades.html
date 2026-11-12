@@ -13,7 +13,7 @@
 
   {% if saved %}<p class="form-ok" role="status">Trade saved. <a href="{{ url_for('portfolio') }}">See your portfolio</a></p>{% endif %}
   {% if prices_later %}<p class="form-note" role="status">Prices for that stock couldn't be downloaded just now. The trade is saved; its prices will appear after the next price update.</p>{% endif %}
-  {% if prices_tonight %}<p class="form-note" role="status">That trade is dated today. Its first closing price comes after SGX closes, at about 5:30pm, so your portfolio's worth shows as waiting until then.</p>{% endif %}
+  {% if prices_tonight %}<p class="form-note" role="status">That trade is dated today. Its first closing price comes after SGX closes, at about 5:45pm, so your portfolio's worth shows as waiting until then.</p>{% endif %}
   {% if deleted %}<p class="form-ok" role="status">Trade deleted.</p>{% endif %}
   {% if added %}<p class="form-ok" role="status">{{ added.name }} ({{ added.ticker }}) is in the list now, and picked below. Fill in the rest of the trade.</p>{% endif %}
 
@@ -122,4 +122,5 @@
   </section>
 </div>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/lookup.js') }}" defer></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/lookup.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/notes.js') }}" defer></script>{% endblock %}

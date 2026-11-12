@@ -54,6 +54,19 @@ def last_trading_day(now=None):
     return day
 
 
+def next_update(now=None):
+    """When the next closing prices should arrive, in words: "about 5:45pm today", "about 5:45pm tomorrow"
+    or "about 5:45pm on Monday". The next weekday's close; a public holiday can make it a day later."""
+    now = now or singapore_now()
+    day = now.date()
+    if day.weekday() >= 5 or now.time() >= READY_AT:
+        day += timedelta(days=1)
+        while day.weekday() >= 5:
+            day += timedelta(days=1)
+    when = "today" if day == now.date() else "tomorrow" if day == now.date() + timedelta(days=1) else f"on {day:%A}"
+    return f"about 5:45pm {when}"
+
+
 def newest_saved(conn):
     """The newest closing price saved for any stock, as 'YYYY-MM-DD', or None."""
     row = conn.execute("SELECT MAX(price_date) AS d FROM prices").fetchone()

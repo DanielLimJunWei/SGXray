@@ -1,5 +1,6 @@
 // "What does this mean?" and "Watch out" boxes you can keep open beside a chart and move around.
-// - They open in the bottom corner (out of the chart's way) and stay open until Close or Esc.
+// - They open right beside the button you clicked (below it, or above if there's no room), and stay
+//   open until Close or Esc. (They used to open in the bottom corner; looking there each time got tiring.)
 // - Drag them by the title bar, or focus the ⠿ handle and use the arrow keys (Shift = bigger steps).
 // - A box you've moved reopens where you left it, for as long as the page is open.
 // - Word-meaning boxes (tap a term) are the same boxes, but open centred under the word you tapped,
@@ -30,22 +31,34 @@
     if (pop.classList.contains("term-pop")) { openUnderWord(pop); return; }
     const left = parseFloat(pop.style.left), top = parseFloat(pop.style.top);
     if (pop.dataset.moved && !isNaN(left) && !isNaN(top)) { clamp(pop, left, top); return; }
-    const w = pop.offsetWidth, h = pop.offsetHeight;
-    // Bottom-right on wide screens; along the bottom on phones. A second open box sits a little higher.
-    const others = pops.filter(p => p !== pop && p.matches(":popover-open")).length;
-    clamp(pop, viewW() - w - 24, viewH() - h - 24 - others * 48);
+    openNear(pop);                                   // beside the button that opened it
   }
 
   // A word's meaning opens centred under the word (or above it if there's no room below), fully on screen.
+  // Only one word's meaning is open at a time.
   function openUnderWord(pop) {
     pops.filter(p => p !== pop && p.classList.contains("term-pop") && p.matches(":popover-open")).forEach(p => p.hidePopover());
+    openNear(pop);
+  }
+
+  // Any box: centred under the button or word that opened it (above if there's no room), fully on screen.
+  function openNear(pop) {
     const word = openers.get(pop.id);
     const w = pop.offsetWidth, h = pop.offsetHeight;
     if (!word) { clamp(pop, (viewW() - w) / 2, (viewH() - h) / 2); return; }
     const r = word.getBoundingClientRect();
-    let top = r.bottom + 8;
-    if (top + h > viewH() - PAD) top = r.top - 8 - h;          // no room below: open above
-    if (top < PAD) top = PAD;
+    // Below if it fits, else above if it fits. A box too tall for either side goes on the roomier side,
+    // shortened to fit (its text scrolls inside), so it never covers the button you just pressed.
+    const below = viewH() - PAD - (r.bottom + 8), above = r.top - 8 - PAD;
+    pop.style.maxHeight = "";
+    let height = pop.offsetHeight, top;
+    if (height <= below) top = r.bottom + 8;
+    else if (height <= above) top = r.top - 8 - height;
+    else if (Math.max(below, above) >= 160) {
+      pop.style.maxHeight = Math.max(below, above) + "px";
+      height = pop.offsetHeight;
+      top = below >= above ? r.bottom + 8 : r.top - 8 - height;
+    } else top = PAD;                                          // hardly any room either side: top of the screen
     clamp(pop, r.left + r.width / 2 - w / 2, top);
   }
 

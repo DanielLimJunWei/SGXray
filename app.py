@@ -574,6 +574,7 @@ def create_app(db_path=None):
         conn = get_db()
         extra.setdefault("prices_version", updater.prices_version(conn))          # for live.js to notice new prices
         extra.setdefault("next_close", updater.last_trading_day().isoformat())  # the close it should have by now
+        extra.setdefault("next_update", updater.next_update())                  # "about 5:45pm today"
         df = positions(conn, uid) if uid else None
         if df is None or df.empty:
             return render_template("dashboard.html", s=None, mode=mode, **extra)

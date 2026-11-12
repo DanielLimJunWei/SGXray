@@ -452,3 +452,12 @@ Buys, sells and dividends were already marked on each stock's price chart; news 
 ## Empty screens (w319, 12 Nov 2026)
 
 A portfolio with nothing in it (yours, practice, or the demo before it's loaded) has one faint glowing trace drifting slowly behind the message (40 seconds a loop, opacity 0.3, low under the text), like a film being scanned. Two identical waves side by side moved left by one wave's width, so the loop is seamless (checked: same height at both ends, smooth join). No numbers, axes or labels, hidden from screen readers, still with "reduce motion". Left out on purpose: ticking sample numbers, which on a finance site could be mistaken for real prices. Real data still animates in once, then stays still.
+
+## Small edits (13 Nov 2026, his requests)
+
+- **When prices update:** "Prices as of ..." and "Worth now" say when the next prices come: "next update about 5:45pm today / tomorrow / on Monday" (`updater.next_update`; the next weekday after the close; a public holiday can make it a day later). When prices are behind (the app was off), it says "catching up: newer prices within about 15 minutes" instead. Every message now says 5:45pm, when SGXray actually has the close (SGX's close is final at about 5:30pm).
+- **Explanation boxes open beside their button** (`popups.js`, `openNear`), not in the bottom-right corner: below it, else above; a box too tall for either side goes on the roomier side, shortened, with its text scrolling inside, so it never covers the button. A box you've dragged still reopens where you left it.
+- **Tab fills the note** (`static/js/notes.js`): the example fits the choice (a company, a REIT or an ETF; selling), and Tab only fills an EMPTY box, so keyboard users are never trapped. On the trade, change-trade and practice forms.
+- **Sections menu** (`static/js/jump.js`): a "Sections" button bottom-right lists the page's sections and Back to top; a quick smooth scroll (0.35-0.7s, eased in and out, the same up or down), instant with reduce motion, stopped by the person scrolling, lands under the top bar. Lists only sections that exist and are showing (Simple view hides some).
+- **Simple / Detailed** has a line under the switch saying what each shows.
+- **Account page** lightbox has the same two-clip light switch as the self-check (not the login).

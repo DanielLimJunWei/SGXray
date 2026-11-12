@@ -48,8 +48,8 @@
 
   {# "Why I bought" (w317). The label follows Bought / Sold above with CSS alone (site.css, .when-sell). #}
   <div class="field field-note">
-    <label for="tf-note"><span class="when-buy">Why I bought</span><span class="when-sell">Why I sold</span> <span class="optional">optional · a line for future you, shown again on your portfolio</span></label>
-    <input id="tf-note" name="note" type="text" maxlength="280" autocomplete="off" value="{{ values.note or '' }}" placeholder="Steady bank dividends; holding for 5+ years">
+    <label for="tf-note"><span class="when-buy">Why I bought</span><span class="when-sell">Why I sold</span> <span class="optional">optional · a line for future you, shown again on your portfolio · press Tab for an example</span></label>
+    <input id="tf-note" name="note" type="text" maxlength="280" autocomplete="off" value="{{ values.note or '' }}" placeholder="A business I understand, with steady profits; holding for 5+ years" data-note-suggest>
   </div>
 
   <div class="trade-actions">

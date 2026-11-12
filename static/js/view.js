@@ -4,6 +4,10 @@
 // It starts on Detailed, so nothing disappears until someone chooses. Without JavaScript, everything shows.
 (function () {
   const KEY = "sgxray-view";
+  const NOTE = {
+    simple: "Simple: the main figures, the X-ray, your holdings and where your money is. Switch to Detailed for the rest.",
+    detailed: "Detailed: everything, adding ups and downs, the news, returns over time, each stock vs the STI ETF, yields, dividends by year, the forecast and sold stocks.",
+  };
   const page = () => document.querySelector("[data-live-prices]");
   const read = () => { try { return localStorage.getItem(KEY) === "simple" ? "simple" : "detailed"; } catch (e) { return "detailed"; } };
   function apply(view) {
@@ -14,6 +18,7 @@
       sw.hidden = false;
       sw.querySelectorAll("[data-view]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === view)));
     });
+    document.querySelectorAll("[data-view-note]").forEach(n => { n.hidden = false; n.textContent = NOTE[view]; });
   }
   // One listener for the whole page, so it still works after live.js swaps in new prices.
   document.addEventListener("click", e => {
