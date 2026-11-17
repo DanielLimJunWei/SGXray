@@ -2,6 +2,7 @@
 // Draws the closing price, your average cost (a dashed step line), your buys (▲) and sells (▼),
 // dividend ex-dates (● along the bottom) and bonus issues (a thin dashed line).
 // The line draws in once when opened (if animation is on), then stays still.
+// When nobody is pointing at it, the readout above shows the LATEST day, so the chart never looks empty.
 (function () {
   const sections = [...document.querySelectorAll(".stock-chart")];
   if (!sections.length) return;
@@ -24,29 +25,38 @@
     section.dataset.drawn = "1";
     const D = JSON.parse(section.querySelector(".stock-data").textContent);
     const svg = section.querySelector("svg"), card = svg.closest(".chart-card"), tip = card.querySelector(".chart-tip");
-    const idle = () => { tip.textContent = ""; const i = document.createElement("span"); i.className = "idle"; i.textContent = "Point at the chart (or tap it) to see that day's numbers here. Double-click up to 3 days to compare them."; tip.append(i); };
     const P = D.prices, t0 = day(P[0][0]), t1 = day(P[P.length - 1][0]) || t0 + 1;
     const avgs = D.avg_steps.filter(s => s.avg !== null).map(s => s.avg);
     let lo = Math.min(...P.map(p => p[1]), ...avgs), hi = Math.max(...P.map(p => p[1]), ...avgs);
-    const pad = (hi - lo) * 0.08 || hi * 0.05; lo -= pad; hi += pad;
+    const pad = (hi - lo) * 0.08 || hi * 0.05 || 1; lo -= pad; hi += pad;
+    // Price levels on a "nice" step (1, 2, 2.5 or 5 x a power of ten), all with the same decimals.
+    const step = (() => { const raw = (hi - lo) / 4, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+      return [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw); })();
+    lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+    const places = step >= 1 ? 0 : step >= 0.1 ? 2 : 3;
     const x = iso => LEFT + (RIGHT - LEFT) * (day(iso) - t0) / (t1 - t0 || 1);
     const y = v => TOP + (H - TOP) * (1 - (v - lo) / (hi - lo));
     const priceOn = iso => { let c = P[0][1]; for (const [d, v] of P) { if (d > iso) break; c = v; } return c; };
 
-    // Axis: 4 price levels and 4 dates.
+    // Axis: price levels on the nice step, and up to 5 dates. A few months of prices show days ("11 Nov");
+    // longer show months with the full year ("Nov 2026"), so a label never reads like a day of the month.
     const axis = el("g", { class: "axis" });
-    for (let k = 0; k <= 3; k++) {
-      const v = lo + (hi - lo) * k / 3;
+    for (let v = lo; v <= hi + step / 2; v += step) {
       axis.append(el("line", { x1: LEFT, x2: RIGHT, y1: y(v), y2: y(v) }));
-      axis.append(el("text", { x: LEFT - 8, y: y(v) + 4, "text-anchor": "end" }, "$" + v.toFixed(v < 10 ? 2 : 0)));
+      axis.append(el("text", { x: LEFT - 8, y: y(v) + 4, "text-anchor": "end" }, "$" + v.toFixed(places)));
     }
-    [0, 1, 2, 3].forEach(k => {
-      const p = P[Math.round(k * (P.length - 1) / 3)];
-      axis.append(el("text", { x: x(p[0]), y: H, dy: "1.7em", "text-anchor": "middle" },
-        new Date(p[0] + "T00:00:00").toLocaleDateString("en-SG", { month: "short", year: "2-digit" })));
+    const short = (t1 - t0) / 86400000 <= 120;
+    const dateLabel = iso => new Date(iso + "T00:00:00").toLocaleDateString("en-SG",
+      short ? { day: "numeric", month: "short" } : { month: "short", year: "numeric" });
+    const seen = new Set();
+    [...new Set([0, 1, 2, 3, 4].map(k => Math.round(k * (P.length - 1) / 4)))].forEach(i => {
+      const label = dateLabel(P[i][0]);
+      if (seen.has(label)) return;
+      seen.add(label);
+      axis.append(el("text", { x: x(P[i][0]), y: H, dy: "1.7em", "text-anchor": "middle" }, label));
     });
-    // Axis titles: what the numbers up the side and along the bottom are.
-    axis.append(el("text", { class: "axis-title", x: LEFT - 8, y: TOP - 6, "text-anchor": "end" }, "S$ a share"));
+    // Axis titles: what the numbers up the side and along the bottom are (above the top label, never on it).
+    axis.append(el("text", { class: "axis-title", x: 0, y: 12, "text-anchor": "start" }, "S$ a share"));
     axis.append(el("text", { class: "axis-title", x: (LEFT + RIGHT) / 2, y: H, dy: "3.2em", "text-anchor": "middle" }, "Date (closing price each trading day)"));
     svg.append(axis);
 
@@ -69,6 +79,8 @@
     const line = el("path", { d: P.map((p, i) => `${i ? "L" : "M"}${x(p[0]).toFixed(1)} ${y(p[1]).toFixed(1)}`).join(" "),
       fill: "none", stroke: "#9CC4FF", "stroke-width": 1.75, "stroke-linejoin": "round" });
     svg.append(line);
+    // Only one closing price so far: a line needs two, so the day shows as a dot.
+    if (P.length === 1) svg.append(el("circle", { cx: x(P[0][0]), cy: y(P[0][1]), r: 3.5, fill: "#9CC4FF" }));
 
     // Right-edge labels: today's price and your average cost, pushed apart if they'd overlap.
     const last = P[P.length - 1], avgNow = avgs.length ? D.avg_steps[D.avg_steps.length - 1].avg : null;
@@ -118,12 +130,13 @@
 
     // Point, tap or use the arrow keys to read a day: its price, and anything you did that day.
     let current = null;
-    function show(i) {
+    function show(i, resting) {
       current = Math.max(0, Math.min(P.length - 1, i));
       svg.dataset.cursor = current;
       const [d, v] = P[current], cx = x(d);
       cl.setAttribute("x1", cx); cl.setAttribute("x2", cx); cd.setAttribute("cx", cx); cd.setAttribute("cy", y(v));
       cursor.setAttribute("opacity", 1);
+      cl.setAttribute("opacity", resting ? 0 : 1);          // resting on the latest day: just its dot
       const prev = current ? P[current - 1][0] : "0000";
       const between = item => item.date > prev && item.date <= d;     // events since the previous point on the line
       const rows = [["Closing price", fmt(v)]];
@@ -134,13 +147,19 @@
       D.actions.filter(between).forEach(a => rows.push([a.factor > 1 ? "Bonus issue" : "Consolidation", "x" + a.factor]));
       (D.news || []).filter(between).slice(0, 3).forEach(n => rows.push(["In the news", `${n.source}: ${n.title}`]));
       tip.textContent = "";
-      const head = document.createElement("b"); head.textContent = longDate(d); tip.append(head);
+      const head = document.createElement("b"); head.textContent = (resting ? "Latest: " : "") + longDate(d); tip.append(head);
       rows.forEach(([k, val]) => {
         const r = document.createElement("div"), a = document.createElement("span"), b = document.createElement("span");
         a.textContent = k; b.textContent = val; r.append(a, b); tip.append(r);
       });
+      if (resting) {
+        const hint = document.createElement("span"); hint.className = "idle";
+        hint.textContent = "Point at the chart (or tap it) for another day. Double-click up to 3 days to compare them.";
+        tip.append(hint);
+      }
     }
-    const hide = () => { cursor.setAttribute("opacity", 0); idle(); current = null; delete svg.dataset.cursor; };
+    // Back to the latest day whenever the pointer leaves: the numbers never disappear.
+    const hide = () => { show(P.length - 1, true); current = null; delete svg.dataset.cursor; };
     const nearest = vx => {                               // the point on the line closest to an x position
       let best = 0, gap = Infinity;
       P.forEach((p, i) => { const g = Math.abs(x(p[0]) - vx); if (g < gap) { gap = g; best = i; } });
@@ -153,6 +172,7 @@
     svg.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") hide(); });
     svg.addEventListener("focus", () => show(current ?? P.length - 1));
     svg.addEventListener("blur", hide);
+    hide();
     svg.addEventListener("keydown", e => {
       const m = { ArrowLeft: -1, ArrowRight: 1, PageDown: -20, PageUp: 20, Home: -Infinity, End: Infinity }[e.key];
       if (m === undefined) return;

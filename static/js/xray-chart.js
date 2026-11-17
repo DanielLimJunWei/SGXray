@@ -11,7 +11,9 @@
   if (!DATA.length) return;
   const $ = id => document.getElementById(id);
   const svg = $("xray-chart"), card = svg.closest(".chart-card"), tip = $("xray-tip");
-  const idle = () => { tip.textContent = ""; const i = document.createElement("span"); i.className = "idle"; i.textContent = 'Point at any month (or tap it) to see its numbers here. Double-click up to 3 months to compare them.'; tip.append(i); };
+  // Under 3 months of history the chart has a point for every trading day (one month end alone would be a
+  // single dot); after that, one point per month.
+  const unit = DATA[0].unit === "day" ? "day" : "month";
   const NS = "http://www.w3.org/2000/svg";
   const el = (tag, attrs, text) => {
     const e = document.createElementNS(NS, tag);
@@ -61,10 +63,14 @@
   }
   const ticks = DATA.length <= 4 ? DATA.map((_, i) => i)
     : [0, 1, 2, 3].map(k => Math.round(k * (DATA.length - 1) / 3));
-  ticks.forEach(i => axis.append(el("text", { x: x(i), y: H + 22, "text-anchor": "middle" }, DATA[i].label)));
+  const shown = new Set();
+  ticks.forEach(i => { if (shown.has(DATA[i].label)) return; shown.add(DATA[i].label);
+    axis.append(el("text", { x: x(i), y: H + 22, "text-anchor": "middle" }, DATA[i].label)); });
   // Axis titles: what the numbers up the side and along the bottom are.
   axis.append(el("text", { class: "axis-title", x: LEFT - 8, y: -2, "text-anchor": "end" }, "S$"));
-  axis.append(el("text", { class: "axis-title", x: (LEFT + RIGHT) / 2, y: H + 40, "text-anchor": "middle" }, "Month end"));
+  axis.append(el("text", { class: "axis-title", x: (LEFT + RIGHT) / 2, y: H + 40, "text-anchor": "middle" }, unit === "day" ? "Each trading day" : "Month end"));
+  // A single point: a line needs two, so it shows as a dot (inside the reveal, so it scans in like the rest).
+  if (DATA.length === 1) $("xray-top").after(el("circle", { cx: x(0), cy: y(total[0]), r: 4, fill: "#9CC4FF" }));
 
   // Layer names at the right edge, pushed apart so they never overlap.
   const last = DATA.length - 1, mid = (a, b) => y((a + b) / 2) + 4;
@@ -155,24 +161,32 @@
   const longDate = iso => new Date(iso + "T00:00:00").toLocaleDateString("en-SG", { day: "numeric", month: "long", year: "numeric" });
   let current = null;
 
-  function show(i) {
+  function show(i, resting) {
     current = Math.max(0, Math.min(last, i));
     svg.dataset.cursor = current;
     const d = DATA[current], cx = x(current);
     cursor.setAttribute("opacity", 1);
+    $("xray-cursor-line").setAttribute("opacity", resting ? 0 : 1);     // resting on the latest point: just its dot
     $("xray-cursor-line").setAttribute("x1", cx); $("xray-cursor-line").setAttribute("x2", cx);
     $("xray-cursor-dot").setAttribute("cx", cx); $("xray-cursor-dot").setAttribute("cy", y(total[current]));
     const rows = [["Your money", fmt(d.money)], ["Price gains", signed(d.gains)], ["Dividends", fmt(d.divs)],
                   ["All together", fmt(total[current])]];
     if (hasSti) rows.push(["STI ETF", fmt(d.sti)]);
     tip.textContent = "";                                 // built with text nodes only: never HTML from data
-    const head = document.createElement("b"); head.textContent = longDate(d.date); tip.append(head);
+    const head = document.createElement("b"); head.textContent = (resting ? "Latest: " : "") + longDate(d.date); tip.append(head);
     rows.forEach(([k, v]) => {
       const r = document.createElement("div"), a = document.createElement("span"), b = document.createElement("span");
       a.textContent = k; b.textContent = v; r.append(a, b); tip.append(r);
     });
+    if (resting) {
+      const hint = document.createElement("span"); hint.className = "idle";
+      hint.textContent = `Point at any ${unit} (or tap it) to see its numbers. Double-click up to 3 ${unit}s to compare them.`;
+      tip.append(hint);
+    }
   }
-  function hide() { cursor.setAttribute("opacity", 0); idle(); current = null; delete svg.dataset.cursor; }
+  // Back to the latest point whenever the pointer leaves: the numbers never disappear.
+  function hide() { show(last, true); current = null; delete svg.dataset.cursor; }
+  hide();
 
   svg.addEventListener("pointermove", e => {
     const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse());

@@ -766,24 +766,34 @@ def _bar_layout(rows, left=64, right=760, top=28, bottom=196):
     return out
 
 
+DAILY_UNDER_DAYS = 92       # the X-ray chart shows every trading day until the history is about 3 months long
+
+
 def _monthly_chart(h):
-    """The X-ray chart's data: the last trading day of each month, as plain numbers for the page's script.
+    """The X-ray chart's data, as plain numbers for the page's script: the last trading day of each month,
+    or, while the history is under about 3 months long, every trading day (a few weeks would otherwise be one
+    month end: a single dot that only shows when you point at it).
 
     Layers stack from the bottom: your money, then price gains (worth - money in), then dividends.
-    A month with an unknown value (a held stock had no price) is left out rather than drawn as a dip.
+    A day with an unknown value (a held stock had no price) is left out rather than drawn as a dip.
     """
     if h is None or h.empty:
         return []
     h = h.dropna(subset=["value"])
+    if h.empty:
+        return []
     months = h.groupby(h.index.to_period("M")).tail(1)
+    daily = (h.index[-1] - h.index[0]).days < DAILY_UNDER_DAYS
+    points = h if daily else months
     return [{
         "date": day.strftime("%Y-%m-%d"),
-        "label": day.strftime("%b %y"),
+        "label": f"{day.day} {day:%b}" if daily else day.strftime("%b %Y"),
+        "unit": "day" if daily else "month",
         "money": round(float(r.net_invested), 2),
         "gains": round(float(r.value - r.net_invested), 2),
         "divs": round(float(r.dividends), 2),
         "sti": round(float(r.sti_value + r.sti_dividends), 2) if r.sti_value == r.sti_value else None,
-    } for day, r in months.iterrows()]
+    } for day, r in points.iterrows()]
 
 
 # ---------- Accounts: secret key, sessions, form protection ----------

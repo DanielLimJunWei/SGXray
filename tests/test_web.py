@@ -95,7 +95,8 @@ def test_chart_data_layers_add_up(db_path):
     h = value_history(conn, user["id"])
     rows = web._monthly_chart(h)
     conn.close()
-    assert [r["label"] for r in rows] == ["Jan 25", "Jun 25"]
+    assert [r["label"] for r in rows] == ["Jan 2025", "Jun 2025"]     # the full year: "Jun 25" read like 25 June
+    assert {r["unit"] for r in rows} == {"month"}                      # six months of history: one point a month
     last = rows[-1]
     assert round(last["money"] + last["gains"], 2) == 8200.00    # worth now
     assert last["divs"] == 0
