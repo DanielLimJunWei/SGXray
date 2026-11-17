@@ -502,3 +502,17 @@ A portfolio with nothing in it (yours, practice, or the demo before it's loaded)
   keeps numbers, so "STI up 0.6%" and "STI up 1.1%" on different days stay two stories.
 - **Phone top bar (settled):** at 720px and under, every link (Account included) is in the "Menu" panel (w307), so
   nothing is hidden any more.
+- **Market today redesign (17 Nov, his Longbridge screenshot as the reference):** one feed, newest first, tabs All /
+  Your stocks / Other companies / Market & economy (`?show=`, only known values), 10 rows a page. A row = topic tag +
+  headline, source, how long ago (`stories.ago`), ticker chips with the day's move, and a small chart of the stock's
+  last 22 closes (`stories.sparkline`, SGXray's own prices; "1M" = its one-month change). "Most in the news" and Topics
+  sit beside the feed; counts say "stories". "yours" and "You own ..." link to the portfolio. No "What does this
+  mean?" or topic explanation on this page (his call), so the news-topic term and explain_market_today/explain_news
+  are gone.
+- **Every story has a summary:** feeds first; otherwise `news.fill_summaries` reads the article page's own
+  link-preview description (og:description), up to 40 per 3-hourly run, once per article ("" = tried, none found).
+  "Read more at ...", "[SINGAPORE]" and any page code are stripped (`tidy_summary`, also applied when shown).
+- **Portfolio news section removed** (his call: Market today covers it). The price charts keep their news squares;
+  the resting "Latest" readout no longer lists news (it repeated the same stories), and pointing at a day shows at
+  most two, the same story from two papers once (`news.for_chart` dedupes too).
+

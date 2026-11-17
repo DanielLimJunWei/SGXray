@@ -452,7 +452,12 @@ def for_chart(conn, ticker, start):
     rows = conn.execute("SELECT n.title, n.url, n.source, substr(n.published, 1, 10) AS date FROM news n "
                         "JOIN news_tickers t ON t.news_id = n.id WHERE t.ticker = ? AND n.published >= ? "
                         "ORDER BY n.published", (ticker, start)).fetchall()
-    return [dict(r) for r in rows]
+    seen, out = set(), []
+    for r in rows:                                   # the same story from two papers: one marker, not two
+        if _same(r["title"]) not in seen:
+            seen.add(_same(r["title"]))
+            out.append(dict(r))
+    return out
 
 
 def last_checked(conn):

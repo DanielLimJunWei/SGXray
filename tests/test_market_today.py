@@ -270,6 +270,12 @@ def test_page_code_never_shows_in_a_summary():
     assert news.tidy_summary("Rents rose; available space varied") == "Rents rose; available space varied"
 
 
+def test_the_price_chart_shows_each_story_once(db_path):
+    conn = db.get_connection(db_path)
+    news.save(conn, [item("SIA logs 3.5% rise", "https://www.businesstimes.com.sg/1"),
+                     item("SIA logs 3.5% rise", "https://www.straitstimes.com/1", source="The Straits Times")])
+    assert len(news.for_chart(conn, "C6L.SI", "2000-01-01")) == 1
+    conn.close()
 
 
 def test_holdings_counts_shares_and_weight(db_path, app):

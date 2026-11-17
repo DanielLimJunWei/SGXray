@@ -145,7 +145,15 @@
       D.trades.filter(between).forEach(t => rows.push([t.side === "BUY" ? "You bought" : "You sold", `${t.qty.toLocaleString("en-SG")} at ${fmt(t.price)}`]));
       D.dividends.filter(between).forEach(x2 => rows.push(["Dividend", `${x2.shares.toLocaleString("en-SG")} x $${x2.amount} = ${fmt(x2.total)}`]));
       D.actions.filter(between).forEach(a => rows.push([a.factor > 1 ? "Bonus issue" : "Consolidation", "x" + a.factor]));
-      (D.news || []).filter(between).slice(0, 3).forEach(n => rows.push(["In the news", `${n.source}: ${n.title}`]));
+      // News only when you point at a day, never in the resting "Latest" readout: there it repeated the same
+      // headlines under the chart all the time. The same story from two papers counts once; at most two show.
+      if (!resting) {
+        const seen = new Set();
+        (D.news || []).filter(between).filter(n => {
+          const key = n.title.toLowerCase().replace(/[^a-z0-9.% ]+/g, " ").replace(/\s+/g, " ").trim();
+          return !seen.has(key) && seen.add(key);
+        }).slice(0, 2).forEach(n => rows.push(["In the news", `${n.source}: ${n.title}`]));
+      }
       tip.textContent = "";
       const head = document.createElement("b"); head.textContent = (resting ? "Latest: " : "") + longDate(d); tip.append(head);
       rows.forEach(([k, val]) => {
