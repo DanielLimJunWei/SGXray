@@ -1,15 +1,18 @@
-"""Story cards: what opens when you click a headline, on the Market today page and in a portfolio's
-"In the news" (no AI, nothing rewritten).
+"""Story cards on the Market today page: each headline as a row (topic tag, headline, source, how long ago,
+ticker chips with the day's move, and a small chart of the stock's last month), opening into the card below
+(no AI, nothing rewritten).
 
 A card puts the facts SGXray already has next to the publisher's own words:
-- the publisher's one-line standfirst from its feed, credited to it (or a note that it gave none)
+- the publisher's own one-line summary (from its feed, or its article page's link-preview text), credited
 - every SGX company the story names: its move on its latest trading day, and whether you own it (how many
   shares, and how much of your portfolio that is) or not
 - the investing topics it touches, each linked to the lesson that explains it
 - a link to the full story on the publisher's own site
 
-Nothing here judges the news as good or bad, or says what to do: see explain_market_today for why.
+Nothing here judges the news as good or bad, or says what to do: those ratings are often wrong and soon read like tips.
 """
+
+from datetime import datetime
 
 import db
 import lessons
@@ -41,12 +44,53 @@ def _topic(key):
                         for s in slugs]}
 
 
-def build(conn, items, owned, practice=None):
+THUMB_DAYS = 22                 # about a month of trading days in each row's little chart
+THUMB_W, THUMB_H = 112, 64
+
+
+def ago(published, now):
+    """'2026-11-17T08:33' -> '13m ago', '4h ago', 'Yesterday' or '15 Nov': how long ago, like a news app."""
+    try:
+        then = datetime.strptime(published, "%Y-%m-%dT%H:%M").replace(tzinfo=now.tzinfo)
+    except (TypeError, ValueError):
+        return ""
+    mins = max(0, int((now - then).total_seconds() // 60))
+    if mins < 60:
+        return f"{max(1, mins)}m ago"
+    if mins < 24 * 60:
+        return f"{mins // 60}h ago"
+    if (now.date() - then.date()).days == 1:
+        return "Yesterday"
+    return f"{then.day} {then:%b}"
+
+
+def sparkline(conn, ticker):
+    """The row's picture: {"code", "path", "area", "way", "change", "days", "end"} for the stock's last month of closes, drawn
+    from SGXray's own saved prices (no publisher photos), or None with fewer than 2 closes."""
+    rows = conn.execute("SELECT close FROM prices WHERE ticker = ? ORDER BY price_date DESC LIMIT ?",
+                        (ticker, THUMB_DAYS)).fetchall()
+    closes = [r["close"] for r in reversed(rows)]
+    if len(closes) < 2:
+        return None
+    lo, hi = min(closes), max(closes)
+    span = (hi - lo) or 1
+    pad_x, top, bottom = 6, 24, THUMB_H - 8              # room at the top for the ticker and the month's change
+    xs = [pad_x + (THUMB_W - 2 * pad_x) * i / (len(closes) - 1) for i in range(len(closes))]
+    ys = [bottom - (bottom - top) * (c - lo) / span for c in closes]
+    path = " ".join(f"{'M' if i == 0 else 'L'}{x:.1f} {y:.1f}" for i, (x, y) in enumerate(zip(xs, ys)))
+    change = closes[-1] / closes[0] - 1
+    way = "" if abs(change) < 0.0005 else ("up" if change > 0 else "down")
+    return {"code": ticker.removesuffix(".SI"), "path": path, "area": f"{path} L{xs[-1]:.1f} {bottom} L{xs[0]:.1f} {bottom} Z",
+            "way": way, "change": change, "days": len(closes), "end": (xs[-1], ys[-1])}
+
+
+def build(conn, items, owned, practice=None, now=None):
     """Adds what a story card needs to each headline: "stocks" and "topic_list". owned: holdings() of the
     portfolio being looked at; practice: the same for the practice portfolio, or None."""
     names = {r["ticker"]: r["name"] for r in db.get_instruments(conn)}
     names.update({t: n for t, n, *_ in news.NEWS_COMPANIES if t not in names})
-    moves = {}
+    moves, thumbs = {}, {}
+    now = now or datetime.now(news.SGT)
     for it in items:
         stocks = []
         for t in it["tickers"]:
@@ -58,6 +102,15 @@ def build(conn, items, owned, practice=None):
         stocks.sort(key=lambda s: (s["owned"] is None, s["name"].lower()))
         it["stocks"] = stocks
         it["topic_list"] = [_topic(k) for k in it["topics"]]
+        it["tag"] = it["topic_list"][0]["label"] if it["topic_list"] else ""
+        it["ago"] = ago(it["published"], now)
+        # The picture: your own stock first, else the first company named; a market story shows the STI ETF.
+        pick = next((s["ticker"] for s in stocks if s["owned"]), None) or next(
+            (s["ticker"] for s in stocks if s["ticker"] not in STI_ETFS), None) or (
+            "ES3.SI" if stocks or "market" in it["topics"] else None)
+        if pick and pick not in thumbs:
+            thumbs[pick] = sparkline(conn, pick)
+        it["thumb"] = thumbs.get(pick) if pick else None
     return items
 
 

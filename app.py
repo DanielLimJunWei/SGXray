@@ -32,7 +32,7 @@ import auth  # noqa: E402
 import db  # noqa: E402
 import fmt  # noqa: E402
 import glossary  # noqa: E402
-from explain import (Explanation, explain_allocation, explain_dividends_received, explain_market_today, explain_news, explain_risk, explain_forecast, explain_holdings,  # noqa: E402
+from explain import (Explanation, explain_allocation, explain_dividends_received, explain_risk, explain_forecast, explain_holdings,  # noqa: E402
                      explain_income_by_year,
                      explain_performance, explain_periods, explain_sold, explain_stock_chart,
                      explain_total_return, explain_trades, explain_two_returns, explain_value_chart, explain_worth,
@@ -169,21 +169,26 @@ def create_app(db_path=None):
         practice_owned = stories.holdings(conn, twin["id"]) if twin else {}
         items = stories.build(conn, news.recent(conn, days=3, limit=80), owned, practice_owned)
         mine, others, market = stories.split(items, owned)
-        mine_only = bool(uid) and request.args.get("show") == "mine"
+        groups = {"all": items, "mine": mine, "others": others, "market": market}
+        tabs = ([("all", "All")] + ([("mine", "Your stocks")] if uid else [])
+                + [("others", "Other companies"), ("market", "Market & economy")])
+        show = request.args.get("show", "all")
+        show = show if show in dict(tabs) else "all"       # only a known tab, whatever the address says
         day_ago = (_sgt_now() - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M")
         todays = [it for it in items if it["published"] >= day_ago]      # the last 24 hours, not since midnight
         names = {r["ticker"]: r["name"] for r in db.get_instruments(conn)}
         most = [{"ticker": t, "code": t.removesuffix(".SI"), "name": names.get(t, t), "count": n,
                  "move": news.day_move(conn, t), "owned": t in owned}
                 for t, n in news.most_mentioned(todays or items)]
-        counts = {}
+        per_topic = {}
         for it in items:
             for t in it["topic_list"]:
-                counts.setdefault(t["key"], {**t, "count": 0})["count"] += 1
-        topic_counts = sorted(counts.values(), key=lambda t: -t["count"])
-        return render_template("news.html", mine=mine, others=others, market=market, owned=owned,
-                               mine_only=mine_only, most=most, most_today=bool(todays), topic_counts=topic_counts,
-                               checked=news.last_checked(conn), ex=explain_market_today(items, bool(uid)))
+                per_topic.setdefault(t["key"], {**t, "count": 0})["count"] += 1
+        topic_counts = sorted(per_topic.values(), key=lambda t: -t["count"])
+        return render_template("news.html", feed=groups[show], show=show, tabs=tabs,
+                               counts={k: len(v) for k, v in groups.items()}, owned=owned,
+                               most=most, most_today=bool(todays), topic_counts=topic_counts,
+                               checked=news.last_checked(conn))
 
     # ---------- Practice portfolio (w320) ----------
     # Pretend trades at real SGX prices. They belong to the account's hidden "practice twin", found from the
@@ -737,11 +742,6 @@ def create_app(db_path=None):
             alloc_ex=explain_allocation(alloc),
             risk_view=(risk_view := risk.risk(conn, uid, h) if h is not None else None),
             risk_ex=explain_risk(risk_view),
-            headlines=(headlines := stories.build(conn, news.for_tickers(conn, [r["ticker"] for r in holdings], limit=40),
-                                                  {r["ticker"]: {"shares": int(r["shares"]),
-                                                                 "weight": r["weight"] if r["weight"] == r["weight"] else None}
-                                                   for r in holdings})),
-            news_ex=explain_news(headlines),
             stocks=_records(_or_none(per_stock, conn, uid), names),
             vs_ex=_or_none(explain_performance, conn, uid),
             yields=_records(y, names),

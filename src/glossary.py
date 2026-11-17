@@ -292,11 +292,6 @@ TERMS = {
                  "the latest one. It says what happened, not why: a stock in the news may have moved for a "
                  "different reason, or with the whole market.",
                  "DBS closed at $69.30 after $69.90 the day before: down 0.9%."),
-    "news-topic": ("Topic",
-                   "What a headline is about, in investing terms (results, dividends, interest rates, REITs...), "
-                   "spotted from its words. Each topic links to the lesson that explains it, so a headline becomes "
-                   "something to understand, not a reason to trade.",
-                   "\"DBS declares a 54-cent dividend\" is about dividends: lesson 6 explains them."),
     "approx": ("Approximate",
                "A stock added with \"Add a stock I already own\": one buy at your average cost, dated roughly when you "
                "bought. What it's worth and your profit are right, but returns, yearly rates and the STI comparison "

@@ -104,19 +104,20 @@ def test_a_failing_feed_never_stops_the_others():
     seen = []
     import types
     conn = types.SimpleNamespace()
-    orig, orig_retag = news.save, news.retag
+    orig, orig_retag, orig_fill = news.save, news.retag, news.fill_summaries
     news.save = lambda c, items: seen.extend(items) or len(items)
     news.retag = lambda c: None
+    news.fill_summaries = lambda c, f: 0
     try:
         assert news.update(conn, fetcher) is True
     finally:
-        news.save, news.retag = orig, orig_retag
+        news.save, news.retag, news.fill_summaries = orig, orig_retag, orig_fill
     assert [i["source"] for i in seen] == ["The Straits Times"]
 
 
 # ---------- On the page ----------
 
-def test_the_portfolio_shows_headlines_as_safe_links(app, db_path):
+def test_the_price_chart_markers_stay_safe(app, db_path):
     c = signed_up(app)
     add(c)                                                                       # holds DBS
     conn = db.get_connection(db_path)
@@ -126,31 +127,9 @@ def test_the_portfolio_shows_headlines_as_safe_links(app, db_path):
                       "source": "CNA", "published": now}])
     conn.close()
     page = c.get("/portfolio").get_data(as_text=True)
-    assert 'id="news-title"' in page and "<script>alert(1)</script>" not in page
-    assert 'href="https://www.cna.com/a" target="_blank" rel="noopener noreferrer nofollow"' in page
+    assert "<script>alert(1)</script>" not in page and 'id="news-title"' not in page    # news lives on Market today
     chart_data = page.split('class="stock-data"')[1].split("</script>")[0]
     assert '"news": [' in chart_data and '"source": "CNA"' in chart_data              # the price chart's markers
     assert "<script>" not in chart_data                                            # escaped inside the data too
     from test_page_rules import check_page_rules
     check_page_rules(page)
-
-
-def test_no_headlines_says_so(app):
-    c = signed_up(app)
-    add(c)
-    assert "No headlines from the last 30 days mention what you hold" in c.get("/portfolio").get_data(as_text=True)
-
-
-# ---------- Today's move vs the STI (w302) ----------
-
-def test_the_days_change_shows_the_sti_etfs_move_on_the_same_day(db_path):
-    import insights
-    from history import value_history
-    conn = db.get_connection(db_path)
-    uid = db.create_user(conn, "zed@example.com", "x")
-    db.save_prices(conn, "D05.SI", [("2025-01-03", 31.0)])
-    db.save_prices(conn, "ES3.SI", [("2025-01-03", 30.6)])                       # 30.00 -> 30.60: +2.0%
-    db.add_trade(conn, uid, "D05.SI", "2025-01-02", "BUY", 100, 30.0, 0.0)
-    d = insights.day_change(conn, uid, value_history(conn, uid))
-    conn.close()
-    assert d["date"] == "2025-01-03" and abs(d["sti_pct"] - 0.02) < 1e-12

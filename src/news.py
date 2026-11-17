@@ -177,6 +177,7 @@ def relevant(title, summary, tickers):
 
 def _clean(text, limit=300):
     text = html.unescape(text or "")
+    text = re.sub(r"<(script|style)\b.*?(</\1\s*>|$)", " ", text, flags=re.I | re.S)   # code is never text
     text = re.sub(r"<[^>]+>", "", text)                     # a feed title should be plain; strip any tags
     text = re.sub(r"[\x00-\x1f\x7f]+", " ", text)
     return " ".join(text.split())[:limit]
@@ -209,7 +210,7 @@ def parse(xml_bytes, source, domain, now=None):
         host = re.match(r"^https://([^/?#]+)", url)
         if not title or not host or not (host.group(1) == domain or host.group(1).endswith("." + domain)):
             continue                                           # only https links to the publisher's own site
-        summary = _clean(item.findtext("description"), SUMMARY_MAX)
+        summary = tidy_summary(item.findtext("description"))
         out.append({"title": title, "summary": "" if summary == title else summary, "url": url[:500],
                     "source": source, "published": _when(item.findtext("pubDate"), now)})
     return out
@@ -264,8 +265,9 @@ def save(conn, items):
     return added
 
 
-def update(conn, fetcher=fetch):
-    """Fetches every feed and saves the headlines that matter. True if at least one feed answered."""
+def update(conn, fetcher=fetch, page_fetcher=None):
+    """Fetches every feed and saves the headlines that matter, then fills in summaries the feeds left out.
+    True if at least one feed answered."""
     answered, items = False, []
     for source, url, domain in FEEDS:
         raw = fetcher(url)
@@ -274,7 +276,77 @@ def update(conn, fetcher=fetch):
             items += parse(raw, source, domain)
     save(conn, items)
     retag(conn)
+    fill_summaries(conn, page_fetcher or fetch_page)
     return answered
+
+
+# ---------- Summaries the feeds leave out ----------
+# CNA's feed has no standfirst, and some headlines in the others don't either. Every article page carries the
+# publisher's own one-line description for link previews (what WhatsApp or Telegram shows when the link is
+# shared): SGXray reads that, once per article, and shows it credited to the publisher, exactly like a feed's.
+# Only article links already saved from FEEDS are fetched, re-checked to be https on that publisher's own site.
+
+PAGE_MAX = 600_000             # the description is in the page's <head>, near the top
+SUMMARIES_PER_RUN = 40         # a 3-hourly run fills at most this many, newest first
+_META = [re.compile(p, re.I | re.S) for p in (
+    r"<meta[^>]+(?:property|name)=[\"'](?:og:description|description|twitter:description)[\"'][^>]*content=[\"']([^\"']*)",
+    r"<meta[^>]+content=[\"']([^\"']*)[\"'][^>]*(?:property|name)=[\"'](?:og:description|description|twitter:description)[\"']",
+)]
+
+
+def tidy_summary(text):
+    """A publisher's summary as one plain line: no tags, no "[SINGAPORE]" dateline tag, no "Read more at ..."."""
+    text = _clean(text, SUMMARY_MAX * 2)
+    text = re.sub(r"\s*Read more at\s.*$", "", text, flags=re.I)
+    text = re.sub(r"^\[[A-Z ]{2,30}\]\s*", "", text)
+    text = re.split(r"\(function\s*\(|\bvar\s+\w+\s*=|window\.\w+|document\.\w+", text)[0]   # leftover script
+    return text[:SUMMARY_MAX].strip()
+
+
+def summary_from_page(page):
+    """The page's own description for link previews, tidied; "" if it has none."""
+    head = page[:PAGE_MAX]
+    for pattern in _META:
+        m = pattern.search(head)
+        if m and m.group(1).strip():
+            return tidy_summary(m.group(1))
+    return ""
+
+
+def _publisher_link(url):
+    host = re.match(r"^https://([^/?#]+)/", url or "")
+    return bool(host) and any(host.group(1) == d or host.group(1).endswith("." + d) for _, _, d in FEEDS)
+
+
+def fetch_page(url):
+    """One article page as text, at most PAGE_MAX bytes, or None. Only for saved links on a publisher's site."""
+    if not _publisher_link(url):
+        return None
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+            if not _publisher_link(r.geturl()):           # redirected somewhere else: not used
+                return None
+            return r.read(PAGE_MAX).decode("utf-8", "replace")
+    except Exception:
+        return None
+
+
+def fill_summaries(conn, fetcher=fetch_page, limit=SUMMARIES_PER_RUN):
+    """Reads the description of up to `limit` saved headlines that have no summary yet, newest first. A page with
+    none is marked "" (tried), so it isn't fetched again. Returns how many summaries were found."""
+    rows = conn.execute("SELECT id, url FROM news WHERE summary IS NULL ORDER BY published DESC LIMIT ?",
+                        (limit,)).fetchall()
+    found = 0
+    for r in rows:
+        page = fetcher(r["url"]) if _publisher_link(r["url"]) else None
+        if page is None:
+            continue                                     # couldn't reach it: try again next run
+        text = summary_from_page(page)
+        found += bool(text)
+        with conn:
+            conn.execute("UPDATE news SET summary = ? WHERE id = ?", (text, r["id"]))
+    return found
 
 
 def retag(conn):
@@ -322,7 +394,7 @@ def _rows(conn, where, args, limit):
                 first["summary"], first["summary_source"] = r["summary"], r["source"]
             continue
         item = {**dict(r), "tickers": sorted(r["tickers"].split(",")) if r["tickers"] else [], "also": []}
-        item["summary"] = item["summary"] or ""
+        item["summary"] = tidy_summary(item["summary"]) if item["summary"] else ""   # older rows, tidied too
         item["summary_source"] = item["source"]
         seen[key] = item
         out.append(item)

@@ -1,98 +1,76 @@
 {#
-  Market today (/news): the day's Singapore business headlines, read once a day, not watched.
-  Open to everyone. Logged in, the headlines about your own stocks come first, and "About your stocks" shows
-  only those. Every headline opens into a story card (templates/_news.html).
+  Market today (/news): the day's Singapore business headlines as one feed, newest first, read like a news app.
+  Tabs pick which stories (All, Your stocks, Other companies, Market & economy); "Most in the news" and the topics
+  sit beside the feed. Open to everyone; "Your stocks" only when logged in. Rows: templates/_news.html.
 #}
 {% extends "base.html" %}
-{% from "_explain.html" import explain_buttons %}
 {% from "_term.html" import term, term_popups %}
 {% from "_news.html" import story, move_short with context %}
 {% block title %}Market today · SGXray{% endblock %}
 
 {% block content %}
 <div class="page wrap market-today">
-  <header class="page-head">
-    <p class="eyebrow">Market today · Singapore business news</p>
+  <header class="page-head market-top">
     <h1>Market today</h1>
-    <p class="muted lead">The day's headlines that matter to someone investing in Singapore. Open one for the publisher's own summary, how each company in it moved, whether you own it, and the lesson that explains it.</p>
-    <p class="as-of">Headlines checked every 3 hours, every day · {% if checked %}last checked {{ checked[:10]|shortdate }}, {{ checked[11:16]|clock }}{% else %}{{ term("not-yet", "not checked yet") }}: the first check runs soon after the app starts{% endif %}</p>
-    <div class="section-head market-head">
-      {% if current_user %}
-      <nav class="view-switch news-filter" aria-label="Which headlines">
-        <a href="{{ url_for('market_today') }}"{% if not mine_only %} aria-current="page"{% endif %}>All headlines</a>
-        <a href="{{ url_for('market_today', show='mine') }}"{% if mine_only %} aria-current="page"{% endif %}>About your stocks</a>
-      </nav>
-      {% endif %}
-      {{ explain_buttons(ex, "market", "Market today") }}
-    </div>
+    <p class="as-of">Singapore business news from CNA, The Business Times, The Straits Times and The Edge Singapore · checked every 3 hours{% if checked %}, last at {{ checked[11:16]|clock }} on {{ checked[:10]|shortdate }}{% else %} · {{ term("not-yet", "not checked yet") }}: the first check runs soon after the app starts{% endif %}</p>
+    <nav class="news-tabs" aria-label="Which stories">
+      {% for key, label in tabs %}
+      <a href="{{ url_for('market_today', show=key) if key != 'all' else url_for('market_today') }}"{% if key == show %} aria-current="page"{% endif %}>{{ label }} <span class="tab-count">{{ counts[key] }}</span></a>
+      {% endfor %}
+    </nav>
   </header>
 
-  {% if not mine_only %}
-  <div class="market-glance">
-    <section class="panel glance" aria-labelledby="most-title">
-      <h2 id="most-title">Most in the news <span class="muted">{{ "in the last 24 hours" if most_today else "in the last 3 days" }}</span></h2>
-      {% if most %}
-      <ol class="most-list">
-        {% for m in most %}
-        <li><span><b>{{ m.code }}</b> {{ m.name }}</span><span class="most-count">{{ m.count }} headline{{ "s" if m.count != 1 }}</span>{{ move_short(m.move) }}{% if m.owned %}<span class="news-tag mine">yours</span>{% endif %}</li>
-        {% endfor %}
-      </ol>
-      <p class="glance-note">A count of headlines naming each company: what's being written about, not what to buy.</p>
+  <div class="market-layout">
+    <section class="market-feed" aria-labelledby="feed-title">
+      <h2 class="visually-hidden" id="feed-title">{{ dict(tabs)[show] }}</h2>
+      {% if feed %}
+      <ul class="news-list" id="news-feed" data-per-page="10">{% for n in feed %}{{ story(n) }}{% endfor %}</ul>
+      {% elif show == "mine" and not owned %}
+      <p class="muted feed-empty">You don't hold any stocks yet, so there's nothing to match. <a href="{{ url_for('trades_page') }}">Add your trades</a> and the stories about them show here.</p>
+      {% elif show == "mine" %}
+      <p class="muted feed-empty">No story in the last 3 days names a stock you hold. Quiet news is normal: most days, most companies aren't in the papers.</p>
+      {% elif show == "others" %}
+      <p class="muted feed-empty">No other SGX company is named in the last 3 days' stories.</p>
+      {% elif show == "market" %}
+      <p class="muted feed-empty">No market or economy stories in the last 3 days yet.</p>
       {% else %}
-      <p class="muted">No company has been named in a headline yet. Companies appear here once the news names them.</p>
+      <p class="muted feed-empty">No stories from the last 3 days yet. They arrive with the next check.</p>
       {% endif %}
     </section>
-    <section class="panel glance" aria-labelledby="topics-title">
-      <h2 id="topics-title">{{ term("news-topic", "Topics") }} <span class="muted">and the lessons that explain them</span></h2>
-      {% if topic_counts %}
-      <ul class="most-list">
-        {% for t in topic_counts %}
-        <li><span>{{ t.label }}</span><span class="most-count">{{ t.count }} headline{{ "s" if t.count != 1 }}</span>
-          <span class="topic-lessons">{% for l in t.lessons %}<a href="{{ url_for('lesson', slug=l.slug) }}">lesson {{ l.number }}</a>{{ ", " if not loop.last }}{% endfor %}</span></li>
-        {% endfor %}
-      </ul>
-      {% else %}
-      <p class="muted">No headline touches an investing topic yet. Topics appear as the day's news comes in.</p>
-      {% endif %}
-    </section>
+
+    <aside class="market-side" aria-label="At a glance">
+      <section class="glance" aria-labelledby="most-title">
+        <h2 id="most-title">Most in the news <span class="muted">{{ "last 24 hours" if most_today else "last 3 days" }}</span></h2>
+        {% if most %}
+        <ol class="most-list">
+          {% for m in most %}
+          <li><span class="most-name"><b>{{ m.code }}</b> {{ m.name }}</span>
+            <span class="most-count">{{ m.count }} {{ "story" if m.count == 1 else "stories" }}</span>{{ move_short(m.move) }}
+            {%- if m.owned %} <a class="chip mine" href="{{ url_for('portfolio') }}#holdings-title" aria-label="{{ m.name }} is in your portfolio: open it">yours</a>{% endif %}</li>
+          {% endfor %}
+        </ol>
+        <p class="glance-note">How many stories named each company: what's being written about, not what to buy.</p>
+        {% else %}
+        <p class="muted">No company has been named in a story yet. Companies appear here once the news names them.</p>
+        {% endif %}
+      </section>
+      <section class="glance" aria-labelledby="topics-title">
+        <h2 id="topics-title">Topics</h2>
+        {% if topic_counts %}
+        <ul class="most-list">
+          {% for t in topic_counts %}
+          <li><span class="most-name">{{ t.label }}</span><span class="most-count">{{ t.count }} {{ "story" if t.count == 1 else "stories" }}</span>
+            <span class="topic-lessons">{% for l in t.lessons %}<a href="{{ url_for('lesson', slug=l.slug) }}">lesson {{ l.number }}</a>{{ ", " if not loop.last }}{% endfor %}</span></li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="muted">No story touches an investing topic yet. Topics appear as the day's news comes in.</p>
+        {% endif %}
+      </section>
+    </aside>
   </div>
-  {% endif %}
 
-  {% if current_user %}
-  <section class="block" aria-labelledby="mine-title">
-    <div class="section-head"><h2 id="mine-title">About your stocks</h2></div>
-    {% if mine %}
-    <ul class="panel news-list" id="news-mine" data-per-page="5">{% for n in mine %}{{ story(n, "own") }}{% endfor %}</ul>
-    {% elif not owned %}
-    <p class="muted">You don't hold any stocks yet, so there's nothing to match. <a href="{{ url_for('trades_page') }}">Add your trades</a> and the headlines about them show here first.</p>
-    {% else %}
-    <p class="muted">No headline in the last 3 days names a stock you hold. Quiet news is normal: most days, most companies aren't in the papers.</p>
-    {% endif %}
-  </section>
-  {% endif %}
-
-  {% if not mine_only %}
-  <section class="block" aria-labelledby="others-title">
-    <div class="section-head"><h2 id="others-title">{% if current_user %}Other companies in the news{% else %}Companies in the news{% endif %}</h2></div>
-    {% if current_user %}<p class="muted lead">You don't own these. They're here so you know what's happening, not as tips.</p>{% endif %}
-    {% if others %}
-    <ul class="panel news-list" id="news-others" data-per-page="5">{% for n in others %}{{ story(n, "own") }}{% endfor %}</ul>
-    {% else %}
-    <p class="muted">No other SGX company is named in the last 3 days' headlines.</p>
-    {% endif %}
-  </section>
-
-  <section class="block" aria-labelledby="economy-title">
-    <div class="section-head"><h2 id="economy-title">Singapore's market and economy</h2></div>
-    {% if market %}
-    <ul class="panel news-list" id="news-market" data-per-page="5">{% for n in market %}{{ story(n, "own") }}{% endfor %}</ul>
-    {% else %}
-    <p class="muted">No market or economy headlines in the last 3 days yet.</p>
-    {% endif %}
-  </section>
-  {% endif %}
-
-  <p class="period-note">From CNA, The Business Times, The Straits Times and The Edge Singapore, each shown as published with a link to the full story. Educational, not financial advice: no headline here is a reason to buy or sell.</p>
+  <p class="period-note">Each story is shown as published, with the publisher's own summary and a link to the full article. Educational, not financial advice: no story here is a reason to buy or sell.</p>
 </div>
 {{ term_popups() }}
 {% endblock %}

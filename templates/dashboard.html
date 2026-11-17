@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 {% from "_explain.html" import explain_buttons, pop_head, pop_resize %}
 {% from "_term.html" import term, term_popups %}
-{% from "_news.html" import story with context %}
 {% from "_notes.html" import note_edit with context %}
 {% block title %}{{ {"demo": "Demo portfolio", "practice": "Practice portfolio"}.get(mode, "Your portfolio") }} · SGXray{% endblock %}
 {% block navlinks %}
@@ -445,23 +444,6 @@
     {% endif %}
   </section>
 
-  {#- In the news (w312): headlines that mention what you hold, each as published, with its source and link. -#}
-  <section class="block" aria-labelledby="news-title" data-detail>
-    <div class="section-head">
-      <h2 id="news-title">{{ term("in-the-news", "In the news") }}</h2>
-      {{ explain_buttons(news_ex, "news", "In the news") }}
-    </div>
-    {% if headlines %}
-    <p class="muted lead">Click a headline to open it here: the publisher's own summary, how each stock in it moved, and a link to the full story.</p>
-    <ul class="panel news-list" id="portfolio-news" data-per-page="5">
-      {% for n in headlines %}{{ story(n, mode) }}{% endfor %}
-    </ul>
-    {% else %}
-    <p class="muted">No headlines from the last 30 days mention what you hold. SGXray checks CNA, The Business Times, The Straits Times and The Edge Singapore every 3 hours.</p>
-    {% endif %}
-    <p class="news-more"><a href="{{ url_for('market_today') }}">See all of today's market news</a></p>
-  </section>
-
   <section class="block" aria-labelledby="vs-title" data-detail>
     <div class="section-head">
       <h2 id="vs-title">Each stock vs the {{ term("sti-etf", "STI ETF") }}</h2>
@@ -621,7 +603,7 @@
   <button class="jump-btn" type="button" popovertarget="jump-menu">Sections</button>
   <div class="jump-menu" id="jump-menu" popover>
     {% for id, label in [("xray-title", "Your portfolio, X-rayed"), ("holdings-title", "Holdings"), ("alloc-title", "Where your money is"),
-                         ("risk-title", "Ups and downs"), ("news-title", "In the news"), ("vs-title", "Each stock vs the STI ETF"),
+                         ("risk-title", "Ups and downs"), ("vs-title", "Each stock vs the STI ETF"),
                          ("yields-title", "Dividend yields"), ("years-title", "Dividend income by year"),
                          ("forecast-title", "Dividends expected")] %}
     <a href="#{{ id }}" data-jump="{{ id }}">{{ label }}</a>
@@ -643,5 +625,4 @@
 <script src="{{ url_for('static', filename='js/live.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/view.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/jump.js') }}" defer></script>
-<script src="{{ url_for('static', filename='js/news-pages.js') }}" defer></script>
 {% endblock %}

@@ -78,7 +78,7 @@ def test_the_publishers_summary_is_kept_as_plain_text(db_path):
            b'&lt;script&gt;x&lt;/script&gt;&lt;/p&gt;</description><pubDate>Mon, 16 Nov 2026 01:00:00 GMT</pubDate>'
            b'</item></channel></rss>')
     [it] = news.parse(raw, "The Business Times", "businesstimes.com.sg")
-    assert it["summary"] == "Net profit rose 9%x" and "<" not in it["summary"]
+    assert it["summary"] == "Net profit rose 9%" and "<" not in it["summary"]     # the script's text is gone too
 
 
 def test_the_same_story_from_two_papers_shows_once(db_path):
@@ -122,23 +122,44 @@ def test_day_move_is_from_the_previous_close_and_says_which_way(db_path):
     conn.close()
 
 
-# ---------- The page ----------
+# ---------- The page: one feed with tabs, story rows, nothing personal unless logged in ----------
 
-def test_market_today_is_open_to_everyone_and_explains_itself(app, db_path):
+def test_market_today_is_open_to_everyone_as_one_feed(app, db_path):
     conn = db.get_connection(db_path)
-    news.save(conn, [item("DBS declares a dividend", "https://www.businesstimes.com.sg/1", "A bigger payout."),
+    news.save(conn, [item("DBS declares a dividend", "https://www.businesstimes.com.sg/1", "A bigger payout.", hours_ago=3),
                      item("Singapore's exports rise", "https://www.straitstimes.com/2", source="The Straits Times")])
     conn.close()
     r = app.test_client().get("/news")
-    page = text(r)
-    assert r.status_code == 200 and "Market today" in page and "What does this mean?" in page
-    assert "Companies in the news" in page and "Singapore's market and economy" in page
-    assert "About your stocks" not in page                                           # logged out: nothing personal
-    assert "lesson 6, Dividends" in page and "The Business Times sums it up" in page
-    assert 'href="https://www.businesstimes.com.sg/1" target="_blank" rel="noopener noreferrer nofollow"' in r.get_data(as_text=True)
+    page, raw = text(r), r.get_data(as_text=True)
+    assert r.status_code == 200 and "Market today" in page
+    assert page.index("Singapore's exports rise") < page.index("DBS declares a dividend")     # newest first
+    assert "Other companies" in page and "Market & economy" in page
+    assert "Your stocks" not in page                                                 # logged out: nothing personal
+    assert "lesson 6, Dividends" in page and "A bigger payout." in page
+    assert "3h ago" in page and 'class="story-tag"' in raw
+    assert 'href="https://www.businesstimes.com.sg/1" target="_blank" rel="noopener noreferrer nofollow"' in raw
+    assert 'popovertarget="market-what"' not in raw and "term-news-topic" not in raw   # no explanation prompts
 
 
-def test_logged_in_your_stocks_come_first_and_say_you_own_them(app, db_path):
+def test_tabs_filter_the_feed_and_ignore_anything_else(app, db_path):
+    c = signed_up(app)
+    add(c)                                                                            # 100 DBS
+    conn = db.get_connection(db_path)
+    news.save(conn, [item("DBS profit rises", "https://www.businesstimes.com.sg/1"),
+                     item("UOB opens a branch", "https://www.businesstimes.com.sg/2"),
+                     item("Singapore's exports rise", "https://www.straitstimes.com/3", source="The Straits Times")])
+    conn.close()
+    feed = lambda r: r.get_data(as_text=True).split('class="market-feed"')[1].split('class="market-side"')[0]
+    mine, others, market = (feed(c.get(f"/news?show={k}")) for k in ("mine", "others", "market"))
+    assert "DBS profit rises" in mine and "UOB opens" not in mine and "exports rise" not in mine
+    assert "UOB opens a branch" in others and "DBS profit" not in others
+    assert "exports rise" in market and "DBS profit" not in market
+    weird = feed(c.get("/news?show=<script>"))                                        # an unknown tab: everything
+    assert "DBS profit rises" in weird and "UOB opens a branch" in weird
+    assert "UOB opens a branch" in feed(app.test_client().get("/news?show=mine"))   # logged out: no "mine" tab
+
+
+def test_your_stocks_say_you_own_them_and_link_to_your_portfolio(app, db_path):
     c = signed_up(app)
     add(c)                                                                            # 100 DBS
     buy(c)                                                                            # and 100 in practice
@@ -147,12 +168,12 @@ def test_logged_in_your_stocks_come_first_and_say_you_own_them(app, db_path):
                      item("UOB opens a branch", "https://www.businesstimes.com.sg/2")])
     conn.close()
     r = c.get("/news")
-    page = text(r)
-    assert page.index("About your stocks") < page.index("DBS profit rises") < page.index("Other companies in the news")
+    page, raw = text(r), r.get_data(as_text=True)
     assert "You own 100 shares" in page and "practice: 100 shares" in page and "You don't own this" in page
+    assert '<a href="/portfolio#holdings-title">You own 100 shares' in raw
+    assert 'class="chip mine" href="/portfolio#holdings-title"' in raw                # "yours" in Most in the news
+    assert "1 story" in page and "headline" not in page.split("Most in the news")[1].split("Topics")[0]
     assert r.headers["Cache-Control"] == "no-store"                                  # personal: never cached
-    mine = text(c.get("/news?show=mine"))
-    assert "DBS profit rises" in mine and "UOB opens a branch" not in mine
 
 
 def test_nobody_sees_someone_elses_holdings_on_the_news(app, db_path):
@@ -164,7 +185,7 @@ def test_nobody_sees_someone_elses_holdings_on_the_news(app, db_path):
     bob = signed_up(app, "bob@example.com")
     page = text(bob.get("/news"))
     assert "You own 100 shares" not in page and "You don't own this" in page
-    assert "About your stocks" in text(bob.get("/news?show=mine"))
+    assert "You don't hold any stocks yet" in text(bob.get("/news?show=mine"))
 
 
 def test_headline_html_never_runs(app, db_path):
@@ -173,25 +194,82 @@ def test_headline_html_never_runs(app, db_path):
                           "<script>alert(2)</script>")])
     conn.close()
     page = app.test_client().get("/news").get_data(as_text=True)
-    assert "<img src=x" not in page and "<script>alert(2)" not in page
+    assert "<img src=x" not in page and "<script>alert(2)" not in page and "alert(2)" not in page
 
 
-def test_the_portfolio_news_opens_into_story_cards_with_the_move(app, db_path):
+def test_each_row_shows_the_stocks_last_month_from_saved_prices(app, db_path):
+    conn = db.get_connection(db_path)
+    db.save_prices(conn, "D05.SI", [("2025-01-03", 31.0), ("2025-01-06", 33.0)])
+    news.save(conn, [item("DBS profit rises", "https://www.businesstimes.com.sg/1")])
+    conn.close()
+    raw = app.test_client().get("/news").get_data(as_text=True)
+    assert 'class="story-thumb thumb-up"' in raw and "1M +10.0%" in raw              # $30 -> $33
+    assert "<img" not in raw.split('id="news-feed"')[1]                              # never a publisher's photo
+
+
+def test_the_portfolio_has_no_news_section_any_more(app, db_path):
     c = signed_up(app)
     add(c)
     conn = db.get_connection(db_path)
-    db.save_prices(conn, "D05.SI", [("2025-01-03", 31.5)])                           # +5% on the day
     news.save(conn, [item("DBS profit rises", "https://www.businesstimes.com.sg/1")])
     conn.close()
-    page = text(c.get("/portfolio"))
-    assert "DBS profit rises" in page and "▲ up 5.0%" in page and "You own 100 shares" in page
-    assert "See all of today's market news" in page
+    for path in ("/portfolio", "/demo", "/practice"):
+        page = c.get(path).get_data(as_text=True)
+        assert 'id="news-title"' not in page and "DBS profit rises" not in page.split('class="stock-data"')[0]
 
 
 def test_empty_news_says_why(app):
     page = text(app.test_client().get("/news"))
-    assert "No company has been named in a headline yet" in page
-    assert "No market or economy headlines in the last 3 days yet" in page
+    assert "No company has been named in a story yet" in page
+    assert "No stories from the last 3 days yet" in page
+    assert "No market or economy stories" in text(app.test_client().get("/news?show=market"))
+
+
+def test_ago_reads_like_a_news_app():
+    n = datetime(2026, 11, 17, 16, 0, tzinfo=SGT)
+    assert [stories.ago(x, n) for x in ("2026-11-17T15:47", "2026-11-17T08:33", "2026-11-16T09:00",
+                                        "2026-11-14T09:00", "nonsense")] == ["13m ago", "7h ago", "Yesterday", "14 Nov", ""]
+
+
+# ---------- Summaries the feeds leave out: the article page's own link-preview text ----------
+
+def test_missing_summaries_come_from_the_article_page_once(db_path):
+    conn = db.get_connection(db_path)
+    news.save(conn, [item("DBS profit rises", "https://www.businesstimes.com.sg/1"),
+                     item("UOB opens a branch", "https://www.businesstimes.com.sg/2")])
+    pages = {"https://www.businesstimes.com.sg/1":
+             '<head><meta property="og:description" content="[SINGAPORE] Profit rose 9% on fees. Read more at The Business Times."></head>',
+             "https://www.businesstimes.com.sg/2": "<head><title>No description here</title></head>"}
+    calls = []
+    fetch = lambda url: calls.append(url) or pages[url]
+    assert news.fill_summaries(conn, fetch) == 1
+    got = {r["title"]: r["summary"] for r in news.recent(conn)}
+    assert got == {"DBS profit rises": "Profit rose 9% on fees.", "UOB opens a branch": ""}
+    news.fill_summaries(conn, fetch)
+    assert len(calls) == 2                                                            # tried once each, never again
+    conn.close()
+
+
+def test_only_publisher_article_links_are_ever_fetched(db_path):
+    assert news.fetch_page("https://evil.example/a") is None
+    assert news.fetch_page("http://www.straitstimes.com/a") is None                 # https only
+    assert news.fetch_page("https://straitstimes.com.evil.example/a") is None
+    conn = db.get_connection(db_path)
+    conn.execute("INSERT INTO news (url, title, source, published) VALUES ('https://evil.example/x', 'Singapore x', 'CNA', ?)",
+                 (now(),))
+    conn.commit()
+    calls = []
+    news.fill_summaries(conn, lambda url: calls.append(url) or "")
+    assert calls == []
+    conn.close()
+
+
+def test_page_code_never_shows_in_a_summary():
+    assert news.tidy_summary("Seatrium won it. (function(d, s, id) { var js, fjs = d.getElementsByTagName(s)") == "Seatrium won it."
+    assert news.tidy_summary("&lt;p&gt;Hello&lt;/p&gt;&lt;script&gt;var a=1;&lt;/script&gt; world") == "Hello world"
+    assert news.tidy_summary("Rents rose; available space varied") == "Rents rose; available space varied"
+
+
 
 
 def test_holdings_counts_shares_and_weight(db_path, app):
@@ -238,18 +316,6 @@ def test_the_home_bar_says_learn_once():
     assert len(re.findall(r">Learn</a>", home.read_text(encoding="utf-8"))) == 0      # the page jump is "Before you invest"
 
 
-def test_portfolio_news_comes_in_pages_of_5(app, db_path):
-    c = signed_up(app)
-    add(c)
-    conn = db.get_connection(db_path)
-    news.save(conn, [item(f"DBS story number {i}", f"https://www.businesstimes.com.sg/{i}", hours_ago=i + 1)
-                     for i in range(12)])
-    conn.close()
-    page = c.get("/portfolio").get_data(as_text=True)
-    assert 'id="portfolio-news" data-per-page="5"' in page and "news-pages.js" in page
-    assert page.count("DBS story number") == 12                                      # all sent: the script pages them
-
-
 def test_headlines_that_differ_only_in_numbers_are_different_stories(db_path):
     conn = db.get_connection(db_path)
     news.save(conn, [item("Singapore shares rise; STI up 0.6%", "https://www.businesstimes.com.sg/a", hours_ago=30),
@@ -258,14 +324,11 @@ def test_headlines_that_differ_only_in_numbers_are_different_stories(db_path):
     conn.close()
 
 
-def test_each_market_today_section_pages_on_its_own(app, db_path):
-    c = signed_up(app)
-    add(c)
+def test_the_feed_comes_10_to_a_page(app, db_path):
     conn = db.get_connection(db_path)
     news.save(conn, [item(f"Singapore exports report {i}", f"https://www.straitstimes.com/{i}", hours_ago=i + 1)
-                     for i in range(8)])
+                     for i in range(14)])
     conn.close()
-    page = c.get("/news").get_data(as_text=True)
-    for name in ("mine", "others", "market"):
-        assert f'id="news-{name}" data-per-page="5"' in page or name != "market"
-    assert "news-pages.js" in page and page.count("Singapore exports report") == 8
+    page = app.test_client().get("/news").get_data(as_text=True)
+    assert 'id="news-feed" data-per-page="10"' in page and "news-pages.js" in page
+    assert page.count("Singapore exports report") == 14                              # all sent: the script pages them

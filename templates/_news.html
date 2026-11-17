@@ -1,9 +1,9 @@
 {#
-  Story cards (Market today and every portfolio's "In the news"). Each headline is a <details>: click it and the
-  card opens in place, with no script needed. Inside: the publisher's own one-line summary (credited, never
-  rewritten), each company in the story with its latest day's move and whether you own it, the lesson that
-  explains its topic, and the link to the full story on the publisher's site. Built by src/stories.py.
-  who: "own" (your portfolio or Market today), "practice", or "demo": only changes the "you own" wording.
+  Market today's stories. Each headline is a row, like a news app: a topic tag, the headline, the source and how
+  long ago, ticker chips with the day's move, and on the right a small chart of the stock's last month (drawn from
+  SGXray's own prices, never a publisher's photo). Click the row and it opens in place (a <details>, so it works
+  without JavaScript): the publisher's own one-line summary, each company's move and whether you own it, the lesson
+  that explains the topic, and the link to the full story. Built by src/stories.py.
 #}
 {% from "_term.html" import term %}
 
@@ -11,55 +11,61 @@
   {%- if m and m.pct is not none -%}<span class="move {{ m.way }}">{{ {"up": "▲ ", "down": "▼ "}.get(m.way, "") }}{{ "%.1f%%"|format((m.pct * 100)|abs) }}</span>{%- endif -%}
 {%- endmacro %}
 
-{% macro owned_line(s, who) -%}
+{% macro owned_line(s) -%}
   {%- set o = s.owned -%}
   {%- if o -%}
-    {{ {"practice": "Your practice portfolio has", "demo": "The demo holds"}.get(who, "You own") }} {{ "{:,}".format(o.shares) }} share{{ "s" if o.shares != 1 }}{% if o.weight is not none %} · {{ "%.0f%%"|format(o.weight * 100) }} of {{ "the demo" if who == "demo" else ("your practice portfolio" if who == "practice" else "your portfolio") }}{% endif %}
-  {%- elif who == "practice" -%}Not in your practice portfolio
-  {%- elif who == "demo" -%}Not in the demo
+    <a href="{{ url_for('portfolio') }}#holdings-title">You own {{ "{:,}".format(o.shares) }} share{{ "s" if o.shares != 1 }}{% if o.weight is not none %} · {{ "%.0f%%"|format(o.weight * 100) }} of your portfolio{% endif %}</a>
   {%- else -%}{{ term("not-owned", "You don't own this") }}
   {%- endif -%}
-  {%- if s.practice and who == "own" %} · practice: {{ "{:,}".format(s.practice.shares) }} share{{ "s" if s.practice.shares != 1 }}{% endif -%}
+  {%- if s.practice %} · <a href="{{ url_for('practice_page') }}#holdings-title">practice: {{ "{:,}".format(s.practice.shares) }} share{{ "s" if s.practice.shares != 1 }}</a>{% endif -%}
 {%- endmacro %}
 
-{% macro story(n, who="own") %}
+{% macro thumb(t) %}
+  {#- The stock's last month, from SGXray's own closing prices: a picture for the row, not a chart to read. -#}
+  <svg class="story-thumb thumb-{{ t.way or 'flat' }}" viewBox="0 0 112 64" role="img" aria-label="{{ t.code }} over the last {{ t.days }} trading days: {{ '%+.1f%%'|format(t.change * 100) }}">
+    <path class="thumb-area" d="{{ t.area }}"/>
+    <path class="thumb-line" d="{{ t.path }}"/>
+    <circle class="thumb-dot" cx="{{ '%.1f'|format(t.end[0]) }}" cy="{{ '%.1f'|format(t.end[1]) }}" r="2"/>
+    <text class="thumb-code" x="8" y="15">{{ t.code }}</text>
+    <text class="thumb-change" x="104" y="15" text-anchor="end">1M {{ "%+.1f%%"|format(t.change * 100) }}</text>
+  </svg>
+{% endmacro %}
+
+{% macro story(n) %}
 <li class="news-item">
   <details class="story">
-    <summary>
-      <span class="news-when">{{ n.published[:10]|shortdate }} · {{ n.published[11:16]|clock }}</span>
-      <span class="news-title">{{ n.title }}</span>
-      <span class="news-meta">{{ n.source }}{% if n.also %} and {{ n.also|join(", ") }}{% endif %}{% for s in n.stocks %} · <span class="news-tag{{ ' mine' if s.owned }}">{{ s.code }}</span> {{ move_short(s.move) }}{% endfor %}</span>
+    <summary class="story-row">
+      <span class="story-main">
+        <span class="story-headline">{% if n.tag %}<span class="story-tag">{{ n.tag }}</span>{% endif %}<span class="news-title">{{ n.title }}</span></span>
+        <span class="story-meta">
+          <span class="story-source">{{ n.source }}{% if n.also %} and {{ n.also|join(", ") }}{% endif %}{% if n.ago %} · {{ n.ago }}{% endif %}</span>
+          {%- for s in n.stocks %}
+          <span class="chip{{ ' mine' if s.owned }}">{{ s.code }}{% if s.move and s.move.pct is not none %} {{ move_short(s.move) }}{% endif %}</span>
+          {%- endfor %}
+        </span>
+      </span>
+      {% if n.thumb %}{{ thumb(n.thumb) }}{% endif %}
     </summary>
     <div class="story-body">
-      {% if n.summary %}
-      <p class="story-blurb"><span class="story-source">{{ n.summary_source }} sums it up:</span> “{{ n.summary }}”</p>
-      {% else %}
-      <p class="story-blurb muted">There's no summary from {{ n.source }} for this headline, only the headline itself. The full story is at the link below.</p>
-      {% endif %}
+      {% if n.summary %}<p class="story-blurb"><span class="story-source">{{ n.summary_source }}:</span> “{{ n.summary }}”</p>{% endif %}
       {% if n.stocks %}
-      <h4>{{ "Company" if n.stocks|length == 1 else "Companies" }} in this story</h4>
       <ul class="story-stocks">
         {% for s in n.stocks %}
+        {%- set px = ("$%.2f" if s.move.close >= 1 else "$%.3f")|format(s.move.close) if s.move else "" %}
         <li>
           <span class="story-stock"><b>{{ s.code }}</b> {{ s.name }}</span>
           <span class="story-move">{{ term("day-move", "Day's move") }}
-            {%- set px = ("$%.2f" if s.move.close >= 1 else "$%.3f")|format(s.move.close) if s.move else "" %}
             {% if s.move is none %}{{ term("no-price", "no price yet") }}
             {% elif s.move.pct is none %}{{ px }} on {{ s.move.date|shortdate }}, its first saved close
             {% elif not s.move.way %}<b>unchanged</b> at {{ px }} on {{ s.move.date|shortdate }}
             {% else %}<b class="{{ s.move.way }}">{{ "▲" if s.move.way == "up" else "▼" }} {{ s.move.way }} {{ "%.1f%%"|format((s.move.pct * 100)|abs) }}</b> to {{ px }} on {{ s.move.date|shortdate }}{% endif %}</span>
-          <span class="story-owned{{ ' mine' if s.owned }}">{{ owned_line(s, who) }}</span>
+          <span class="story-owned{{ ' mine' if s.owned }}">{{ owned_line(s) }}</span>
         </li>
         {% endfor %}
       </ul>
       {% endif %}
       {% if n.topic_list %}
-      <h4>{{ term("news-topic", "What it's about") }}</h4>
-      <ul class="story-topics">
-        {% for t in n.topic_list %}
-        <li>{{ t.label }}: {% for l in t.lessons %}<a href="{{ url_for('lesson', slug=l.slug) }}">lesson {{ l.number }}, {{ l.title }}</a>{{ " and " if not loop.last }}{% endfor %} explains it</li>
-        {% endfor %}
-      </ul>
+      <p class="story-topics">{% for t in n.topic_list %}{{ t.label }}: {% for l in t.lessons %}<a href="{{ url_for('lesson', slug=l.slug) }}">lesson {{ l.number }}, {{ l.title }}</a>{{ " and " if not loop.last }}{% endfor %} explains it{{ "; " if not loop.last else "." }} {% endfor %}</p>
       {% endif %}
       {% if n.stocks|selectattr("owned")|list %}
       <p class="story-why">You own {{ "this" if n.stocks|selectattr("owned")|list|length == 1 else "some of these" }}. Before acting on a headline, reread your reason for buying: is it still true?</p>

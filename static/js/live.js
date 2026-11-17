@@ -55,7 +55,7 @@
 
   // Scripts that draw charts and boxes: run again on the new page content. (count-up.js is left out, so
   // the numbers don't count up from zero again.)
-  const REDRAW = ["reveal.js", "xray-chart.js", "stock-chart.js", "popups.js", "news-pages.js"];
+  const REDRAW = ["reveal.js", "xray-chart.js", "stock-chart.js", "popups.js"];
   function redraw() {
     REDRAW.forEach(name => {
       const old = [...document.scripts].find(s => s.src.includes("/js/" + name));
