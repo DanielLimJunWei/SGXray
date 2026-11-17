@@ -546,4 +546,10 @@ A portfolio with nothing in it (yours, practice, or the demo before it's loaded)
 - **Market today:** no source line under the title; a card's chart has "Close chart" / "Show the chart", its own
   "How to read this" (and a Watch out: a move on a story's day isn't proof the story caused it), and the x-ray
   replays every time a card opens (the on/off switch is gone; "reduce motion" still turns it off).
+- **Burst, gentler and at the clips (17 Nov):** the frame twitches 1px (was 2px), and the sparks now come from the two
+  metal clips at the top (a flash, specks that fly out and fall, an amber ember; the right clip a split second after
+  the left), not from the middle.
+- **w319's plan finished:** the faint drifting trace (`_decor.html` `empty_trace()`) now sits behind every empty screen:
+  an empty portfolio, Market today with no stories, and the trades and practice trades lists before the first trade.
+  Ticking sample numbers stay out on purpose (on a finance site they could pass for real prices).
 

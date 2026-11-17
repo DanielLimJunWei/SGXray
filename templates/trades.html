@@ -3,6 +3,7 @@
 {% from "_explain.html" import explain_buttons %}
 {% from "_notes.html" import note_edit with context %}
 {% from "_term.html" import term, term_popups %}
+{% from "_decor.html" import empty_trace %}
 {% block title %}Your trades · SGXray{% endblock %}
 
 {% block content %}
@@ -163,7 +164,7 @@
     {% elif only %}
     <p class="muted">No trades in {{ only.name }}. <a href="{{ url_for('trades_page') }}#list-title">Show every trade</a></p>
     {% else %}
-    <p class="muted">No trades yet. Add your first one above, and your portfolio fills in from it.</p>
+    <div class="panel empty">{{ empty_trace() }}<p class="muted">No trades yet. Add your first one above, and your portfolio fills in from it.</p></div>
     {% endif %}
   </section>
 </div>

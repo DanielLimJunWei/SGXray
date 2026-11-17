@@ -2,6 +2,7 @@
 {% from "_explain.html" import explain_buttons, pop_head, pop_resize %}
 {% from "_term.html" import term, term_popups %}
 {% from "_notes.html" import note_edit with context %}
+{% from "_decor.html" import empty_trace %}
 {% block title %}{{ {"demo": "Demo portfolio", "practice": "Practice portfolio"}.get(mode, "Your portfolio") }} · SGXray{% endblock %}
 {% block navlinks %}
   <ul>
@@ -87,13 +88,7 @@
 
   {% if not s %}
   <div class="panel empty">
-    {#- Decoration only (w319): a faint trace drifting slowly behind the message, like a film being scanned.
-        No numbers or axes, so it can't be mistaken for data; still with "reduce motion"; hidden from screen readers. -#}
-    <svg class="empty-trace" viewBox="0 0 800 120" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-      <g class="empty-trace-move">
-        <path d="M0 50 C20 44 90 70 140 72 S220 96 280 80 S360 40 420 46 S500 78 560 64 S660 30 720 38 S780 56 800 50 C820 44 890 70 940 72 S1020 96 1080 80 S1160 40 1220 46 S1300 78 1360 64 S1460 30 1520 38 S1580 56 1600 50"/>
-      </g>
-    </svg>
+    {{ empty_trace() }}
     {% if mode == "demo" %}
     <h2>The demo portfolio isn't loaded yet</h2>
     <p class="muted">Load the sample trades, then download their prices:</p>
