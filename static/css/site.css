@@ -733,8 +733,6 @@ a.lesson-link:hover { color: var(--color-glow-soft); }
 .view-simple [data-detail] { display: none !important; }
 
 /* ---------- News (w312) ---------- */
-.news-mark { fill: none; stroke: var(--color-glow-soft); stroke-width: 1.25; opacity: 0.85; }
-.mk-news { width: 8px; height: 8px; border: 1.25px solid var(--color-glow-soft); border-radius: 1px; }
 .news-list { list-style: none; margin: 0; padding: 0; display: grid; }
 .news-item { border-top: 1px solid var(--color-line); }
 .news-item:first-child { border-top: 0; }
@@ -948,3 +946,28 @@ svg.spot-line #xray-top, svg.spot-line #xray-plain { stroke-width: 2.5; filter: 
 svg.spot-line #xray-top { animation: spot-line 2.4s ease-in-out 3; }
 @keyframes spot-line { 50% { filter: drop-shadow(0 0 6px rgba(156, 196, 255, 0.85)); } }
 @media (prefers-reduced-motion: reduce) { svg.spot-line #xray-top { animation: none; } }
+
+/* A story card's chart (news-chart.js): three months of the stock, the story's day marked. Its x-ray scans down
+   the film while the line develops from white to its colour. */
+.story-chart { margin: 0; padding: var(--space-3); border-radius: var(--radius-md); background: var(--color-well);
+  border: 1px solid var(--color-line); }
+.story-chart-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font-size: var(--text-xs);
+  color: var(--color-text-muted); }
+.story-chart-head .icon-btn { margin-left: auto; }
+.story-chart svg { display: block; width: 100%; height: auto; margin-top: var(--space-2); touch-action: pan-y; }
+.story-chart-read { margin: var(--space-1) 0 0; font: 400 var(--text-xs)/1.5 var(--font-mono); color: var(--color-text-muted); }
+.sc-grid { stroke: var(--color-line); stroke-dasharray: 2 4; }
+.sc-axis { font: 400 11px var(--font-mono); fill: var(--color-text-faint); }
+.sc-line { fill: none; stroke-width: 1.5; stroke-linejoin: round; transition: stroke 600ms ease-out, filter 600ms ease-out; }
+.sc-area { opacity: 0.10; }
+.chart-up .sc-line { stroke: var(--color-up); filter: drop-shadow(0 0 1px rgba(123, 196, 160, 0.22)); }
+.chart-up .sc-area { fill: var(--color-up); }
+.chart-down .sc-line { stroke: var(--color-down); filter: drop-shadow(0 0 1px rgba(217, 130, 130, 0.22)); }
+.chart-down .sc-area { fill: var(--color-down); }
+.chart-flat .sc-line { stroke: var(--color-glow-soft); }
+.chart-flat .sc-area { fill: var(--color-glow-soft); }
+.developing .sc-line { stroke: #EEF4FF; filter: drop-shadow(0 0 4px rgba(206, 226, 255, 0.8)); }   /* white while it develops */
+.sc-scan { fill: rgba(206, 226, 255, 0.16); }
+.sc-story { stroke: var(--color-lamp); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0.7; }
+.sc-dot { fill: var(--color-lamp); }
+.sc-story-label { font: 500 10px var(--font-mono); fill: var(--color-lamp); }

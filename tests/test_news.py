@@ -117,7 +117,7 @@ def test_a_failing_feed_never_stops_the_others():
 
 # ---------- On the page ----------
 
-def test_the_price_chart_markers_stay_safe(app, db_path):
+def test_the_price_charts_carry_no_news(app, db_path):
     c = signed_up(app)
     add(c)                                                                       # holds DBS
     conn = db.get_connection(db_path)
@@ -129,7 +129,6 @@ def test_the_price_chart_markers_stay_safe(app, db_path):
     page = c.get("/portfolio").get_data(as_text=True)
     assert "<script>alert(1)</script>" not in page and 'id="news-title"' not in page    # news lives on Market today
     chart_data = page.split('class="stock-data"')[1].split("</script>")[0]
-    assert '"news": [' in chart_data and '"source": "CNA"' in chart_data              # the price chart's markers
-    assert "<script>" not in chart_data                                            # escaped inside the data too
+    assert '"news"' not in chart_data and "CNA" not in chart_data                  # no news on the price charts
     from test_page_rules import check_page_rules
     check_page_rules(page)

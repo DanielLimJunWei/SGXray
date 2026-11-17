@@ -515,4 +515,20 @@ A portfolio with nothing in it (yours, practice, or the demo before it's loaded)
 - **Portfolio news section removed** (his call: Market today covers it). The price charts keep their news squares;
   the resting "Latest" readout no longer lists news (it repeated the same stories), and pointing at a day shows at
   most two, the same story from two papers once (`news.for_chart` dedupes too).
+- **Login lock (17 Nov, his question):** it WAS 10 tries (set when login was first built), now 5 per email and 20 per
+  network address. Locks grow 15 -> 30 -> 60 minutes in 24 hours (`auth.LOCK_MINUTES`, `auth.lock_state`); a
+  successful login resets the email. The page says "N tries left, then a 15-minute wait", shows a countdown
+  (lightbox.js), and the session remembers the locked email so reopening the page still shows the timer. On the try
+  that locks, the lightbox's bulb bursts (flash, flicker, a few specks of glass, a cooling filament: CSS `burst`);
+  at 0:00 it flickers back on (`relight`) and the form reopens.
+- **Lesson spotlights (`lessons.SPOTS`, `_spot.html`, spotlight.js):** every lesson's demo link carries ?lesson=<slug>.
+  The demo outlines the part the lesson is about, says what to look at, and offers "Back to lesson N" / "Stay in the
+  demo" (clears it and the ?lesson= from the address). On the X-ray chart a lesson can shade the biggest fall (from
+  `biggest_dip`) and make the line glow (the scams lesson's "wobbly line"). The fees lesson, logged in, points at your
+  own Trades list instead.
+- **News:** no news on the price charts at all now (markers, readout and key gone; `news.for_chart` removed); no
+  Topics box on Market today (each card links its topic to a lesson). Each card opens with the stock's last 3 months
+  (news-chart.js, `stories.closes`), the story's day marked; its x-ray scans DOWN the film while the line develops from
+  white to its colour (the portfolio's sweeps left to right). "Animation: on/off" shares the `sgxray-motion` setting.
+- **Home** is in the top bar on every page except the home page itself.
 

@@ -343,7 +343,6 @@
         <li><span class="mk mk-buy" aria-hidden="true"></span>{{ term("buy", "Buy") }}</li>
         {% if c.data.trades|selectattr("side", "equalto", "SELL")|list %}<li><span class="mk mk-sell" aria-hidden="true"></span>{{ term("sell", "Sell") }}</li>{% endif %}
         {% if c.data.dividends %}<li><span class="mk mk-div" aria-hidden="true"></span>{{ term("ex-date", "Dividend ex-date") }}</li>{% endif %}
-        {% if c.data.news %}<li><span class="mk mk-news" aria-hidden="true"></span>{{ term("in-the-news", "In the news") }}</li>{% endif %}
         <li><span class="mk mk-avg" aria-hidden="true"></span>{{ term("avg-cost-line", "Your average cost") }}</li>
         <li><span class="mk mk-line" aria-hidden="true"></span>{{ term("price-line", "Closing price") }}</li>
       </ul>

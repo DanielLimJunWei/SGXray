@@ -84,12 +84,22 @@ def sparkline(conn, ticker):
             "way": way, "change": change, "days": len(closes), "end": (xs[-1], ys[-1])}
 
 
+CHART_DAYS = 66                 # about three months of trading days in a card's chart
+
+
+def closes(conn, ticker, days=CHART_DAYS):
+    """[["YYYY-MM-DD", close], ...] oldest first: the card chart's data, from SGXray's own saved prices."""
+    rows = conn.execute("SELECT price_date, close FROM prices WHERE ticker = ? ORDER BY price_date DESC LIMIT ?",
+                        (ticker, days)).fetchall()
+    return [[r["price_date"], round(r["close"], 4)] for r in reversed(rows)]
+
+
 def build(conn, items, owned, practice=None, now=None):
     """Adds what a story card needs to each headline: "stocks" and "topic_list". owned: holdings() of the
     portfolio being looked at; practice: the same for the practice portfolio, or None."""
     names = {r["ticker"]: r["name"] for r in db.get_instruments(conn)}
     names.update({t: n for t, n, *_ in news.NEWS_COMPANIES if t not in names})
-    moves, thumbs = {}, {}
+    moves, thumbs, charts = {}, {}, {}
     now = now or datetime.now(news.SGT)
     for it in items:
         stocks = []
@@ -110,7 +120,11 @@ def build(conn, items, owned, practice=None, now=None):
             "ES3.SI" if stocks or "market" in it["topics"] else None)
         if pick and pick not in thumbs:
             thumbs[pick] = sparkline(conn, pick)
+            charts[pick] = closes(conn, pick)
         it["thumb"] = thumbs.get(pick) if pick else None
+        # The card's bigger chart (static/js/news-chart.js): three months, with the story's own day marked.
+        it["chart"] = ({"code": pick.removesuffix(".SI"), "name": names.get(pick, pick), "prices": charts[pick],
+                        "story_day": it["published"][:10]} if pick and it["thumb"] else None)
     return items
 
 

@@ -172,7 +172,8 @@ def test_your_stocks_say_you_own_them_and_link_to_your_portfolio(app, db_path):
     assert "You own 100 shares" in page and "practice: 100 shares" in page and "You don't own this" in page
     assert '<a href="/portfolio#holdings-title">You own 100 shares' in raw
     assert 'class="chip mine" href="/portfolio#holdings-title"' in raw                # "yours" in Most in the news
-    assert "1 story" in page and "headline" not in page.split("Most in the news")[1].split("Topics")[0]
+    glance = page.split("Most in the news")[1].split("How many stories named each company")[0]
+    assert "1 story" in glance and "headline" not in glance
     assert r.headers["Cache-Control"] == "no-store"                                  # personal: never cached
 
 
@@ -270,12 +271,23 @@ def test_page_code_never_shows_in_a_summary():
     assert news.tidy_summary("Rents rose; available space varied") == "Rents rose; available space varied"
 
 
-def test_the_price_chart_shows_each_story_once(db_path):
+def test_story_cards_carry_three_months_for_their_chart(app, db_path):
     conn = db.get_connection(db_path)
-    news.save(conn, [item("SIA logs 3.5% rise", "https://www.businesstimes.com.sg/1"),
-                     item("SIA logs 3.5% rise", "https://www.straitstimes.com/1", source="The Straits Times")])
-    assert len(news.for_chart(conn, "C6L.SI", "2000-01-01")) == 1
+    db.save_prices(conn, "D05.SI", [("2025-01-03", 31.0), ("2025-01-06", 33.0)])
+    news.save(conn, [item("DBS profit rises", "https://www.businesstimes.com.sg/1")])
     conn.close()
+    raw = app.test_client().get("/news").get_data(as_text=True)
+    assert "data-story-chart" in raw and "news-chart.js" in raw and '"story_day":' in raw
+    assert '"prices": [["2025-01-02", 30.0], ["2025-01-03", 31.0], ["2025-01-06", 33.0]]' in raw
+    assert "data-chart-motion" in raw                                                # the animation switch
+
+
+def test_market_today_has_no_topics_box_any_more(app, db_path):
+    conn = db.get_connection(db_path)
+    news.save(conn, [item("DBS declares a dividend", "https://www.businesstimes.com.sg/1")])
+    conn.close()
+    raw = app.test_client().get("/news").get_data(as_text=True)
+    assert 'id="topics-title"' not in raw and "lesson 6, Dividends" in raw            # the card still links it
 
 
 def test_holdings_counts_shares_and_weight(db_path, app):

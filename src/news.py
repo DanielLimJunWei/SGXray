@@ -447,19 +447,6 @@ def day_move(conn, ticker):
     return {"pct": pct, "way": way, "date": rows[0]["price_date"], "close": rows[0]["close"]}
 
 
-def for_chart(conn, ticker, start):
-    """One stock's headlines from `start` ('YYYY-MM-DD'), oldest first, for its price chart's markers."""
-    rows = conn.execute("SELECT n.title, n.url, n.source, substr(n.published, 1, 10) AS date FROM news n "
-                        "JOIN news_tickers t ON t.news_id = n.id WHERE t.ticker = ? AND n.published >= ? "
-                        "ORDER BY n.published", (ticker, start)).fetchall()
-    seen, out = set(), []
-    for r in rows:                                   # the same story from two papers: one marker, not two
-        if _same(r["title"]) not in seen:
-            seen.add(_same(r["title"]))
-            out.append(dict(r))
-    return out
-
-
 def last_checked(conn):
     """When the feeds last answered ('YYYY-MM-DDTHH:MM:SS+08:00'), or None if never."""
     try:

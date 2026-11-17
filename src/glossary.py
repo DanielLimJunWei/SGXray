@@ -281,12 +281,6 @@ TERMS = {
                    "How far the portfolio is now under its best point so far, counting how the investments did "
                    "(money added or taken out doesn't count).",
                    "At its high it was 100; now it's 92: 8% below its high."),
-    "in-the-news": ("In the news",
-                    "Headlines that mention this stock, from CNA, The Business Times, The Straits Times and The Edge "
-                    "Singapore. SGXray shows each headline as published, with the publisher's own one-line summary "
-                    "and a link to the full article: it doesn't rewrite or judge them. News often moves a price for "
-                    "a few days; the question is whether it changes your reason for owning it.",
-                    "A headline about a bank's quarterly results: read it, then reread your Why I bought note."),
     "day-move": ("Day's move",
                  "How much a stock's price changed on its latest trading day: from the previous closing price to "
                  "the latest one. It says what happened, not why: a stock in the news may have moved for a "

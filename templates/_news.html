@@ -47,6 +47,16 @@
       {% if n.thumb %}{{ thumb(n.thumb) }}{% endif %}
     </summary>
     <div class="story-body">
+      {% if n.chart %}
+      {#- The stock's last three months, drawn when the card opens, with a quick x-ray scan (news-chart.js). -#}
+      <figure class="story-chart" data-story-chart>
+        <figcaption class="story-chart-head"><b>{{ n.chart.code }}</b> {{ n.chart.name }} · last 3 months
+          <button class="icon-btn compact" type="button" data-chart-motion hidden>Animation: on</button></figcaption>
+        <svg viewBox="0 0 640 200" role="img" aria-label="{{ n.chart.name }}'s closing price over the last {{ n.chart.prices|length }} trading days, with the day of this story marked"></svg>
+        <p class="story-chart-read" aria-live="polite"></p>
+        <script type="application/json">{{ n.chart|tojson }}</script>
+      </figure>
+      {% endif %}
       {% if n.summary %}<p class="story-blurb"><span class="story-source">{{ n.summary_source }}:</span> “{{ n.summary }}”</p>{% endif %}
       {% if n.stocks %}
       <ul class="story-stocks">

@@ -181,14 +181,9 @@ def create_app(db_path=None):
         most = [{"ticker": t, "code": t.removesuffix(".SI"), "name": names.get(t, t), "count": n,
                  "move": news.day_move(conn, t), "owned": t in owned}
                 for t, n in news.most_mentioned(todays or items)]
-        per_topic = {}
-        for it in items:
-            for t in it["topic_list"]:
-                per_topic.setdefault(t["key"], {**t, "count": 0})["count"] += 1
-        topic_counts = sorted(per_topic.values(), key=lambda t: -t["count"])
         return render_template("news.html", feed=groups[show], show=show, tabs=tabs,
                                counts={k: len(v) for k, v in groups.items()}, owned=owned,
-                               most=most, most_today=bool(todays), topic_counts=topic_counts,
+                               most=most, most_today=bool(todays),
                                checked=news.last_checked(conn))
 
     # ---------- Practice portfolio (w320) ----------
@@ -890,7 +885,6 @@ def _stock_charts(conn, uid, holdings, as_of):
     for r in holdings:
         h = stock_history(conn, uid, r["ticker"])
         if h and h["prices"]:
-            h["news"] = news.for_chart(conn, r["ticker"], h["prices"][0][0])        # markers along the top
             charts.append({"ticker": r["ticker"], "name": r["name"], "id": "chart-" + r["ticker"].replace(".", "-"),
                            "data": h, "ex": explain_stock_chart(conn, uid, r["ticker"], h),
                            "w52": insights.week52(conn, r["ticker"], as_of) if as_of else None})

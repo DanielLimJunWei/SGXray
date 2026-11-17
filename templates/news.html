@@ -1,7 +1,7 @@
 {#
   Market today (/news): the day's Singapore business headlines as one feed, newest first, read like a news app.
   Tabs pick which stories (All, Your stocks, Other companies, Market & economy); "Most in the news" and the topics
-  sit beside the feed. Open to everyone; "Your stocks" only when logged in. Rows: templates/_news.html.
+  sits beside the feed (each story's own card links its topic to a lesson). Open to everyone; "Your stocks" only when logged in. Rows: templates/_news.html.
 #}
 {% extends "base.html" %}
 {% from "_term.html" import term, term_popups %}
@@ -54,19 +54,6 @@
         <p class="muted">No company has been named in a story yet. Companies appear here once the news names them.</p>
         {% endif %}
       </section>
-      <section class="glance" aria-labelledby="topics-title">
-        <h2 id="topics-title">Topics</h2>
-        {% if topic_counts %}
-        <ul class="most-list">
-          {% for t in topic_counts %}
-          <li><span class="most-name">{{ t.label }}</span><span class="most-count">{{ t.count }} {{ "story" if t.count == 1 else "stories" }}</span>
-            <span class="topic-lessons">{% for l in t.lessons %}<a href="{{ url_for('lesson', slug=l.slug) }}">lesson {{ l.number }}</a>{{ ", " if not loop.last }}{% endfor %}</span></li>
-          {% endfor %}
-        </ul>
-        {% else %}
-        <p class="muted">No story touches an investing topic yet. Topics appear as the day's news comes in.</p>
-        {% endif %}
-      </section>
     </aside>
   </div>
 
@@ -75,4 +62,5 @@
 {{ term_popups() }}
 {% endblock %}
 {% block scripts %}<script src="{{ url_for('static', filename='js/popups.js') }}" defer></script>
-<script src="{{ url_for('static', filename='js/news-pages.js') }}" defer></script>{% endblock %}
+<script src="{{ url_for('static', filename='js/news-pages.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/news-chart.js') }}" defer></script>{% endblock %}
