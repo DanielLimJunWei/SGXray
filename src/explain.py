@@ -943,11 +943,33 @@ def explain_risk(r):
     return Explanation(out, watch)
 
 
+def explain_market_today(items, signed_in):
+    """Explains the Market today page."""
+    out = ["Today's Singapore business headlines from CNA, The Business Times, The Straits Times and The Edge "
+           "Singapore, checked every 3 hours, all day, every day. Only stories that matter to someone investing in "
+           "Singapore are kept: ones naming an SGX company, about Singapore's market or economy, or warning "
+           "about scams.",
+           "Open a headline to see the publisher's own one-line summary, how each company in it moved on its latest "
+           "trading day, whether you own it, the lesson that explains its topic, and a link to the full story.",
+           "\"Most in the news\" is a plain count of headlines naming each company. It's what people are writing "
+           "about, not a list of good or bad stocks."]
+    if signed_in:
+        out.append("\"About your stocks\" shows only the headlines naming something in your portfolio.")
+    if not items:
+        out.append("No headlines are saved from the last 3 days yet. They arrive with the next check.")
+    watch = ["A headline can move a price for a few days without changing the business, and a price can move on "
+             "the same day as a story for a different reason. Nothing here is a reason to buy or sell.",
+             "SGXray doesn't rate news as good or bad: those ratings are often wrong and quickly start to look "
+             "like tips."]
+    return Explanation(out, watch)
+
+
 def explain_news(headlines):
     """Explains "In the news" (w312)."""
     out = ["Recent headlines that mention a stock you hold, from CNA, The Business Times, The Straits Times and "
-           "The Edge Singapore. Each one is shown exactly as published, with its source and a link to the full "
-           "article. SGXray doesn't summarise, rate or recommend anything based on them.",
+           "The Edge Singapore. Open one to see the publisher's own one-line summary, how each stock in it moved "
+           "on its latest trading day, and a link to the full article. SGXray doesn't rewrite, rate or recommend "
+           "anything based on them.",
            "Matching is by the company's name or short form (like DBS or Singtel), so now and then a headline "
            "only mentions a company in passing. The same headlines appear as small squares along the top of each "
            "stock's price chart, so you can see what was in the news when the price moved."]

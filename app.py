@@ -32,7 +32,7 @@ import auth  # noqa: E402
 import db  # noqa: E402
 import fmt  # noqa: E402
 import glossary  # noqa: E402
-from explain import (Explanation, explain_allocation, explain_dividends_received, explain_news, explain_risk, explain_forecast, explain_holdings,  # noqa: E402
+from explain import (Explanation, explain_allocation, explain_dividends_received, explain_market_today, explain_news, explain_risk, explain_forecast, explain_holdings,  # noqa: E402
                      explain_income_by_year,
                      explain_performance, explain_periods, explain_sold, explain_stock_chart,
                      explain_total_return, explain_trades, explain_two_returns, explain_value_chart, explain_worth,
@@ -47,6 +47,7 @@ import plans  # noqa: E402
 import practice  # noqa: E402
 import readiness  # noqa: E402
 import risk  # noqa: E402
+import stories  # noqa: E402
 import lookup  # noqa: E402
 import mailer  # noqa: E402
 from performance import compare, per_stock  # noqa: E402
@@ -154,6 +155,35 @@ def create_app(db_path=None):
         return render_template("learn/ready.html", questions=readiness.QUESTIONS, fall=fall, dip=dip,
                                result=readiness.check(answers) if request.method == "POST" else None,
                                chosen=answers)
+
+    # ---------- Market today: the day's Singapore business headlines ----------
+    # Open to everyone. Logged in, the story cards also say which stocks you own (from the session's user id,
+    # never the address), so the page is never cached by the browser (see _security_headers).
+
+    @app.get("/news")
+    def market_today():
+        conn = get_db()
+        uid = g.user["id"] if g.get("user") else None
+        owned = stories.holdings(conn, uid)
+        twin = conn.execute("SELECT id FROM users WHERE practice_of = ?", (uid,)).fetchone() if uid else None
+        practice_owned = stories.holdings(conn, twin["id"]) if twin else {}
+        items = stories.build(conn, news.recent(conn, days=3, limit=80), owned, practice_owned)
+        mine, others, market = stories.split(items, owned)
+        mine_only = bool(uid) and request.args.get("show") == "mine"
+        day_ago = (_sgt_now() - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M")
+        todays = [it for it in items if it["published"] >= day_ago]      # the last 24 hours, not since midnight
+        names = {r["ticker"]: r["name"] for r in db.get_instruments(conn)}
+        most = [{"ticker": t, "code": t.removesuffix(".SI"), "name": names.get(t, t), "count": n,
+                 "move": news.day_move(conn, t), "owned": t in owned}
+                for t, n in news.most_mentioned(todays or items)]
+        counts = {}
+        for it in items:
+            for t in it["topic_list"]:
+                counts.setdefault(t["key"], {**t, "count": 0})["count"] += 1
+        topic_counts = sorted(counts.values(), key=lambda t: -t["count"])
+        return render_template("news.html", mine=mine, others=others, market=market, owned=owned,
+                               mine_only=mine_only, most=most, most_today=bool(todays), topic_counts=topic_counts,
+                               checked=news.last_checked(conn), ex=explain_market_today(items, bool(uid)))
 
     # ---------- Practice portfolio (w320) ----------
     # Pretend trades at real SGX prices. They belong to the account's hidden "practice twin", found from the
@@ -618,7 +648,10 @@ def create_app(db_path=None):
             alloc_ex=explain_allocation(alloc),
             risk_view=(risk_view := risk.risk(conn, uid, h) if h is not None else None),
             risk_ex=explain_risk(risk_view),
-            headlines=(headlines := news.for_tickers(conn, [r["ticker"] for r in holdings])),
+            headlines=(headlines := stories.build(conn, news.for_tickers(conn, [r["ticker"] for r in holdings], limit=40),
+                                                  {r["ticker"]: {"shares": int(r["shares"]),
+                                                                 "weight": r["weight"] if r["weight"] == r["weight"] else None}
+                                                   for r in holdings})),
             news_ex=explain_news(headlines),
             stocks=_records(_or_none(per_stock, conn, uid), names),
             vs_ex=_or_none(explain_performance, conn, uid),
@@ -893,7 +926,8 @@ def _security_headers(response):
         response.headers["Referrer-Policy"] = "no-referrer"       # the reset link's secret is never passed on
     if request.endpoint in ("login", "signup", "account", "account_password", "forgot", "reset_link",
                             "reset_password", "portfolio", "trades_page", "edit_trade", "delete_trade", "lookup_ticker",
-                            "ready", "practice_page", "practice_trades", "practice_fees", "practice_reset"):
+                            "ready", "practice_page", "practice_trades", "practice_fees", "practice_reset",
+                            "market_today"):
         response.headers["Cache-Control"] = "no-store"            # private pages aren't kept in the browser cache
     return response
 
@@ -924,6 +958,11 @@ def _reset_email(link):
             f"{link}\n\n"
             f"If it wasn't you, ignore this email: your password stays the same.\n\n"
             f"SGXray")
+
+
+def _sgt_now():
+    from datetime import datetime, timezone
+    return datetime.now(timezone(timedelta(hours=8)))
 
 
 def _singapore_day(stamp):
@@ -994,6 +1033,15 @@ def _add_filters(app):
         if fmt.missing(x):
             return _gap_word() or "n/a"
         return f"{x:+.1%}"
+
+    @app.template_filter("clock")
+    def clock(hhmm):
+        """'08:33' -> '8:33am', '17:05' -> '5:05pm' (Singapore time, as the news is saved)."""
+        try:
+            h, m = (int(x) for x in str(hhmm)[:5].split(":"))
+        except ValueError:
+            return str(hhmm)
+        return f"{(h % 12) or 12}:{m:02d}{'am' if h < 12 else 'pm'}"
 
     @app.template_filter("shortdate")
     def shortdate(iso):

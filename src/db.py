@@ -138,6 +138,7 @@ CREATE TABLE IF NOT EXISTS news (
     id         INTEGER PRIMARY KEY,
     url        TEXT NOT NULL UNIQUE,
     title      TEXT NOT NULL,
+    summary    TEXT,                     -- the publisher's own one-line standfirst from the feed, if it has one
     source     TEXT NOT NULL,
     published  TEXT NOT NULL,            -- 'YYYY-MM-DDTHH:MM' Singapore time
     fetched_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -197,6 +198,9 @@ MIGRATIONS = [
     # Regular savings plans (w314): a trade the plan recorded, and the month it was for (so it's made once).
     ("trades", "plan_id", "ALTER TABLE trades ADD COLUMN plan_id INTEGER REFERENCES plans(id) ON DELETE CASCADE"),
     ("trades", "plan_month", "ALTER TABLE trades ADD COLUMN plan_month TEXT"),
+    ("news", "summary", "ALTER TABLE news ADD COLUMN summary TEXT"),
+    # "Add a stock I already own": one buy at your average cost on a rough date, until the real trades are in.
+    ("trades", "approx", "ALTER TABLE trades ADD COLUMN approx INTEGER NOT NULL DEFAULT 0 CHECK (approx IN (0, 1))"),
 ]
 
 

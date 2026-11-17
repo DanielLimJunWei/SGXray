@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% from "_explain.html" import explain_buttons, pop_head, pop_resize %}
 {% from "_term.html" import term, term_popups %}
+{% from "_news.html" import story with context %}
+{% from "_notes.html" import note_edit with context %}
 {% block title %}{{ {"demo": "Demo portfolio", "practice": "Practice portfolio"}.get(mode, "Your portfolio") }} · SGXray{% endblock %}
 {% block navlinks %}
   <ul>
@@ -413,18 +415,14 @@
       {{ explain_buttons(news_ex, "news", "In the news") }}
     </div>
     {% if headlines %}
-    <ul class="panel news-list">
-      {% for n in headlines %}
-      <li class="news-item">
-        <span class="news-when">{{ n.published[:10]|shortdate }}</span>
-        <a href="{{ n.url }}" target="_blank" rel="noopener noreferrer nofollow" referrerpolicy="no-referrer">{{ n.title }}</a>
-        <span class="news-meta">{{ n.source }} · <span class="news-tag">{{ n.tickers|select("in", holdings|map(attribute="ticker")|list)|join(", ") }}</span></span>
-      </li>
-      {% endfor %}
+    <p class="muted lead">Click a headline to open it here: the publisher's own summary, how each stock in it moved, and a link to the full story.</p>
+    <ul class="panel news-list" id="portfolio-news" data-per-page="5">
+      {% for n in headlines %}{{ story(n, mode) }}{% endfor %}
     </ul>
     {% else %}
-    <p class="muted">No headlines from the last 30 days mention what you hold. SGXray checks CNA, The Business Times, The Straits Times and The Edge Singapore every few hours.</p>
+    <p class="muted">No headlines from the last 30 days mention what you hold. SGXray checks CNA, The Business Times, The Straits Times and The Edge Singapore every 3 hours.</p>
     {% endif %}
+    <p class="news-more"><a href="{{ url_for('market_today') }}">See all of today's market news</a></p>
   </section>
 
   <section class="block" aria-labelledby="vs-title" data-detail>
@@ -608,4 +606,5 @@
 <script src="{{ url_for('static', filename='js/live.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/view.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/jump.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/news-pages.js') }}" defer></script>
 {% endblock %}

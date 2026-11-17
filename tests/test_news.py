@@ -104,12 +104,13 @@ def test_a_failing_feed_never_stops_the_others():
     seen = []
     import types
     conn = types.SimpleNamespace()
-    orig = news.save
+    orig, orig_retag = news.save, news.retag
     news.save = lambda c, items: seen.extend(items) or len(items)
+    news.retag = lambda c: None
     try:
         assert news.update(conn, fetcher) is True
     finally:
-        news.save = orig
+        news.save, news.retag = orig, orig_retag
     assert [i["source"] for i in seen] == ["The Straits Times"]
 
 

@@ -736,15 +736,57 @@ a.lesson-link:hover { color: var(--color-glow-soft); }
 .news-mark { fill: none; stroke: var(--color-glow-soft); stroke-width: 1.25; opacity: 0.85; }
 .mk-news { width: 8px; height: 8px; border: 1.25px solid var(--color-glow-soft); border-radius: 1px; }
 .news-list { list-style: none; margin: 0; padding: 0; display: grid; }
-.news-item { display: grid; grid-template-columns: 7.5rem 1fr; gap: var(--space-1) var(--space-4); padding: var(--space-3) var(--space-5);
-  border-top: 1px solid var(--color-line); }
+.news-item { border-top: 1px solid var(--color-line); }
 .news-item:first-child { border-top: 0; }
 .news-when { font: 400 var(--text-xs)/1.6 var(--font-mono); color: var(--color-text-faint); }
-.news-item a { color: var(--color-text); text-decoration: none; }
-.news-item a:hover { color: var(--color-glow-soft); text-decoration: underline; text-underline-offset: 0.2em; }
+.news-item a { color: var(--color-glow-soft); text-decoration: none; }
+.news-item a:hover { text-decoration: underline; text-underline-offset: 0.2em; }
 .news-meta { grid-column: 2; font-size: var(--text-xs); color: var(--color-text-muted); }
 .news-tag { font-family: var(--font-mono); color: var(--color-text-faint); }
-@media (max-width: 560px) { .news-item { grid-template-columns: 1fr; } .news-meta { grid-column: 1; } }
+.news-tag.mine { color: var(--color-glow-soft); }
+.move { font: 400 var(--text-xs) var(--font-mono); }
+.news-more { margin-top: var(--space-3); font-size: var(--text-sm); }
+
+/* Story cards: a headline that opens in place (a <details>, so no script is needed). */
+.story > summary { display: grid; grid-template-columns: 7.5rem 1fr; gap: var(--space-1) var(--space-4);
+  padding: var(--space-3) var(--space-5); cursor: pointer; list-style: none; }
+.story > summary::-webkit-details-marker { display: none; }
+.news-title { color: var(--color-text); }
+.story > summary:hover .news-title { color: var(--color-glow-soft); }
+.story > summary:focus-visible { outline: 2px solid var(--color-glow-soft); outline-offset: -2px; border-radius: var(--radius-sm); }
+.news-title::after { content: " +"; color: var(--color-text-faint); font-family: var(--font-mono); }
+.story[open] .news-title::after { content: " −"; }
+.story-body { margin: 0 var(--space-5) var(--space-4) calc(7.5rem + var(--space-4) + var(--space-5));
+  padding: var(--space-3) var(--space-4); border-left: 1px solid var(--color-line-strong); font-size: var(--text-sm); }
+.story-body h4 { margin: var(--space-3) 0 var(--space-1); font: 500 var(--text-xs) var(--font-sans); color: var(--color-text-muted); }
+.story-blurb { margin: 0; color: var(--color-text); }
+.story-source { color: var(--color-text-muted); }
+.story-stocks, .story-topics { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.story-stocks li { display: grid; gap: 2px; }
+.story-move, .story-owned { font-size: var(--text-xs); color: var(--color-text-muted); }
+.story-owned.mine { color: var(--color-glow-soft); }
+.story-why { margin: var(--space-3) 0 0; font-size: var(--text-xs); color: var(--color-caution); }
+.story-link { margin: var(--space-3) 0 0; }
+@media (max-width: 560px) {
+  .story > summary { grid-template-columns: 1fr; } .news-meta { grid-column: 1; }
+  .story-body { margin-left: var(--space-5); }
+}
+
+/* Market today: a glance at the day (most named companies, topics), then the headlines. */
+.market-head { margin-top: var(--space-4); justify-content: space-between; }
+.news-filter a { padding: var(--space-2) var(--space-4); min-height: 36px; display: inline-flex; align-items: center;
+  color: var(--color-text-muted); text-decoration: none; font-size: var(--text-sm); }
+.news-filter a + a { border-left: 1px solid var(--color-line-strong); }
+.news-filter a[aria-current="page"] { color: var(--color-text); background: rgba(156, 196, 255, 0.08); }
+.market-glance { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: var(--space-5); margin-bottom: var(--space-8); }
+.glance { padding: var(--space-5); }
+.glance h2 { font-size: var(--text-lg); margin: 0 0 var(--space-3); }
+.glance h2 .muted { font: 400 var(--text-sm) var(--font-sans); }
+.most-list { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-2); font-size: var(--text-sm); }
+.most-list li { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); align-items: baseline; }
+.most-list li > span:first-child { flex: 1 1 10rem; }
+.most-count, .topic-lessons { font: 400 var(--text-xs) var(--font-mono); color: var(--color-text-muted); }
+.glance-note { margin: var(--space-3) 0 0; font-size: var(--text-xs); color: var(--color-text-faint); }
 
 /* ---------- Empty screens (w319): one faint trace drifting slowly behind the message ----------
    Decoration only: no numbers or axes. The path is two identical waves side by side; moving it left by one

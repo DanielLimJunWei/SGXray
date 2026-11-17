@@ -283,10 +283,39 @@ TERMS = {
                    "At its high it was 100; now it's 92: 8% below its high."),
     "in-the-news": ("In the news",
                     "Headlines that mention this stock, from CNA, The Business Times, The Straits Times and The Edge "
-                    "Singapore. SGXray shows each headline as published, with a link to the full article: it "
-                    "doesn't summarise or judge them. News often moves a price for a few days; the question is "
-                    "whether it changes your reason for owning it.",
+                    "Singapore. SGXray shows each headline as published, with the publisher's own one-line summary "
+                    "and a link to the full article: it doesn't rewrite or judge them. News often moves a price for "
+                    "a few days; the question is whether it changes your reason for owning it.",
                     "A headline about a bank's quarterly results: read it, then reread your Why I bought note."),
+    "day-move": ("Day's move",
+                 "How much a stock's price changed on its latest trading day: from the previous closing price to "
+                 "the latest one. It says what happened, not why: a stock in the news may have moved for a "
+                 "different reason, or with the whole market.",
+                 "DBS closed at $69.30 after $69.90 the day before: down 0.9%."),
+    "news-topic": ("Topic",
+                   "What a headline is about, in investing terms (results, dividends, interest rates, REITs...), "
+                   "spotted from its words. Each topic links to the lesson that explains it, so a headline becomes "
+                   "something to understand, not a reason to trade.",
+                   "\"DBS declares a 54-cent dividend\" is about dividends: lesson 6 explains them."),
+    "approx": ("Approximate",
+               "A stock added with \"Add a stock I already own\": one buy at your average cost, dated roughly when you "
+               "bought. What it's worth and your profit are right, but returns, yearly rates and the STI comparison "
+               "depend on the real dates and prices, so they're estimates until you add the real trades.",
+               "100 DBS at an average $35.20, \"around March 2023\": saved as one buy on 15 March 2023."),
+    "practice-locked": ("Locked practice trade",
+                        "A practice trade can be undone only until that stock's next closing price arrives, to fix a "
+                        "slip. After that it stays, like a real trade: otherwise you could delete the buys that went "
+                        "badly once you'd seen the result. Start over clears everything.",
+                        "Bought DBS by mistake at 3pm: undo it before about 5:45pm. The next morning it's locked."),
+    "price-check": ("Check this price",
+                    "The price you typed is more than 25% away from SGX's closing price that day. A real trade is "
+                    "almost always close to that day's prices, so it may be a typo, another stock's price, or the "
+                    "total instead of the price per share. Compare it with your contract note.",
+                    "DBS closed at $70.97 on 11 Nov; a buy typed at $35.00 is probably a slip."),
+    "not-owned": ("You don't own this",
+                  "A company in the news that isn't in your portfolio. It's shown so you know what's happening in "
+                  "the market, not as a tip: reading about a stock is no reason to buy it.",
+                  "Genting Singapore is in today's headlines; you hold DBS and Singtel."),
     "per-stock": ("Per stock",
                   "This column only has a number for one stock at a time (its own shares, price, cost or "
                   "dividend per share), so a whole-portfolio total wouldn't mean anything. Each stock's "

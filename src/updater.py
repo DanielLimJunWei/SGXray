@@ -139,11 +139,14 @@ def run_once(conn, now=None, update=None):
 
 def download_all(conn):
     """The same steps as `python src/market.py`: splits, then prices, then dividends, for every stock anyone
-    holds (real or practice) plus the STI ETF. Only Yahoo Finance is called. True if nothing failed."""
+    holds (real or practice) plus the STI ETF, plus the companies named in the last week's headlines (so
+    Market today can show how they moved). Only Yahoo Finance is called. True if nothing failed."""
     import market
     from instruments import seed_instruments
     seed_instruments(conn)
-    tickers = sorted(set(db.get_traded_tickers(conn)) | {market.BENCHMARK})
+    import news
+    # Companies in the last week's headlines too, so Market today can show how they moved.
+    tickers = sorted(set(db.get_traded_tickers(conn)) | {market.BENCHMARK} | set(news.recent_tickers(conn)))
     results = (market.update_actions(conn, tickers) + market.update_prices(conn, tickers)
                + market.update_dividends(conn, tickers))
     import plans

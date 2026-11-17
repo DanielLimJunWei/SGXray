@@ -1,0 +1,71 @@
+{#
+  Story cards (Market today and every portfolio's "In the news"). Each headline is a <details>: click it and the
+  card opens in place, with no script needed. Inside: the publisher's own one-line summary (credited, never
+  rewritten), each company in the story with its latest day's move and whether you own it, the lesson that
+  explains its topic, and the link to the full story on the publisher's site. Built by src/stories.py.
+  who: "own" (your portfolio or Market today), "practice", or "demo": only changes the "you own" wording.
+#}
+{% from "_term.html" import term %}
+
+{% macro move_short(m) -%}
+  {%- if m and m.pct is not none -%}<span class="move {{ m.way }}">{{ {"up": "▲ ", "down": "▼ "}.get(m.way, "") }}{{ "%.1f%%"|format((m.pct * 100)|abs) }}</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro owned_line(s, who) -%}
+  {%- set o = s.owned -%}
+  {%- if o -%}
+    {{ {"practice": "Your practice portfolio has", "demo": "The demo holds"}.get(who, "You own") }} {{ "{:,}".format(o.shares) }} share{{ "s" if o.shares != 1 }}{% if o.weight is not none %} · {{ "%.0f%%"|format(o.weight * 100) }} of {{ "the demo" if who == "demo" else ("your practice portfolio" if who == "practice" else "your portfolio") }}{% endif %}
+  {%- elif who == "practice" -%}Not in your practice portfolio
+  {%- elif who == "demo" -%}Not in the demo
+  {%- else -%}{{ term("not-owned", "You don't own this") }}
+  {%- endif -%}
+  {%- if s.practice and who == "own" %} · practice: {{ "{:,}".format(s.practice.shares) }} share{{ "s" if s.practice.shares != 1 }}{% endif -%}
+{%- endmacro %}
+
+{% macro story(n, who="own") %}
+<li class="news-item">
+  <details class="story">
+    <summary>
+      <span class="news-when">{{ n.published[:10]|shortdate }} · {{ n.published[11:16]|clock }}</span>
+      <span class="news-title">{{ n.title }}</span>
+      <span class="news-meta">{{ n.source }}{% if n.also %} and {{ n.also|join(", ") }}{% endif %}{% for s in n.stocks %} · <span class="news-tag{{ ' mine' if s.owned }}">{{ s.code }}</span> {{ move_short(s.move) }}{% endfor %}</span>
+    </summary>
+    <div class="story-body">
+      {% if n.summary %}
+      <p class="story-blurb"><span class="story-source">{{ n.summary_source }} sums it up:</span> “{{ n.summary }}”</p>
+      {% else %}
+      <p class="story-blurb muted">There's no summary from {{ n.source }} for this headline, only the headline itself. The full story is at the link below.</p>
+      {% endif %}
+      {% if n.stocks %}
+      <h4>{{ "Company" if n.stocks|length == 1 else "Companies" }} in this story</h4>
+      <ul class="story-stocks">
+        {% for s in n.stocks %}
+        <li>
+          <span class="story-stock"><b>{{ s.code }}</b> {{ s.name }}</span>
+          <span class="story-move">{{ term("day-move", "Day's move") }}
+            {%- set px = ("$%.2f" if s.move.close >= 1 else "$%.3f")|format(s.move.close) if s.move else "" %}
+            {% if s.move is none %}{{ term("no-price", "no price yet") }}
+            {% elif s.move.pct is none %}{{ px }} on {{ s.move.date|shortdate }}, its first saved close
+            {% elif not s.move.way %}<b>unchanged</b> at {{ px }} on {{ s.move.date|shortdate }}
+            {% else %}<b class="{{ s.move.way }}">{{ "▲" if s.move.way == "up" else "▼" }} {{ s.move.way }} {{ "%.1f%%"|format((s.move.pct * 100)|abs) }}</b> to {{ px }} on {{ s.move.date|shortdate }}{% endif %}</span>
+          <span class="story-owned{{ ' mine' if s.owned }}">{{ owned_line(s, who) }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if n.topic_list %}
+      <h4>{{ term("news-topic", "What it's about") }}</h4>
+      <ul class="story-topics">
+        {% for t in n.topic_list %}
+        <li>{{ t.label }}: {% for l in t.lessons %}<a href="{{ url_for('lesson', slug=l.slug) }}">lesson {{ l.number }}, {{ l.title }}</a>{{ " and " if not loop.last }}{% endfor %} explains it</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if n.stocks|selectattr("owned")|list %}
+      <p class="story-why">You own {{ "this" if n.stocks|selectattr("owned")|list|length == 1 else "some of these" }}. Before acting on a headline, reread your reason for buying: is it still true?</p>
+      {% endif %}
+      <p class="story-link"><a href="{{ n.url }}" target="_blank" rel="noopener noreferrer nofollow" referrerpolicy="no-referrer">Read the full story at {{ n.source }} ↗</a></p>
+    </div>
+  </details>
+</li>
+{% endmacro %}

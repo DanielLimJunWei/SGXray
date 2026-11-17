@@ -1,0 +1,21 @@
+{#
+  Edit note in place: a small "Edit note" (or "Add a note") that opens a one-line form right where the note is,
+  in the trades lists and the "Why you bought" boxes, for real and practice trades. It's a <details>, so it works
+  without JavaScript. Only the note changes; the trade itself stays as it is.
+  action: where the form posts (the real or the practice note address); back: "trades" or "portfolio", the page
+  to come back to (the server only accepts those two).
+#}
+{% macro note_edit(t, action, back) %}
+<details class="note-edit">
+  <summary>{{ "Edit note" if t.note else "Add a note" }}</summary>
+  <form method="post" action="{{ action }}" class="note-form">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="back" value="{{ back }}">
+    <label class="visually-hidden" for="note-{{ back }}-{{ t.id }}">{{ "Why I bought" if t.side == "BUY" else "Why I sold" }}</label>
+    <input id="note-{{ back }}-{{ t.id }}" name="note" type="text" maxlength="280" autocomplete="off" value="{{ t.note or '' }}"
+           placeholder="{{ 'Why I bought it, in a line' if t.side == 'BUY' else 'Why I sold it, in a line' }}">
+    <button class="btn btn-ghost compact" type="submit">Save note</button>
+    {% if t.note %}<span class="note-hint">Empty the box and save to remove the note.</span>{% endif %}
+  </form>
+</details>
+{% endmacro %}
