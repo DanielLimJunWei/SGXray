@@ -93,6 +93,78 @@ def check_delete(conn, user_id, trade_id):
     return [_sentence(p) for p in _check_sells(others, [], _actions(conn, tickers), form=True)]
 
 
+# ---------- "Add a stock I already own" ----------
+# For beginners without their old contract notes: shares, average cost and roughly when. Saved as ONE buy at the
+# average cost (fees counted in it), dated the 15th of that month, or the latest weekday before it. Marked
+# "approximate", so the pages can say returns and the STI comparison are estimates until the real trades are in.
+
+MONTH = re.compile(r"^\d{4}-\d{2}$")
+MAX_SHARES = 10_000_000
+MAX_AVG_COST = 100_000
+
+
+def existing_values(form, today=None):
+    """The form's fields as trade values for check(), or problems. Returns (values, problems)."""
+    from datetime import timedelta
+    today = today or date.today()
+    ticker = str(form.get("ticker", "")).strip()[:MAX_FIELD_LENGTH]
+    shares = str(form.get("quantity", "")).replace(",", "").strip()[:MAX_FIELD_LENGTH]
+    cost = str(form.get("avg_cost", "")).replace("$", "").replace(",", "").strip()[:MAX_FIELD_LENGTH]
+    month = str(form.get("month", "")).strip()[:7]
+    problems = []
+    if not ticker:
+        problems.append("Choose the stock, REIT or ETF.")
+    if not shares.isdigit() or not 1 <= int(shares) <= MAX_SHARES:
+        problems.append("Shares must be a whole number, like 100.")
+    try:
+        avg = float(cost)
+        if not 0 < avg <= MAX_AVG_COST:
+            raise ValueError
+    except ValueError:
+        problems.append("Average cost is the price you paid per share on average, like 35.20.")
+    day = None
+    if not MONTH.match(month):
+        problems.append("Choose roughly when you bought it: a month and year.")
+    else:
+        try:
+            day = date(int(month[:4]), int(month[5:]), 15)
+        except ValueError:
+            problems.append("Choose roughly when you bought it: a month and year.")
+    if day is not None:
+        if day.replace(day=1) > today:
+            problems.append("That month hasn't happened yet.")
+        elif day.year < 1990:
+            problems.append("Choose a month from 1990 on.")
+        else:
+            day = min(day, today)
+            while day.weekday() >= 5:                       # SGX is closed at weekends
+                day -= timedelta(days=1)
+    if problems:
+        return None, problems
+    values = {"ticker": ticker, "date": day.isoformat(), "side": "BUY", "quantity": shares,
+              "price": f"{avg:g}", "fees": "0", "note": clean_note(form.get("note", ""))}
+    return values, []
+
+
+# ---------- A price that doesn't look like that day's close ----------
+
+PRICE_CHECK = 0.25          # 25% away from SGX's close that day: likely a typo or a price from another stock
+
+
+def price_check(conn, trade):
+    """The day's close when the trade's price is far from it (a likely typo), else None. Skipped for an
+    approximate trade (its price is an average) and when a bonus issue or split came after (old closes can then
+    be on a different footing)."""
+    if trade.get("approx"):
+        return None
+    close = db.get_close(conn, trade["ticker"], trade["trade_date"])
+    if close is None or abs(trade["price"] / close - 1) <= PRICE_CHECK:
+        return None
+    if any(a["ex_date"] > trade["trade_date"] for a in db.get_actions(conn, trade["ticker"])):
+        return None
+    return close
+
+
 # ---------- Prices for a new stock or an earlier date ----------
 
 def needs_market_data(conn, ticker, trade_date):

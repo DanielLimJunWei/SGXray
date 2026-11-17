@@ -110,6 +110,26 @@ def place(conn, twin, form, download=None):
     return tid, []
 
 
+def undoable(conn, trade):
+    """A practice trade can be undone until the stock's next closing price arrives: it was made at the latest
+    close, so while that's still the latest, undoing it is just fixing a slip (a wrong stock, a typo). Once a
+    newer close is saved, the trade is locked like a real one: otherwise you could quietly delete the buys
+    that went badly after seeing the result, and the practice would teach the wrong lesson."""
+    latest = db.get_latest_price_date(conn, trade["ticker"])
+    return latest is None or latest <= trade["trade_date"]
+
+
+def undo_problem(conn, twin_id, trade):
+    """Why this practice trade can't be undone, or None if it can."""
+    if not undoable(conn, trade):
+        return ("That practice trade is locked: a newer closing price has arrived since you made it, so undoing "
+                "it now would be using hindsight. Like a real trade, it stays. Start over clears everything.")
+    problems = trade_rules.check_delete(conn, twin_id, trade["id"])
+    if problems:
+        return "Undo the later sale first: " + problems[0][0].lower() + problems[0][1:]
+    return None
+
+
 def fee_problem(rate_text, min_text):
     """Your broker's fee from the form: (rate, minimum, problem). The rate is typed as a percentage."""
     try:

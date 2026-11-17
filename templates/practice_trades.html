@@ -7,6 +7,7 @@
 {% from "_trade_form.html" import problems_box with context %}
 {% from "_explain.html" import explain_buttons %}
 {% from "_term.html" import term, term_popups %}
+{% from "_notes.html" import note_edit with context %}
 {% block title %}Practice trades · SGXray{% endblock %}
 
 {% block content %}
@@ -23,6 +24,10 @@
   {% if fees_note == "saved" %}<p class="form-ok" role="status">Your broker's fee is saved. New practice trades use it.</p>{% endif %}
   {% if added %}<p class="form-ok" role="status">{{ added.name }} ({{ added.ticker }}) is in the list now, and picked below.</p>{% endif %}
   {% if fees_note == "typical" %}<p class="form-ok" role="status">Back to the typical fee for new practice trades.</p>{% endif %}
+  {% if undone %}<p class="form-ok" role="status">Practice trade undone. Its pretend cash is back.</p>{% endif %}
+  {% if note_flash == "saved" %}<p class="form-ok" role="status">Note saved.</p>
+  {% elif note_flash == "cleared" %}<p class="form-ok" role="status">Note removed.</p>
+  {% elif note_flash == "long" %}<p class="form-error" role="alert">That note is longer than 280 characters, so it wasn't saved. Shorten it a little and save again.</p>{% endif %}
 
   <section class="panel trade-add" aria-labelledby="add-title">
     <h2 id="add-title">Make a practice trade</h2>
@@ -103,31 +108,46 @@
   </section>
 
   <section class="block" aria-labelledby="list-title">
-    <div class="section-head"><h2 id="list-title">{{ trades|length }} practice trade{{ "s" if trades|length != 1 }}</h2>{{ explain_buttons(trades_ex, "trades", "Your practice trades") }}</div>
+    <div class="section-head"><h2 id="list-title">{{ trades|length }} practice trade{{ "s" if trades|length != 1 }}{% if only %} in {{ only.name }}{% endif %}</h2>{{ explain_buttons(trades_ex, "trades", "Your practice trades") }}</div>
+    {% if only %}<p class="filter-note">Showing only {{ only.name }} ({{ only.ticker }}). <a href="{{ url_for('practice_trades') }}#list-title">Show every practice trade</a></p>{% endif %}
     {% if trades %}
+    <p class="muted lead">Made a slip, like the wrong stock or a typo? A practice trade can be undone until that stock's next closing price arrives ({{ next_update }}). After that it's {{ term("practice-locked", "locked") }}, like a real trade.</p>
     <div class="panel table-wrap">
       <table class="data trades-table">
         <thead>
           <tr><th scope="col">Date</th><th scope="col">Stock</th><th scope="col">Side</th><th scope="col">Shares</th>
-              <th scope="col">Price</th><th scope="col">Fees</th><th scope="col">Total</th></tr>
+              <th scope="col">Price</th><th scope="col">Fees</th><th scope="col">Total</th><th scope="col"><span class="visually-hidden">Undo</span></th></tr>
         </thead>
         <tbody>
           {% for t in trades %}
           {% set amount = t.quantity * t.price %}
           <tr{% if saved == t.id %} class="just-saved"{% endif %}>
             <td>{{ t.trade_date|shortdate }}</td>
-            <td><b>{{ t.ticker }}</b><span class="name">{{ t.name }}</span>{% if t.note %}<q class="trade-note">{{ t.note }}</q>{% endif %}</td>
+            <td><b>{{ t.ticker }}</b><span class="name">{{ t.name }}</span>{% if t.note %}<q class="trade-note">{{ t.note }}</q>{% endif %}{{ note_edit(t, url_for('practice_note', trade_id=t.id), "trades") }}</td>
             <td><span class="side side-{{ t.side|lower }}">{{ "Bought" if t.side == "BUY" else "Sold" }}</span></td>
             <td>{{ "{:,}".format(t.quantity) }}</td>
             <td>{{ t.price|num(".3f") }}</td>
             <td>{{ t.fees|money }}</td>
             <td>{{ (amount + t.fees if t.side == "BUY" else amount - t.fees)|money }}<span class="sub">{{ "paid" if t.side == "BUY" else "received" }}</span></td>
+            <td class="row-actions">
+              {% if t.undoable %}
+              <form method="post" action="{{ url_for('practice_undo', trade_id=t.id) }}">
+                <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+                <button class="link-btn" type="submit" aria-label="Undo the {{ t.trade_date|shortdate }} {{ t.ticker }} practice trade">Undo</button>
+              </form>
+              <span class="sub">until the next close</span>
+              {% else %}
+              <span class="sub">{{ term("practice-locked", "locked") }}</span>
+              {% endif %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
     <p class="practice-reset"><a href="{{ url_for('practice_reset') }}">Start over</a> <span class="muted">· clears every practice trade and gives back {{ start_cash|money }}</span></p>
+    {% elif only %}
+    <p class="muted">No practice trades in {{ only.name }}. <a href="{{ url_for('practice_trades') }}#list-title">Show every practice trade</a></p>
     {% else %}
     <p class="muted">No practice trades yet. Make your first one above.</p>
     {% endif %}

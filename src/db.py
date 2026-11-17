@@ -437,7 +437,7 @@ def get_trade(conn, user_id, trade_id):
     """One trade, only if it belongs to this user. Someone else's trade id gives None, exactly like
     a trade that doesn't exist, so changing the number in the address shows nothing (no IDOR)."""
     return conn.execute(
-        "SELECT id, ticker, trade_date, side, quantity, price, fees, note, plan_id FROM trades WHERE id = ? AND user_id = ?",
+        "SELECT id, ticker, trade_date, side, quantity, price, fees, note, plan_id, approx FROM trades WHERE id = ? AND user_id = ?",
         (trade_id, user_id),
     ).fetchone()
 
@@ -455,6 +455,20 @@ def update_trade(conn, user_id, trade_id, t):
              trade_id, user_id),
         )
     return cur.rowcount == 1
+
+
+def set_note(conn, user_id, trade_id, note):
+    """Changes only the "why I bought / sold" note of one of this user's trades (None clears it). Returns True
+    if a trade was changed. user_id is in the WHERE, so nobody can edit someone else's note."""
+    with conn:
+        cur = conn.execute("UPDATE trades SET note = ? WHERE id = ? AND user_id = ?", (note or None, trade_id, user_id))
+    return cur.rowcount == 1
+
+
+def mark_approx(conn, user_id, trade_id):
+    """Marks a trade as "a stock I already own": average cost and a rough date, not a real contract note."""
+    with conn:
+        conn.execute("UPDATE trades SET approx = 1 WHERE id = ? AND user_id = ?", (trade_id, user_id))
 
 
 def delete_trade(conn, user_id, trade_id):
@@ -504,7 +518,7 @@ def get_trades(conn, user_id):
     """All of one user's trades, oldest first."""
     return conn.execute(
         """
-        SELECT id, ticker, trade_date, side, quantity, price, fees, note
+        SELECT id, ticker, trade_date, side, quantity, price, fees, note, approx
         FROM trades
         WHERE user_id = ?
         ORDER BY trade_date, id

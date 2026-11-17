@@ -237,9 +237,47 @@ def create_app(db_path=None):
         db.log_security_event(conn, "practice_reset", g.user["id"], request.remote_addr)
         return redirect(url_for("practice_trades", reset=1))
 
+    @app.post("/practice/trades/<int:trade_id>/undo")
+    @login_required
+    def practice_undo(trade_id):
+        """Undoes a practice trade, only until that stock's next closing price arrives (practice.undoable)."""
+        conn, twin = get_db(), _twin()
+        trade = db.get_trade(conn, twin["id"], trade_id) or abort(404)
+        problem = practice.undo_problem(conn, twin["id"], trade)
+        if problem:
+            return _practice_trades_page(conn, twin, {"side": "BUY"}, [problem]), 422
+        db.delete_trade(conn, twin["id"], trade_id)
+        db.log_security_event(conn, "practice_undo", g.user["id"], request.remote_addr)
+        return redirect(url_for("practice_trades", undone=1))
+
+    @app.post("/practice/trades/<int:trade_id>/note")
+    @login_required
+    def practice_note(trade_id):
+        return _save_note(_twin()["id"], trade_id, {"trades": "practice_trades", "portfolio": "practice_page"})
+
+    @app.post("/trades/<int:trade_id>/note")
+    @login_required
+    def trade_note(trade_id):
+        return _save_note(g.user["id"], trade_id, {"trades": "trades_page", "portfolio": "portfolio"})
+
+    def _save_note(owner_id, trade_id, places):
+        """Edit note in place: changes only the note, for real and practice trades alike. owner_id comes from
+        the session (the user, or their practice twin), never the form, so another person's trade is a 404.
+        Back goes to one of two fixed pages, never an address from the form."""
+        conn = get_db()
+        db.get_trade(conn, owner_id, trade_id) or abort(404)
+        endpoint = places.get(request.form.get("back"), places["trades"])
+        note = trades.clean_note(request.form.get("note", ""))
+        if len(note) > trades.NOTE_MAX:
+            return redirect(url_for(endpoint, note="long"))
+        db.set_note(conn, owner_id, trade_id, note)
+        db.log_security_event(conn, "note_edited", g.user["id"], request.remote_addr)
+        return redirect(url_for(endpoint, note="saved" if note else "cleared"))
+
     def _practice_trades_page(conn, twin, values, problems, fee_error=None, lookup_error=None, lookup_code=None):
         names = {r["ticker"]: r["name"] for r in db.get_instruments(conn)}
-        rows = [{**dict(t), "name": names.get(t["ticker"], "")} for t in db.get_trades(conn, twin["id"])]
+        rows = [{**dict(t), "name": names.get(t["ticker"], ""), "undoable": practice.undoable(conn, t)}
+                for t in db.get_trades(conn, twin["id"])]
         rows.reverse()
         rate, minimum, typical = practice.fee_settings(twin)
         prices = {tk: db.latest_close(conn, tk) for tk in names}
@@ -248,13 +286,15 @@ def create_app(db_path=None):
         added = {"ticker": added, "name": names[added]} if added in names else None   # only a ticker that's really listed
         if added and request.method == "GET":
             values = {**values, "ticker": added["ticker"]}
-        return render_template("practice_trades.html", trades=rows, values=values, problems=problems,
+        return render_template("practice_trades.html", values=values, problems=problems,
                                tickers=tickers, prices=prices, cash=practice.cash(conn, twin["id"]),
                                start_cash=practice.START_CASH, rate=rate, minimum=minimum, typical=typical,
                                example=practice.fee(1000, rate, minimum), fee_error=fee_error,
                                saved=request.args.get("saved", type=int), reset=request.args.get("reset") == "1",
                                fees_note=request.args.get("fees", ""), trades_ex=explain_trades(rows),
-                               added=added, lookup_error=lookup_error, lookup_code=lookup_code)
+                               added=added, lookup_error=lookup_error, lookup_code=lookup_code,
+                               undone=request.args.get("undone") == "1", note_flash=request.args.get("note", ""),
+                               next_update=updater.next_update(), **_stock_filter(rows, names))
 
     @app.get("/portfolio")
     @login_required
@@ -281,6 +321,24 @@ def create_app(db_path=None):
                            trade["quantity"], trade["price"], trade["fees"], trade["note"])
         db.log_security_event(conn, "trade_added", uid, request.remote_addr)
         return redirect(url_for("trades_page", saved=tid, **_market_note(conn, trade)))
+
+    @app.post("/trades/existing")
+    @login_required
+    def add_existing():
+        """"Add a stock I already own": shares, average cost and roughly when, saved as one approximate buy."""
+        conn, uid = get_db(), g.user["id"]
+        values, problems = trades.existing_values(request.form)
+        trade = None
+        if not problems:
+            trade, problems = trades.check(conn, uid, values)
+        if problems:
+            return _trades_page(conn, uid, values={"side": "BUY", "date": date.today().isoformat()},
+                                existing_problems=problems, existing_values=request.form), 422
+        tid = db.add_trade(conn, uid, trade["ticker"], trade["trade_date"], "BUY", trade["quantity"], trade["price"],
+                           0.0, trade["note"])
+        db.mark_approx(conn, uid, tid)
+        db.log_security_event(conn, "trade_added", uid, request.remote_addr)
+        return redirect(url_for("trades_page", saved=tid, existing=1, **_market_note(conn, trade)))
 
     @app.route("/trades/<int:trade_id>/edit", methods=["GET", "POST"])
     @login_required
@@ -404,18 +462,28 @@ def create_app(db_path=None):
         return {} if ok else {"prices": "later"}
 
     def _trades_page(conn, uid, values, problems=None, lookup_error=None, lookup_code=None,
-                     plan_problems=None, plan_values=None):
+                     plan_problems=None, plan_values=None, existing_problems=None, existing_values=None):
         names = {r["ticker"]: r["name"] for r in db.get_instruments(conn)}
         for p in conn.execute("SELECT * FROM plans WHERE user_id = ?", (uid,)).fetchall():
             plans.catch_up(conn, p)                    # any month whose close has arrived since
         rows = [{**dict(t), "name": names.get(t["ticker"], "")} for t in db.get_trades(conn, uid)]
+        for r in rows:
+            r["close_that_day"] = trades.price_check(conn, r)   # a price far from that day's close: likely a typo
         rows.reverse()                                          # newest first: the one you just added is on top
+        # "Correct the number of shares" (holdings Change): the trade form prefilled with the difference.
+        correction = None
+        if request.method == "GET" and request.args.get("stock") in names and request.args.get("hold") is not None:
+            correction = _correction(conn, uid, request.args["stock"], request.args.get("hold", ""), names)
+            if correction and correction.get("side"):
+                values = {**values, "ticker": correction["ticker"], "side": correction["side"],
+                          "quantity": str(correction["qty"]), "date": date.today().isoformat(),
+                          "price": "", "fees": "", "note": correction["note"]}
         saved = request.args.get("saved", type=int)
         added = request.args.get("added", "")
         added = {"ticker": added, "name": names[added]} if added in names else None   # only a ticker that's really listed
         if added and request.method == "GET":
             values = {**values, "ticker": added["ticker"]}      # pick the stock that was just added
-        return render_template("trades.html", trades=rows, trades_ex=explain_trades(rows), values=values,
+        return render_template("trades.html", trades_ex=explain_trades(rows), values=values,
                                tickers=_tickers(conn), problems=problems,
                                saved=saved, deleted=request.args.get("deleted") == "1",
                                prices_later=request.args.get("prices") == "later",
@@ -426,7 +494,24 @@ def create_app(db_path=None):
                                plan_added=request.args.get("plan_added", type=int),
                                plan_stopped=request.args.get("plan_stopped") == "1",
                                plan_deleted=request.args.get("plan_deleted") == "1",
-                               this_month=date.today().strftime("%Y-%m"))
+                               this_month=date.today().strftime("%Y-%m"),
+                               existing_problems=existing_problems, existing_values=existing_values or {},
+                               existing_saved=request.args.get("existing") == "1",
+                               note_flash=request.args.get("note", ""), correction=correction,
+                               **_stock_filter(rows, names))
+
+    def _correction(conn, uid, ticker, typed, names):
+        """What "my broker says I hold N" means for one stock: {"ticker", "name", "have", "hold", "side", "qty",
+        "note"} (side None when they already match), or {"problem"} for a number that isn't one."""
+        typed = typed.replace(",", "").strip()[:12]
+        if not typed.isdigit() or int(typed) > trades.MAX_SHARES:
+            return {"ticker": ticker, "name": names[ticker], "problem": "Type how many shares your broker shows, like 210."}
+        df = positions(conn, uid)
+        have = int(df.loc[df["ticker"] == ticker, "shares"].sum()) if df is not None and not df.empty else 0
+        hold, diff = int(typed), int(typed) - have
+        side = None if diff == 0 else ("BUY" if diff > 0 else "SELL")
+        return {"ticker": ticker, "name": names[ticker], "have": have, "hold": hold, "side": side, "qty": abs(diff),
+                "note": f"Correction: my broker shows {hold:,} shares" if side else ""}
 
     # ---------- Accounts ----------
 
@@ -629,10 +714,14 @@ def create_app(db_path=None):
         g.waiting_for_close = bool(waiting) and len(waiting) == len(s["missing_prices"])
         g.no_price = bool(s["missing_prices"]) and not g.waiting_for_close      # then they read "no price yet"
         no_price = {tk: names.get(tk, tk) for tk in s["missing_prices"] if tk not in waiting}
+        approx = sorted({names.get(t["ticker"], t["ticker"]) for t in db.get_trades(conn, uid)
+                         if t["approx"] and t["ticker"] in {h["ticker"] for h in holdings}})
         return render_template(
             "dashboard.html",
             mode=mode,
             s=s,
+            approx=approx,
+            note_flash=request.args.get("note", ""),
             waiting=waiting,
             no_price=no_price,
             vs=vs,
@@ -741,6 +830,15 @@ def _why_notes(conn, uid, holdings):
         p = prices.get(tk)
         entry["now"] = p if p is not None and p == p else None          # NaN (no price saved) -> None
     return out
+
+
+def _stock_filter(rows, names):
+    """"See this stock's trades" (holdings Change): ?stock=D05.SI shows only that stock's rows. Only a ticker
+    that's really listed is used, so the address can't put anything else on the page."""
+    stock = request.args.get("stock", "")
+    if stock not in names:
+        return {"only": None, "trades": rows}
+    return {"only": {"ticker": stock, "name": names[stock]}, "trades": [r for r in rows if r["ticker"] == stock]}
 
 
 def _on_cost(y, positions_df):

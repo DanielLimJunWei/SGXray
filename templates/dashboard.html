@@ -24,10 +24,41 @@
       {% for n in w.notes %}
       <p class="why-meta">{{ n.trade_date|longdate }} · {{ "bought" if n.side == "BUY" else "sold" }} {{ "{:,}".format(n.quantity) }} at {{ "$%.3f"|format(n.price) }}</p>
       <blockquote class="why-note">{{ n.note }}</blockquote>
+      {% if mode == "own" %}{{ note_edit(n, url_for('trade_note', trade_id=n.id), "portfolio") }}
+      {% elif mode == "practice" %}{{ note_edit(n, url_for('practice_note', trade_id=n.id), "portfolio") }}{% endif %}
       {% endfor %}
       {% if not w.held %}<p class="why-now">You don't hold it any more. Did it turn out the way your note expected?</p>
       {% elif w.now is none %}<p class="why-now">Price now: {{ term("no-price", "no price yet") }}. Does your reason still hold?</p>
       {% else %}<p class="why-now">Price now: {{ "$%.2f"|format(w.now) }}. Does your reason still hold?</p>{% endif %}
+    </div>
+    {{ pop_resize() }}
+  </div>
+{% endmacro %}
+{#- Holdings "Change": every number comes from dated trades, so a holding is changed through them: see and fix
+    this stock's trades, correct the share count with a prefilled difference trade, or edit "Why I bought". -#}
+{% macro change_box(r) %}
+  {% set rid = "change-" ~ r.ticker|replace(".", "-") %}
+  {% set list_url = url_for('trades_page' if mode == "own" else 'practice_trades', stock=r.ticker) ~ "#list-title" %}
+  <div class="pop change-pop" id="{{ rid }}-change" popover="manual" role="dialog" aria-label="Change {{ r.name }}">
+    {{ pop_head(rid, "Change " ~ r.ticker, "change") }}
+    <div class="pop-body">
+      <ol class="change-options">
+        <li><a href="{{ list_url }}">See or fix this stock's {{ "practice " if mode == "practice" }}trades</a>
+          <span class="muted">{% if mode == "practice" %}Undo a slip until the next close, or edit a note.{% else %}Change a date, price or number of shares, or delete a trade. Every number here comes from them.{% endif %}</span></li>
+        {% if mode == "own" %}
+        <li>
+          <form method="get" action="{{ url_for('trades_page') }}#fix-title" class="change-count">
+            <input type="hidden" name="stock" value="{{ r.ticker }}">
+            <label for="{{ rid }}-hold">Correct the number of shares <span class="muted">SGXray counts {{ "{:,}".format(r.shares|int) }} from your trades. What does your broker show?</span></label>
+            <span class="lookup-row"><input id="{{ rid }}-hold" name="hold" type="text" inputmode="numeric" autocomplete="off" value="{{ r.shares|int }}"><button class="btn btn-ghost compact" type="submit">Fill in the difference</button></span>
+          </form>
+        </li>
+        {% endif %}
+        <li>{% set w = why.get(r.ticker) %}
+          {% if w %}<button class="link-btn" type="button" popovertarget="{{ w.id }}-notes">Edit "Why I bought"</button>
+          {% else %}<a href="{{ list_url }}">Add "Why I bought"</a>{% endif %}
+          <span class="muted">Your reason in a line, to reread when the price moves.</span></li>
+      </ol>
     </div>
     {{ pop_resize() }}
   </div>
@@ -51,6 +82,9 @@
     {% endif %}
     {% if s and mode == "own" %}<p><a class="btn btn-well" href="{{ url_for('trades_page') }}">Add or change trades</a></p>{% endif %}
     {% if mode == "practice" %}<p><a class="btn btn-well" href="{{ url_for('practice_trades') }}">Make a practice trade</a></p>{% endif %}
+    {% if note_flash == "saved" %}<p class="form-ok" role="status">Note saved.</p>
+    {% elif note_flash == "cleared" %}<p class="form-ok" role="status">Note removed.</p>
+    {% elif note_flash == "long" %}<p class="form-error" role="alert">That note is longer than 280 characters, so it wasn't saved. Shorten it a little and save again.</p>{% endif %}
   </header>
 
   {% if not s %}
@@ -245,7 +279,8 @@
               {#- No saved prices yet, so no chart: the same link opens the reason instead of doing nothing. -#}
               <button class="link-btn" type="button" popovertarget="term-no-chart" data-term="no-chart">Price chart</button>
               {%- endif -%}
-              {{- why_link(why.get(r.ticker)) -}}</td>
+              {{- why_link(why.get(r.ticker)) -}}
+              {%- if mode in ("own", "practice") -%}<button class="link-btn" type="button" popovertarget="change-{{ r.ticker|replace('.', '-') }}-change">Change</button>{%- endif -%}</td>
             <td>{{ "{:,}".format(r.shares|int) }}</td>
             <td>{{ r.avg_cost|num(".3f") }}</td>
             <td data-roll="{{ r.price|rawnum }}">{% if r.ticker in waiting %}<span class="sub">{{ term("after-close", "after today's close") }}</span>{% else %}{{ r.price|num(".2f") }}{% endif %}</td>
@@ -279,7 +314,9 @@
     </details>
     {% endif %}
 
+    {% if approx %}<p class="muted approx-note">{{ term("approx", "Approximate") }}: {{ approx|join(", ") }} {{ "was" if approx|length == 1 else "were" }} added as {{ "a stock" if approx|length == 1 else "stocks" }} you already own, with an average cost and a rough date. Worth and profit are right; returns, yearly rates and the STI comparison are estimates until you add the real trades.</p>{% endif %}
     {% for w in why.values() %}{{ why_box(w) }}{% endfor %}
+    {% if mode in ("own", "practice") %}{% for r in holdings %}{{ change_box(r) }}{% endfor %}{% endif %}
 
     {% for c in stock_charts %}
     <section class="stock-chart" id="{{ c.id }}" aria-labelledby="{{ c.id }}-title" hidden>

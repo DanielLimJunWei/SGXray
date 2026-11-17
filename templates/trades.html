@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% from "_trade_form.html" import trade_form, problems_box with context %}
 {% from "_explain.html" import explain_buttons %}
+{% from "_notes.html" import note_edit with context %}
+{% from "_term.html" import term, term_popups %}
 {% block title %}Your trades · SGXray{% endblock %}
 
 {% block content %}
@@ -16,6 +18,20 @@
   {% if prices_tonight %}<p class="form-note" role="status">That trade is dated today. Its first closing price comes after SGX closes, at about 5:45pm, so your portfolio's worth shows as waiting until then.</p>{% endif %}
   {% if deleted %}<p class="form-ok" role="status">Trade deleted.</p>{% endif %}
   {% if added %}<p class="form-ok" role="status">{{ added.name }} ({{ added.ticker }}) is in the list now, and picked below. Fill in the rest of the trade.</p>{% endif %}
+  {% if existing_saved %}<p class="form-ok" role="status">Added as a stock you already own. Its returns and the STI comparison are {{ term("approx", "approximate") }} until you add the real trades from your contract notes; then delete this one.</p>{% endif %}
+  {% if note_flash == "saved" %}<p class="form-ok" role="status">Note saved.</p>
+  {% elif note_flash == "cleared" %}<p class="form-ok" role="status">Note removed.</p>
+  {% elif note_flash == "long" %}<p class="form-error" role="alert">That note is longer than 280 characters, so it wasn't saved. Shorten it a little and save again.</p>{% endif %}
+
+  {% if correction %}
+  <section class="panel correction" aria-labelledby="fix-title" role="status">
+    <h2 id="fix-title">Correct the number of {{ correction.name }} shares</h2>
+    {% if correction.problem %}<p class="form-error">{{ correction.problem }}</p>
+    {% elif not correction.side %}<p>SGXray already counts {{ "{:,}".format(correction.have) }} shares, the same as your broker. Nothing to correct.</p>
+    {% else %}<p>SGXray counts {{ "{:,}".format(correction.have) }} shares from your trades; your broker shows {{ "{:,}".format(correction.hold) }}. So {{ "a buy" if correction.side == "BUY" else "a sale" }} of {{ "{:,}".format(correction.qty) }} is missing, and the form below is filled in with it.</p>
+    <p class="muted">Add the date and price from that contract note (it's in your broker's app or email). If you can't find it, the date you think and today's price are close enough, and you can change it later. Every number on your portfolio needs a date and a price, which is why SGXray doesn't just change the count.</p>{% endif %}
+  </section>
+  {% endif %}
 
   <section class="panel trade-add" aria-labelledby="add-title">
     <h2 id="add-title">Add a trade</h2>
@@ -33,6 +49,33 @@
           <button class="btn btn-ghost" type="submit">Look it up</button>
         </div>
         {% if lookup_error %}<p class="form-error" role="alert">{{ lookup_error }}</p>{% endif %}
+      </form>
+    </details>
+
+    {#- For beginners without their old contract notes: one approximate buy at the average cost. -#}
+    <details class="lookup" id="existing"{% if existing_problems %} open{% endif %}>
+      <summary>Add a stock I already own</summary>
+      <p class="muted">No contract notes for an old buy? Type what your broker's app shows: how many shares, your average cost, and roughly when you bought. SGXray saves it as one buy at that price in the middle of that month. Your worth and profit will be right; returns, yearly rates and the STI comparison are {{ term("approx", "approximate") }} until you add the real trades.</p>
+      {{ problems_box(existing_problems) }}
+      {% set ev = existing_values %}
+      <form method="post" action="{{ url_for('add_existing') }}#existing" class="trade-form" novalidate>
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <div class="field field-stock">
+          <label for="ex-ticker">Stock, REIT or ETF</label>
+          <select id="ex-ticker" name="ticker" required>
+            <option value="" {% if not ev.get("ticker") %}selected{% endif %} disabled>Choose one</option>
+            {% for group, label in [("stock", "Stocks"), ("reit", "REITs"), ("etf", "ETFs")] %}
+            <optgroup label="{{ label }}">
+              {% for t in tickers if t.type == group %}<option value="{{ t.ticker }}" {% if ev.get("ticker") == t.ticker %}selected{% endif %}>{{ t.name }} ({{ t.ticker }})</option>{% endfor %}
+            </optgroup>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field"><label for="ex-qty">Shares you hold</label><input id="ex-qty" name="quantity" type="text" inputmode="numeric" autocomplete="off" value="{{ ev.get('quantity', '') }}" placeholder="100" required></div>
+        <div class="field"><label for="ex-cost">Average cost (S$ a share) <span class="optional">from your broker's app</span></label><input id="ex-cost" name="avg_cost" type="text" inputmode="decimal" autocomplete="off" value="{{ ev.get('avg_cost', '') }}" placeholder="35.20" required></div>
+        <div class="field"><label for="ex-month">Roughly when you bought</label><input id="ex-month" name="month" type="month" value="{{ ev.get('month', '') }}" max="{{ this_month }}" min="1990-01" required></div>
+        <div class="field field-note"><label for="ex-note">Why I bought <span class="optional">optional · press Tab for an example</span></label><input id="ex-note" name="note" type="text" maxlength="280" autocomplete="off" value="{{ ev.get('note', '') }}" data-note-suggest></div>
+        <div class="trade-actions"><button class="btn btn-primary" type="submit">Add stock</button></div>
       </form>
     </details>
   </section>
@@ -88,7 +131,8 @@
   </section>
 
   <section class="block" aria-labelledby="list-title">
-    <div class="section-head"><h2 id="list-title">{{ trades|length }} trade{{ "s" if trades|length != 1 }}</h2>{{ explain_buttons(trades_ex, "trades", "Your trades") }}</div>
+    <div class="section-head"><h2 id="list-title">{{ trades|length }} trade{{ "s" if trades|length != 1 }}{% if only %} in {{ only.name }}{% endif %}</h2>{{ explain_buttons(trades_ex, "trades", "Your trades") }}</div>
+    {% if only %}<p class="filter-note">Showing only {{ only.name }} ({{ only.ticker }}). <a href="{{ url_for('trades_page') }}#list-title">Show every trade</a></p>{% endif %}
     {% if trades %}
     <div class="panel table-wrap">
       <table class="data trades-table">
@@ -101,10 +145,10 @@
           {% set amount = t.quantity * t.price %}
           <tr{% if saved == t.id %} class="just-saved"{% endif %}>
             <td>{{ t.trade_date|shortdate }}</td>
-            <td><b>{{ t.ticker }}</b><span class="name">{{ t.name }}</span>{% if t.note %}<q class="trade-note">{{ t.note }}</q>{% endif %}</td>
+            <td><b>{{ t.ticker }}</b><span class="name">{{ t.name }}</span>{% if t.approx %}<span class="sub">{{ term("approx", "approximate: average cost, rough date") }}</span>{% endif %}{% if t.note %}<q class="trade-note">{{ t.note }}</q>{% endif %}{{ note_edit(t, url_for('trade_note', trade_id=t.id), "trades") }}</td>
             <td><span class="side side-{{ t.side|lower }}">{{ "Bought" if t.side == "BUY" else "Sold" }}</span></td>
             <td>{{ "{:,}".format(t.quantity) }}</td>
-            <td>{{ t.price|num(".3f") }}</td>
+            <td>{{ t.price|num(".3f") }}{% if t.close_that_day %}<span class="sub price-warn">{{ term("price-check", "check this price") }}: SGX closed at {{ ("$%.2f" if t.close_that_day >= 1 else "$%.3f")|format(t.close_that_day) }} that day</span>{% endif %}</td>
             <td>{{ t.fees|money }}</td>
             <td>{{ (amount + t.fees if t.side == "BUY" else amount - t.fees)|money }}<span class="sub">{{ "paid" if t.side == "BUY" else "received" }}</span></td>
             <td class="row-actions">
@@ -116,11 +160,15 @@
         </tbody>
       </table>
     </div>
+    {% elif only %}
+    <p class="muted">No trades in {{ only.name }}. <a href="{{ url_for('trades_page') }}#list-title">Show every trade</a></p>
     {% else %}
     <p class="muted">No trades yet. Add your first one above, and your portfolio fills in from it.</p>
     {% endif %}
   </section>
 </div>
+{{ term_popups() }}
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/lookup.js') }}" defer></script>
+{% block scripts %}<script src="{{ url_for('static', filename='js/popups.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/lookup.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/notes.js') }}" defer></script>{% endblock %}
