@@ -260,6 +260,15 @@ def count_login_attempts(conn, key, minutes):
     ).fetchone()[0]
 
 
+def login_attempt_times(conn, key, hours=24):
+    """The times (UTC datetimes, oldest first) of a key's failed logins in the last `hours` hours."""
+    from datetime import datetime
+    rows = conn.execute(
+        "SELECT attempted_at FROM login_attempts WHERE key = ? AND attempted_at >= strftime('%Y-%m-%dT%H:%M:%S', 'now', ?) "
+        "ORDER BY attempted_at, id", (key, f"-{int(hours)} hours")).fetchall()
+    return [datetime.fromisoformat(r[0]) for r in rows]
+
+
 def clear_login_attempts(conn, key):
     with conn:
         conn.execute("DELETE FROM login_attempts WHERE key = ?", (key,))

@@ -886,3 +886,38 @@ a.chip:hover { border-color: var(--color-glow-soft); }
   font: 400 var(--text-xs) var(--font-mono); color: var(--color-text-muted); }
 .news-pager button:disabled { opacity: 0.4; cursor: default; }
 .news-list > li[hidden] { display: none; }
+
+/* ---------- Log-in lock: tries, a countdown, and the lightbox's bulb bursting ----------
+   Too many wrong passwords and the form pauses. On the try that locks it, the light flashes, flickers and dies,
+   and a few specks of glass fall from where the bulb was: faint, over about a second and a half. It stays dark
+   until the countdown ends, then flickers back on (static/js/lightbox.js). "Reduce motion": just dark, then lit. */
+.auth-fields { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: var(--space-2); }
+.auth-fields:disabled { opacity: 0.45; }
+.auth-fields:disabled .btn { cursor: not-allowed; }
+.tries-left { display: block; margin-top: var(--space-1); color: var(--color-text-muted); }
+.tries-note { margin: 0; font-size: var(--text-xs); color: var(--color-text-faint); }
+.lock-timer { font-family: var(--font-mono); font-weight: 500; color: var(--color-text); }
+.lock-note.unlocked { color: var(--color-up); border-color: rgba(123, 196, 160, 0.35); background: rgba(123, 196, 160, 0.08); }
+.lightbox.off .film-image, .lightbox.burst .film-image { opacity: 0.35; }
+.lightbox.burst::before { animation: bulb-burst 1500ms ease-out forwards; }
+.lightbox.relight::before { animation: bulb-relight 1100ms ease-out; }
+.bulb-glass { position: absolute; left: 50%; top: 14%; width: 2px; height: 2px; border-radius: 50%; pointer-events: none; opacity: 0;
+  box-shadow: -14px 0 0 rgba(206, 226, 255, 0.7), 9px 3px 0 rgba(206, 226, 255, 0.55), -4px 6px 0 rgba(227, 163, 94, 0.6),
+              17px -2px 0 rgba(206, 226, 255, 0.45), -22px 5px 0 rgba(206, 226, 255, 0.4); }
+.bulb-glass::after { content: ""; position: absolute; left: -20px; top: -14px; width: 40px; height: 28px; border-radius: 50%;
+  background: radial-gradient(rgba(227, 163, 94, 0.55), transparent 70%); opacity: 0; }   /* the filament, cooling */
+.lightbox.burst .bulb-glass { animation: glass-fall 1500ms ease-in forwards; }
+.lightbox.burst .bulb-glass::after { animation: filament 1500ms ease-out forwards; }
+@keyframes bulb-burst {
+  0% { opacity: 1; filter: brightness(1); } 6% { opacity: 1; filter: brightness(2.3); } 12% { opacity: 0.12; filter: brightness(1); }
+  18% { opacity: 0.6; } 24% { opacity: 0.06; } 31% { opacity: 0.35; } 40%, 100% { opacity: 0.04; }
+}
+@keyframes bulb-relight {
+  0% { opacity: 0.04; } 18% { opacity: 0.55; } 26% { opacity: 0.1; } 44% { opacity: 0.85; } 54% { opacity: 0.35; } 100% { opacity: 1; }
+}
+@keyframes glass-fall { 0% { opacity: 0; transform: translateY(0); } 8% { opacity: 1; } 100% { opacity: 0; transform: translateY(26px); } }
+@keyframes filament { 0% { opacity: 0; } 8% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .lightbox.burst::before { animation: none; opacity: 0.04; }
+  .lightbox.relight::before, .lightbox.burst .bulb-glass, .lightbox.burst .bulb-glass::after { animation: none; }
+}

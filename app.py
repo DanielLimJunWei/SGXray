@@ -557,22 +557,37 @@ def create_app(db_path=None):
         if g.get("user"):
             return redirect(url_for("portfolio"))
         next_url = auth.safe_next(request.values.get("next"))
+        conn, ip = get_db(), request.remote_addr
         if request.method == "GET":
-            return render_template("login.html", next=next_url, reset_done=session.pop("password_reset", False))
+            # Reopening the page while locked still shows the timer: this browser's own session remembers which
+            # email it locked (nobody else's browser has it), and the network address counts too.
+            locked_email = session.get("lock_email")
+            state = auth.login_state(conn, locked_email, ip)
+            if not state["until"]:
+                session.pop("lock_email", None)
+            return render_template("login.html", next=next_url, reset_done=session.pop("password_reset", False),
+                                   lock=_lock(state, fresh=False), tries=auth.MAX_ATTEMPTS,
+                                   email=locked_email if state["until"] else None)
         email = request.form.get("email", "").strip().lower()[:254]
         password = request.form.get("password", "")[:auth.MAX_LENGTH]
-        conn, ip = get_db(), request.remote_addr
-        if auth.too_many_attempts(conn, email, ip):
+        state = auth.login_state(conn, email, ip)
+        if state["until"]:
+            session["lock_email"] = email
             db.log_security_event(conn, "login_blocked", None, ip)
-            return render_template("login.html", email=email, next=next_url,
-                                   error=f"Too many tries. Wait {auth.WINDOW_MINUTES} minutes, then try again."), 429
+            return render_template("login.html", email=email, next=next_url, lock=_lock(state, fresh=False),
+                                   tries=auth.MAX_ATTEMPTS), 429
         user = auth.check_login(conn, email, password)
         if user is None:
             auth.record_failure(conn, email, ip)
             db.log_security_event(conn, "login_failed", None, ip)
-            # The same words whether the email exists or the password is wrong.
-            return render_template("login.html", email=email, next=next_url,
-                                   error="That email and password don't match."), 401
+            state = auth.login_state(conn, email, ip)
+            if state["until"]:
+                session["lock_email"] = email
+            # The same words whether the email exists or the password is wrong: tries are counted for any email
+            # typed, so "2 tries left" says nothing about whether it has an account.
+            return render_template("login.html", email=email, next=next_url, error="That email and password don't match.",
+                                   lock=_lock(state, fresh=True), left=state["left"], next_minutes=state["next_minutes"],
+                                   tries=auth.MAX_ATTEMPTS), (429 if state["until"] else 401)
         db.clear_login_attempts(conn, "email:" + email)
         db.log_security_event(conn, "login", user["id"], ip)
         _start_session(user)
@@ -1056,6 +1071,23 @@ def _reset_email(link):
             f"{link}\n\n"
             f"If it wasn't you, ignore this email: your password stays the same.\n\n"
             f"SGXray")
+
+
+def _lesson_spot():
+    """?lesson=<slug> on the demo (or Trades, for the fees lesson): what to highlight, from lessons.SPOTS only, so
+    the address can't put anything else on the page. Nothing for any other page or an unknown lesson."""
+    slug = request.args.get("lesson")
+    if not slug or request.endpoint not in ("demo", "trades_page"):
+        return {"lesson_spot": None}
+    return {"lesson_spot": lessons.spot(get_db(), slug, request.endpoint, logged_in=bool(g.get("user")))}
+
+
+def _lock(state, fresh):
+    """What the log-in page needs to show a lock: seconds left (for its countdown) and whole minutes, or None.
+    fresh: this very try started the lock, so the lightbox's bulb bursts (reopening the page just shows it dark)."""
+    if not state["until"]:
+        return None
+    return {"seconds": state["seconds"], "minutes": -(-state["seconds"] // 60), "fresh": fresh}
 
 
 def _sgt_now():

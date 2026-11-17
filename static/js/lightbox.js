@@ -58,6 +58,28 @@
     field.addEventListener("input", show);
     show();
   });
+  // Too many wrong passwords: count down to when logging in opens again. At 0:00 the form comes back, the
+  // note says so, and the lightbox's light flickers back on. The server still decides: trying early is refused.
+  const lockNote = document.querySelector("[data-lock-seconds]");
+  if (lockNote) {
+    const timer = lockNote.querySelector("[data-lock-timer]");
+    const fields = document.querySelector("[data-login-fields]");
+    const end = Date.now() + parseInt(lockNote.dataset.lockSeconds, 10) * 1000;
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+      timer.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+      if (left > 0) return;
+      clearInterval(every);
+      if (fields) fields.disabled = false;
+      lockNote.textContent = "You can try again now.";
+      lockNote.classList.add("unlocked");
+      lockNote.setAttribute("role", "status");
+      box.classList.remove("off", "burst");
+      box.classList.add("relight");                    // (no focus jump: the password box would dim it again)
+    };
+    const every = setInterval(tick, 1000);
+    tick();
+  }
   const form = document.querySelector("[data-login-form]");
   if (!form) return;
   let sending = false;

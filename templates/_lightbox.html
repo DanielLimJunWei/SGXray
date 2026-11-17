@@ -28,8 +28,10 @@
 {#- chart=False leaves out the portfolio line (the self-check's "Diagnosis" film has no portfolio to show);
     wide=True makes the film wider for a list instead of a small form. -#}
 {#- switch=True: either clip turns the lightbox's light off and on (static/js/lightbox.js). -#}
-{% macro lightbox(patient, scan, patient_from=None, chart=True, wide=False, switch=False) %}
-<div class="lightbox{{ ' lightbox-wide' if wide }}" data-lightbox>
+{#- state: "" (lit), "off" (dark) or "burst" (the bulb blows: log-in locked by too many tries, just now). -#}
+{% macro lightbox(patient, scan, patient_from=None, chart=True, wide=False, switch=False, state="") %}
+<div class="lightbox{{ ' lightbox-wide' if wide }}{{ (' ' ~ state) if state }}" data-lightbox>
+  <span class="bulb-glass" aria-hidden="true"></span>
   <span class="screw screw-tl" aria-hidden="true"></span><span class="screw screw-tr" aria-hidden="true"></span>
   <span class="screw screw-bl" aria-hidden="true"></span><span class="screw screw-br" aria-hidden="true"></span>
   <div class="film">

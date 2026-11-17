@@ -87,11 +87,18 @@ def test_password_guessing_is_locked_out(app):
     c = app.test_client()
     signup(c)
     c.post("/logout", data={"csrf": csrf(c, "/portfolio")})
-    for _ in range(auth.MAX_ATTEMPTS):
-        assert login(c, password="wrong password guess").status_code == 401
+    for left in range(auth.MAX_ATTEMPTS - 1, 0, -1):                 # 4, 3, 2, 1 tries left
+        r = login(c, password="wrong password guess")
+        page = r.get_data(as_text=True)
+        assert r.status_code == 401 and f"{left} {'try' if left == 1 else 'tries'} left, then a 15-minute wait" in page
+    last = login(c, password="wrong password guess")                  # the 5th: logging in pauses straight away
+    assert last.status_code == 429 and "logging in is paused" in last.get_data(as_text=True)
+    assert 'class="lightbox burst"' in last.get_data(as_text=True)      # the bulb bursts on that try
     # Even the RIGHT password is refused while locked out, so guessing gains nothing.
     blocked = login(c)
-    assert blocked.status_code == 429 and "Too many tries" in blocked.get_data(as_text=True)
+    page = blocked.get_data(as_text=True)
+    assert blocked.status_code == 429 and "Too many tries" in page and "data-lock-seconds" in page
+    assert 'class="lightbox off"' in page and "disabled" in page        # dark, form paused, no new burst
 
 
 def test_the_demo_account_cannot_be_logged_into(app, db_path):
@@ -364,3 +371,64 @@ def test_the_joined_date_is_the_singapore_date():
     from app import _singapore_day
     assert _singapore_day("2026-11-10 17:30:00") == "2026-11-11"      # 1:30am in Singapore
     assert _singapore_day("2026-11-10 09:00:00") == "2026-11-10"
+
+
+# ---------- Login lock: 5 tries, then waits that grow (15, 30, 60 minutes), shown with a countdown ----------
+
+from datetime import datetime, timedelta  # noqa: E402
+
+T0 = datetime(2026, 11, 17, 10, 0)
+
+
+def at(minutes):
+    return T0 + timedelta(minutes=minutes)
+
+
+def test_five_tries_within_15_minutes_lock_for_15():
+    s = auth.lock_state([at(i) for i in range(5)], 5, at(5))
+    assert s["until"] == at(4 + 15) and s["left"] == 0 and s["next_minutes"] == 30
+    assert auth.lock_state([at(i) for i in range(5)], 5, at(20))["until"] is None      # over: open again
+
+
+def test_each_lock_in_a_day_lasts_longer_up_to_an_hour():
+    rounds = [[at(base + i) for i in range(5)] for base in (0, 20, 60, 130)]
+    times = []
+    for n, (r, wait) in enumerate(zip(rounds, (15, 30, 60, 60))):
+        times += r
+        assert auth.lock_state(times, 5, r[-1] + timedelta(seconds=1))["until"] == r[-1] + timedelta(minutes=wait), n
+
+
+def test_slow_mistakes_never_lock():
+    assert auth.lock_state([at(m) for m in (0, 20, 40, 60, 80)], 5, at(81))["until"] is None
+
+
+def test_a_network_gets_more_tries_than_one_email():
+    assert auth.IP_MAX_ATTEMPTS > auth.MAX_ATTEMPTS == 5
+
+
+def test_the_lock_shows_on_the_page_even_after_reopening_it(app):
+    c = app.test_client()
+    for _ in range(auth.MAX_ATTEMPTS):
+        login(c, email="someone@example.com", password="wrong password guess")
+    page = c.get("/login").get_data(as_text=True)                       # same network address, page reopened
+    assert "data-lock-seconds" in page and 'class="lightbox off"' in page
+
+
+def test_another_email_on_the_same_network_isnt_locked_by_one_persons_mistakes(app):
+    c = app.test_client()
+    for _ in range(auth.MAX_ATTEMPTS):
+        login(c, email="someone@example.com", password="wrong password guess")
+    other = login(c, email="someone-else@example.com", password="wrong password guess")
+    assert other.status_code == 401                                     # only 5 of the network's 20 used
+
+
+def test_a_successful_login_clears_the_emails_count(app, db_path):
+    c = app.test_client()
+    signup(c)
+    c.post("/logout", data={"csrf": csrf(c, "/portfolio")})
+    for _ in range(auth.MAX_ATTEMPTS - 1):
+        login(c, password="wrong password guess")
+    assert login(c).status_code == 302
+    c.post("/logout", data={"csrf": csrf(c, "/portfolio")})
+    assert "4 tries left" in login(c, password="wrong password guess").get_data(as_text=True)
+
