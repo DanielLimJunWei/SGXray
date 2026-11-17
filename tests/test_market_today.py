@@ -223,6 +223,19 @@ def test_a_short_history_gives_a_point_for_every_trading_day(app, db_path):
 
 # ---------- 17 Nov follow-ups: types explained, one "Learn", news in pages ----------
 
+def test_each_holding_type_opens_its_meaning(app):
+    c = signed_up(app)
+    add(c)                                                                            # DBS: a company's shares
+    add(c, ticker="ES3.SI", price="3.50")                                             # an ETF
+    page = c.get("/portfolio").get_data(as_text=True)
+    assert 'popovertarget="term-share"' in page and 'popovertarget="term-etf"' in page
+
+
+def test_the_home_bar_says_learn_once():
+    import re
+    from pathlib import Path
+    home = Path(__file__).resolve().parent.parent / "templates" / "home.html"
+    assert len(re.findall(r">Learn</a>", home.read_text(encoding="utf-8"))) == 0      # the page jump is "Before you invest"
 
 
 def test_portfolio_news_comes_in_pages_of_5(app, db_path):

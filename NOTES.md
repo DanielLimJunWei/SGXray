@@ -461,3 +461,44 @@ A portfolio with nothing in it (yours, practice, or the demo before it's loaded)
 - **Sections menu** (`static/js/jump.js`): a "Sections" button bottom-right lists the page's sections and Back to top; a quick smooth scroll (0.35-0.7s, eased in and out, the same up or down), instant with reduce motion, stopped by the person scrolling, lands under the top bar. Lists only sections that exist and are showing (Simple view hides some).
 - **Simple / Detailed** has a line under the switch saying what each shows.
 - **Account page** lightbox has the same two-clip light switch as the self-check (not the login).
+
+## Market today, story cards, editing and chart fixes (17 Nov 2026, his requests)
+- **Charts never go blank.** The X-ray chart and every price chart now rest on the LATEST day: its numbers fill the
+  readout above the chart and a dot sits on the last point. Pointing shows another day; moving away goes back to
+  the latest. Under about 3 months of history (`DAILY_UNDER_DAYS` in app.py) the X-ray chart draws a point for every
+  trading day: with one month end it used to be a single dot that only appeared under the cursor (his bug report).
+- **Price chart fixes:** date labels were all "Nov 26" (month + 2-digit year, which also reads like 26 November); now
+  "11 Nov" for a few months of prices and "Nov 2026" for longer, never repeated. Price levels are on a nice step with
+  the same decimals ($43 / $4.53 mixed before). The "S$ a share" title no longer sits on the top label. One price = a dot.
+- **Market today (/news, nav "News"):** src/news.py keeps only headlines that matter to a Singapore investor (an SGX
+  company in the headline, Singapore's market or economy in the headline, or a scam warning), plus the publisher's
+  one-line standfirst from the feed. src/stories.py builds the story cards: each company's day move (latest close vs
+  the one before, `news.day_move`), whether you own it (shares and % of your portfolio, plus practice), topics linked
+  to lessons (`news.TOPICS`, the list he agreed), and the link to the full story. Sections: About your stocks, Other
+  companies in the news ("you don't own this"), Singapore's market and economy; plus "Most in the news" (plain counts,
+  last 24 hours) and topic counts. The same story from two papers shows once ("The Straits Times and The Business Times").
+- **Matching:** headline only (a name in the standfirst is often in passing: "DBS lowers target price for Prime US REIT"
+  is DBS's analysts, not DBS). Longer names win ("Keppel REIT" isn't also Keppel Ltd). "STI" tags only ES3. 22 big SGX
+  names in `NEWS_COMPANIES`; one named in a kept headline joins the stock list, and the daily updater downloads prices
+  for anything named in the last week (`news.recent_tickers`), so its move shows. `news.retag` re-matches old headlines
+  each run, so a corrected name list applies to them too.
+- **No AI summaries (his choice, 17 Nov):** the card shows the publisher's own summary, credited. Sources checked and NOT
+  added: MAS (no RSS; terms forbid republishing without written permission), TODAY (feed didn't answer), SGX (no public feed).
+- **Edit note in place** (`_notes.html`): "Edit note" / "Add a note" on every trades row (real and practice) and inside
+  the Why-you-bought box. POST /trades/<id>/note and /practice/trades/<id>/note change only the note.
+- **Practice undo** (`practice.undoable`): until that stock's next close is saved; then "locked" (no hindsight). A buy a
+  later practice sale needs can't be undone first.
+- **Holdings "Change"** (own and practice, not the demo): see this stock's trades (/trades?stock=), correct the share count
+  (/trades?stock=&hold= prefills a buy or sale of the difference: SGXray never just changes the count, because every
+  number needs a date and price), edit or add "Why I bought".
+- **Add a stock I already own** (/trades/existing): one buy at the average cost, fees 0, dated the 15th of the chosen month
+  (or the latest weekday before it), `trades.approx = 1`. Pages call it approximate until the real trades are added.
+- **Check this price:** a trade more than 25% from SGX's close that day says "check this price" (still saved). His own
+  test trades are flagged: DBS at $35 (close $70.97), SIA at $40 (close $7.17), Singtel at $35 (close $4.14).
+
+- **Follow-ups the same day:** each type row under "Where your money is" (Shares in companies, REITs, ETFs) now opens its
+  meaning; the home top bar's page jump is "Before you invest" (it said "Learn" next to the real Learn link); portfolio
+  news comes 5 to a page (static/js/news-pages.js, up to 40 headlines; without the script all show). Duplicate check now
+  keeps numbers, so "STI up 0.6%" and "STI up 1.1%" on different days stay two stories.
+- **Phone top bar (settled):** at 720px and under, every link (Account included) is in the "Menu" panel (w307), so
+  nothing is hidden any more.

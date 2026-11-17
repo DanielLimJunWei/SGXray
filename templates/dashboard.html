@@ -387,7 +387,7 @@
           <thead><tr><th scope="col">{{ term("holding-type", word) if word == "Type" else term("sector", word) }}</th><th scope="col">{{ term("worth", "Worth") }}</th><th scope="col">{{ term("weight", "Share") }}</th></tr></thead>
           <tbody>
             {% for g in rows %}
-            <tr><td><span class="key-swatch {{ ('split-' ~ g.kind) if word == 'Type' else ('sec-' ~ (loop.index0 % 6)) }}" aria-hidden="true"></span>{{ g.label }}</td><td>{{ g.value|money }}</td><td>{{ "%.0f%%"|format(g.share * 100) }}</td></tr>
+            <tr><td><span class="key-swatch {{ ('split-' ~ g.kind) if word == 'Type' else ('sec-' ~ (loop.index0 % 6)) }}" aria-hidden="true"></span>{% if word == "Type" %}{{ term({"stock": "share", "reit": "reit", "etf": "etf"}.get(g.kind, "holding-type"), g.label) }}{% else %}{{ g.label }}{% endif %}</td><td>{{ g.value|money }}</td><td>{{ "%.0f%%"|format(g.share * 100) }}</td></tr>
             {% endfor %}
           </tbody>
         </table>
