@@ -891,7 +891,7 @@ a.chip:hover { border-color: var(--color-glow-soft); }
 
 /* ---------- Log-in lock: tries, a countdown, and the lightbox's bulb bursting ----------
    Too many wrong passwords and the form pauses. On the try that locks it, the light flashes, flickers and dies,
-   and a few specks of glass fall from where the bulb was: faint, over about a second and a half. It stays dark
+   and sparks fly from the two clips at the top: faint, over about a second and a half. It stays dark
    until the countdown ends, then flickers back on (static/js/lightbox.js). "Reduce motion": just dark, then lit. */
 .auth-fields { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: var(--space-2); }
 .auth-fields:disabled { opacity: 0.45; }
@@ -903,34 +903,36 @@ a.chip:hover { border-color: var(--color-glow-soft); }
 .lightbox.off .film-image, .lightbox.burst .film-image { opacity: 0.35; }
 .lightbox.burst::before { animation: bulb-burst 2100ms ease-out forwards; }
 .lightbox.relight::before { animation: bulb-relight 1100ms ease-out; }
-.bulb-glass { position: absolute; z-index: 2; left: 50%; top: 14%; width: 3px; height: 3px; border-radius: 50%; pointer-events: none; opacity: 0;
-  box-shadow: -18px 0 0 rgba(226, 238, 255, 0.95), 11px 4px 0 rgba(226, 238, 255, 0.85), -5px 8px 0 rgba(227, 163, 94, 0.9),
-              22px -3px 0 rgba(226, 238, 255, 0.75), -28px 6px 0 rgba(226, 238, 255, 0.7), 4px -6px 0 rgba(226, 238, 255, 0.8),
-              30px 9px 0 rgba(227, 163, 94, 0.7), -12px 14px 0 rgba(226, 238, 255, 0.6); }
-.bulb-glass::before { content: ""; position: absolute; left: -90px; top: -40px; width: 180px; height: 90px; border-radius: 50%;
-  background: radial-gradient(rgba(255, 255, 255, 0.85), rgba(206, 226, 255, 0.35) 35%, transparent 70%); opacity: 0; }   /* the pop */
-.bulb-glass::after { content: ""; position: absolute; left: -32px; top: -20px; width: 64px; height: 40px; border-radius: 50%;
-  background: radial-gradient(rgba(227, 163, 94, 0.85), transparent 70%); opacity: 0; }   /* the filament, cooling */
-.lightbox.burst .bulb-glass { animation: glass-fall 2100ms ease-in forwards; }
-.lightbox.burst .bulb-glass::before { animation: pop 2100ms ease-out forwards; }
-.lightbox.burst .bulb-glass::after { animation: filament 2100ms ease-out forwards; }
-.lightbox.burst { animation: shake 260ms ease-out 80ms; }                   /* the frame jolts once as it goes */
+/* The sparks come from the two metal clips at the top, where the film meets the light: a flash at each clip, specks
+   that fly out and fall, and one amber ember. (Each clip's ::before is the specks, ::after the flash.) */
+.lightbox.burst .clip::before, .lightbox.burst .clip::after { content: ""; position: absolute; left: 50%; top: 50%;
+  pointer-events: none; opacity: 0; z-index: 3; }
+.lightbox.burst .clip::before { width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px; border-radius: 50%;
+  box-shadow: -10px -6px 0 rgba(226, 238, 255, 0.95), 9px -8px 0 rgba(226, 238, 255, 0.9), -16px 2px 0 rgba(226, 238, 255, 0.8),
+              15px 1px 0 rgba(226, 238, 255, 0.8), -4px -12px 0 rgba(227, 163, 94, 0.95), 5px 6px 0 rgba(226, 238, 255, 0.7),
+              -8px 9px 0 rgba(227, 163, 94, 0.8), 12px 10px 0 rgba(226, 238, 255, 0.6);
+  animation: clip-sparks 1600ms ease-out forwards; }
+.lightbox.burst .clip-right::before { animation-delay: 70ms; }            /* the two clips go a split second apart */
+.lightbox.burst .clip::after { width: 70px; height: 40px; margin: -20px 0 0 -35px; border-radius: 50%;
+  background: radial-gradient(rgba(255, 255, 255, 0.9), rgba(206, 226, 255, 0.4) 35%, transparent 70%);
+  animation: clip-flash 1600ms ease-out forwards; }
+.lightbox.burst .clip-right::after { animation-delay: 70ms; }
+.lightbox.burst { animation: shake 180ms ease-out 60ms; }                   /* the frame twitches once as it goes */
 @keyframes bulb-burst {
   0% { opacity: 1; filter: brightness(1); } 5% { opacity: 1; filter: brightness(3.2); } 10% { opacity: 0.1; filter: brightness(1); }
   15% { opacity: 0.75; } 20% { opacity: 0.05; } 26% { opacity: 0.5; } 31% { opacity: 0.04; } 38% { opacity: 0.22; }
   45%, 100% { opacity: 0.03; }
 }
-@keyframes pop { 0% { opacity: 0; transform: scale(0.4); } 5% { opacity: 1; transform: scale(1); } 22% { opacity: 0; transform: scale(1.4); } 100% { opacity: 0; } }
-@keyframes shake { 25% { transform: translateX(-2px); } 50% { transform: translateX(2px); } 75% { transform: translateX(-1px); } }
+@keyframes shake { 33% { transform: translateX(-1px); } 66% { transform: translateX(1px); } }
+@keyframes clip-sparks { 0% { opacity: 0; transform: scale(0.3) translateY(0); } 6% { opacity: 1; transform: scale(1) translateY(0); }
+  45% { opacity: 0.85; transform: scale(1.6) translateY(6px); } 100% { opacity: 0; transform: scale(1.9) translateY(30px); } }
+@keyframes clip-flash { 0% { opacity: 0; transform: scale(0.4); } 5% { opacity: 1; transform: scale(1); } 25% { opacity: 0; transform: scale(1.3); } 100% { opacity: 0; } }
 @keyframes bulb-relight {
   0% { opacity: 0.04; } 18% { opacity: 0.55; } 26% { opacity: 0.1; } 44% { opacity: 0.85; } 54% { opacity: 0.35; } 100% { opacity: 1; }
 }
-@keyframes glass-fall { 0% { opacity: 0; transform: translateY(0); } 6% { opacity: 1; } 70% { opacity: 0.8; } 100% { opacity: 0; transform: translateY(48px); } }
-@keyframes filament { 0% { opacity: 0; } 6% { opacity: 1; } 40% { opacity: 0.7; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
   .lightbox.burst::before { animation: none; opacity: 0.04; }
-  .lightbox.relight::before, .lightbox.burst .bulb-glass, .lightbox.burst .bulb-glass::before,
-  .lightbox.burst .bulb-glass::after, .lightbox.burst { animation: none; }
+  .lightbox.relight::before, .lightbox.burst .clip::before, .lightbox.burst .clip::after, .lightbox.burst { animation: none; }
 }
 
 /* ---------- "See it in the demo" from a lesson (spotlight.js) ----------
