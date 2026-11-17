@@ -95,7 +95,7 @@ NEWS_ALIASES = {t: aliases for t, _, _, _, aliases in NEWS_COMPANIES}
 SUFFIXES = re.compile(r"\b(limited|ltd|holdings|group|corporation|corp|inc|plc|reit|trust)\b\.?", re.I)
 
 # Investing topics, each linked to the lesson that explains it (agreed 17 Nov 2026). A headline can have
-# several. key: (label shown, pattern, [lesson slugs])
+# several. key: (label shown, pattern, [lesson slugs]). TOPIC_SPOTS: the paragraph in each lesson to land on.
 TOPICS = {
     "results": ("Company results", r"\b(results|earnings|profits?|net income|revenue|quarter|Q[1-4]|half-year|"
                 r"H[12]|full-year|first-half|second-half)\b", ["risk-and-time"]),
@@ -109,6 +109,12 @@ TOPICS = {
     "fees": ("Fees and brokers", r"\b(brokerages?|brokers?|fees?|CDP|trading platforms?|commissions?)\b",
              ["where-shares-live", "fees"]),
     "listings": ("New listings", r"\b(IPOs?|listings?|debuts?|to list|lists on)\b", ["what-you-own"]),
+}
+TOPIC_SPOTS = {
+    ("results", "risk-and-time"): "falls-easier", ("dividends", "dividends"): "qualify",
+    ("rates", "risk-and-time"): "cash", ("market", "stocks-vs-market"): "bar-to-beat",
+    ("reits", "what-you-own"): "reit", ("scams", "scams"): "look-like",
+    ("fees", "where-shares-live"): "two-ways", ("fees", "fees"): "one-trade", ("listings", "what-you-own"): "share",
 }
 # The word-only topics need these exact capitals (Fed, STI, SGX, DPU...): the rest match in any case.
 _CASED = {"Fed", "STI", "SGX", "DPU", "SORA", "CDP", "IPO", "IPOs", "MAS", "Q1", "Q2", "Q3", "Q4", "H1", "H2"}

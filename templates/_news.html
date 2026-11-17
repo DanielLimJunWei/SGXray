@@ -75,7 +75,7 @@
       </ul>
       {% endif %}
       {% if n.topic_list %}
-      <p class="story-topics">{% for t in n.topic_list %}{{ t.label }}: {% for l in t.lessons %}<a href="{{ url_for('lesson', slug=l.slug) }}">lesson {{ l.number }}, {{ l.title }}</a>{{ " and " if not loop.last }}{% endfor %} explains it{{ "; " if not loop.last else "." }} {% endfor %}</p>
+      <p class="story-topics">{% for t in n.topic_list %}{{ t.label }}: {% for l in t.lessons %}<a href="{{ url_for('lesson', slug=l.slug) }}{{ ('#at-' ~ l.at) if l.at }}">lesson {{ l.number }}, {{ l.title }}</a>{{ " and " if not loop.last }}{% endfor %} explains it{{ "; " if not loop.last else "." }} {% endfor %}</p>
       {% endif %}
       {% if n.stocks|selectattr("owned")|list %}
       <p class="story-why">You own {{ "this" if n.stocks|selectattr("owned")|list|length == 1 else "some of these" }}. Before acting on a headline, reread your reason for buying: is it still true?</p>

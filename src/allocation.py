@@ -67,4 +67,29 @@ def split(positions_df, instruments):
                             f"industry's bad news would hit most of your portfolio at once. Spreading across "
                             f"sectors (or an index fund) softens that.")
     return {"by_type": by_type, "by_sector": by_sector, "total": total, "missing": missing,
-            "warnings": warnings, "top": top}
+            "warnings": warnings, "top": top, "good": _good(rows, by_type, by_sector, companies, total, warnings)}
+
+
+def _good(rows, by_type, by_sector, companies, total, warnings):
+    """"Going well": what's healthy about how the money is spread, in plain words and personal to these holdings.
+    Only facts and why they help, never "buy" or "a good investment"; nothing when there's a warning about it."""
+    good = []
+    sectors = [g for g in by_sector if g["kind"] != INDEX_SECTOR]
+    biggest = max((r["value"] / total for r in companies), default=0)
+    if not warnings and len(rows) >= 3 and (len(sectors) >= 3 or any(r["kind"] == "etf" for r in rows)):
+        good.append(f"Your money is spread over {len(rows)} holdings"
+                    + (f" in {len(sectors)} industries" if len(sectors) >= 2 else "")
+                    + (f", and no single company is more than {biggest:.0%} of it" if companies else "")
+                    + ". That's what spreading out looks like: one company's bad year, or one industry's, moves only "
+                      "a small part of your money instead of most of it.")
+    if len(by_type) >= 2:
+        words = {"stock": "company shares", "reit": "REITs", "etf": "ETFs"}
+        kinds = [words.get(g["kind"], g["label"]) for g in by_type]
+        names = " and ".join([", ".join(kinds[:-1]), kinds[-1]])
+        good.append(f"You own more than one kind of thing ({names}). They earn their money in different ways, "
+                    f"so they don't all tend to fall for the same reason at the same time.")
+    etf = sum(r["value"] for r in rows if r["kind"] == "etf") / total
+    if etf >= 0.2:
+        good.append(f"{etf:.0%} of your money is in an index fund, which holds many companies in one buy: that part "
+                    f"is spread out on its own, whatever else you pick.")
+    return good

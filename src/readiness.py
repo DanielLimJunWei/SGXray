@@ -96,6 +96,10 @@ QUESTIONS = [
 
 BY_KEY = {q.key: q for q in QUESTIONS}
 
+# Where in its lesson each question's link should land (the paragraph that explains it).
+LESSON_SPOTS = {"fund": "cushion", "debt": "debt", "when": "time", "goal": "time", "fall": "falls-easier",
+                "costs": "small-trades", "scam": "check"}
+
 # With income that goes up and down (freelance, commission, gig work), MoneySense suggests 12 months, not 3 to 6.
 IRREGULAR_GOOD = frozenset({"over12"})
 IRREGULAR_NO = ("Your income goes up and down, so MoneySense suggests about 12 months of expenses in cash "
@@ -127,7 +131,7 @@ def check(answers):
         label = dict(q.options).get(a, "")
         rows.append({"key": q.key, "title": q.title, "state": state, "answer": label,
                      "why": (yes if state == "in place" else no) if state != "skipped" else "Not answered.",
-                     "lesson": q.lesson,
+                     "lesson": q.lesson, "at": LESSON_SPOTS.get(q.key, ""),
                      "lesson_title": q.lesson_title, "outside": q.outside})
     return {"rows": rows, "in_place": sum(r["state"] == "in place" for r in rows),
             "skipped": sum(r["state"] == "skipped" for r in rows), "total": len(rows)}

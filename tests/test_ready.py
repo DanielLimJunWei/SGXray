@@ -39,7 +39,7 @@ def test_gaps_say_usually_sorted_first_and_link_their_lesson(app):
     page = r.get_data(as_text=True)
     assert "6 of 8 in place" in text(r)
     assert page.count("Usually sorted first") == 2
-    assert 'href="/learn/first-dollar"' in page and 'href="/learn/scams"' in page
+    assert 'href="/learn/first-dollar#at-debt"' in page and 'href="/learn/scams#at-check"' in page   # the paragraph
 
 
 def test_skipped_questions_are_counted_and_say_so(app):
@@ -129,3 +129,14 @@ def test_the_diagnosis_film_has_a_light_switch_and_the_form_page_doesnt(app):
     assert "js/lightbox.js" in page
     login = c.get("/login").get_data(as_text=True)
     assert "data-light-switch" not in login                                   # not on the login page
+
+
+def test_every_self_check_spot_names_a_real_paragraph():
+    import re
+    from pathlib import Path as P
+    import readiness
+    for key, spot in readiness.LESSON_SPOTS.items():
+        q = readiness.BY_KEY[key]
+        page = (P(__file__).resolve().parent.parent / "templates" / "learn" / f"{q.lesson}.html").read_text(encoding="utf-8")
+        assert re.search(rf'id="{spot}"', page), (q.lesson, spot)
+

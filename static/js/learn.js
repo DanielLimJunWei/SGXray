@@ -2,6 +2,20 @@
 // lessons to the account. Logged out, they're remembered in this browser only (localStorage), so
 // "3 of 8 read" still works without an account. Nothing here is sent anywhere.
 (function () {
+  // A link from elsewhere ("Why spreading out helps", a news topic, the self-check) ends in #at-<id>: glide down
+  // to that paragraph and let it glow for a moment, so the eye lands on the right sentence. (No element is called
+  // "at-...", so the browser itself doesn't jump: the glide is ours. Without this script the lesson opens at the top.)
+  const at = location.hash.startsWith("#at-") ? document.getElementById(location.hash.slice(4)) : null;
+  if (at) {
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setTimeout(() => {
+      const top = at.getBoundingClientRect().top + scrollY - 120;
+      scrollTo({ top: Math.max(0, top), behavior: reduce ? "auto" : "smooth" });
+      at.classList.add("read-here");
+      setTimeout(() => at.classList.remove("read-here"), 4200);
+    }, reduce ? 0 : 350);
+  }
+
   const KEY = "sgxray-lessons-read";
   const load = () => {
     try { return new Set(JSON.parse(localStorage.getItem(KEY) || "[]")); } catch (e) { return new Set(); }

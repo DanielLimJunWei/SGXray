@@ -67,6 +67,45 @@ def test_the_demo_style_portfolio_shows_the_section_with_its_warnings(app):
     assert 'id="alloc-title">Where your money is' in page
     assert "DBS Group Holdings is 100% of what you hold" in page
     assert "The banks sector is 100% of what you hold" in page
-    assert 'href="/learn/risk-and-time">Why spreading out helps' in page
+    assert 'href="/learn/risk-and-time#at-spread-out">Why spreading out helps' in page
     from test_page_rules import check_page_rules
     check_page_rules(page)
+
+
+# ---------- Going well: the opposite of Watch out ----------
+
+def test_a_spread_out_portfolio_gets_going_well_notes():
+    import allocation as A
+    import pandas as pd
+    df = pd.DataFrame([{"ticker": t, "shares": 100, "value": v} for t, v in
+                       [("D05.SI", 2000.0), ("Z74.SI", 2000.0), ("C38U.SI", 2000.0), ("ES3.SI", 3000.0)]])
+    info = {"D05.SI": {"type": "stock", "sector": "Banks", "name": "DBS"},
+            "Z74.SI": {"type": "stock", "sector": "Telecoms", "name": "Singtel"},
+            "C38U.SI": {"type": "reit", "sector": "Retail and office", "name": "CICT"},
+            "ES3.SI": {"type": "etf", "sector": "Singapore market (STI)", "name": "STI ETF"}}
+    a = A.split(df, info)
+    assert not a["warnings"] and len(a["good"]) == 3
+    assert "spread over 4 holdings in 3 industries" in a["good"][0] and "no single company is more than 22%" in a["good"][0]
+    assert "more than one kind of thing" in a["good"][1] and "33% of your money is in an index fund" in a["good"][2]
+
+
+def test_a_concentrated_portfolio_gets_no_spread_praise():
+    import allocation as A
+    import pandas as pd
+    df = pd.DataFrame([{"ticker": "D05.SI", "shares": 100, "value": 9000.0}, {"ticker": "Z74.SI", "shares": 10, "value": 500.0},
+                       {"ticker": "O39.SI", "shares": 10, "value": 500.0}])
+    info = {"D05.SI": {"type": "stock", "sector": "Banks"}, "Z74.SI": {"type": "stock", "sector": "Telecoms"},
+            "O39.SI": {"type": "stock", "sector": "Banks"}}
+    a = A.split(df, info)
+    assert a["warnings"] and not any("spread over" in g for g in a["good"])
+
+
+def test_going_well_shows_as_its_own_box_and_the_link_goes_to_the_paragraph(app):
+    c = signed_up(app)
+    add(c)                                                                            # DBS: a company
+    add(c, ticker="ES3.SI", price="3.50", quantity="1000")                           # and an index fund
+    page = c.get("/portfolio").get_data(as_text=True)
+    assert 'popovertarget="alloc-good"' in page and "✓ Going well" in page and "more than one kind of thing" in page
+    from pathlib import Path as P
+    dash = (P(__file__).resolve().parent.parent / "templates" / "dashboard.html").read_text(encoding="utf-8")
+    assert "url_for('lesson', slug='risk-and-time') }}#at-spread-out" in dash

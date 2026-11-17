@@ -1,4 +1,4 @@
-"""Plain-English explanations of SGXray's numbers: the "What does this mean?" box.
+"""Plain-English explanations of SGXray's numbers: the "What does this mean?" box (and Watch out, and Going well).
 
 These are written by code from the numbers themselves, not by AI, so they're free, instant
 and can never disagree with the table. (The AI box is only for "why did the price move?",
@@ -48,7 +48,7 @@ def fee_summary(rows):
 
 
 def _fee_words(f):
-    """The fee line and, if they're high, the Watch out lines, from fee_summary."""
+    """The fee line and, if they're high, the Watch out lines, from fee_summary. (Low fees: see _fee_good.)"""
     line = (f"Fees so far: {money(f['fees'])} on {money(f['bought'])} of buys, {f['pct']:.2%}. Every trade pays "
             f"them, so they quietly come off your profit.")
     watch = []
@@ -60,6 +60,18 @@ def _fee_words(f):
         watch.append(f"Your {w['ticker']} buy on {_short_day(w['day'])} paid {money(w['fees'])} in fees on "
                      f"{money(w['amount'])}: {w['pct']:.1%} gone before the price moved at all.")
     return line, watch
+
+
+FEES_LOW = 0.0025            # fees under 0.25% of everything bought, with no costly small buy: "Going well"
+
+
+def _fee_good(f):
+    """A "Going well" line when fees are a small share of what you bought, and no single buy paid a lot."""
+    if f["pct"] <= FEES_LOW and not f["worst"]:
+        return [f"Your fees are {f['pct']:.2%} of everything you've bought ({money(f['fees'])} on "
+                f"{money(f['bought'])}). That's low: your trades are big enough that the broker's minimum fee "
+                f"barely matters, so almost all of your money is invested, not spent on getting in."]
+    return []
 
 
 def _short_day(iso):
@@ -75,6 +87,7 @@ ONE_STOCK_SHARE = 0.5       # one stock giving over half the expected income get
 class Explanation:
     lines: list = field(default_factory=list)       # what it means
     watch_out: list = field(default_factory=list)   # traps and warning signs
+    good: list = field(default_factory=list)        # "Going well": the opposite of Watch out, personal to you
 
     @property
     def text(self):
@@ -520,10 +533,12 @@ def explain_total_return(conn, user_id):
            f"dividends = {up_down(s['total_profit'])}."]
     watch = []
     f = fee_summary([dict(t) for t in db.get_trades(conn, user_id)])
+    good = []
     if f:
         line, fee_watch = _fee_words(f)
         out.append(line)
         watch.extend(fee_watch)
+        good.extend(_fee_good(f))
     if r["pct"] == r["pct"]:
         out.append(f"The line under it is your simple total return: that profit divided by all the money you've put "
                    f"in ({money(r['put_in'])} of buys, fees included) = {r['pct']:+.1%}, over {_span(r['days'])}.")
@@ -531,7 +546,7 @@ def explain_total_return(conn, user_id):
                      f"per year. For a fair comparison with the market, see 'You vs the STI'.")
         if s["unrealised"] > 0.5 * s["total_profit"] > 0:
             watch.append("Most of this profit is unrealised: it's only real once you sell, and a market drop can shrink it.")
-    return Explanation(out, watch)
+    return Explanation(out, watch, good)
 
 
 def explain_periods(rows):
@@ -906,7 +921,7 @@ def explain_allocation(a):
         one = len(a["missing"]) == 1
         out.append(f"Not counted yet: {', '.join(a['missing'])}, which {'has' if one else 'have'} no closing price "
                    f"saved. {'It is' if one else 'They are'} added after the next price update.")
-    return Explanation(out, list(a["warnings"]))
+    return Explanation(out, list(a["warnings"]), list(a.get("good", [])))
 
 
 def explain_risk(r):

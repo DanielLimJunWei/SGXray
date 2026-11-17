@@ -375,6 +375,8 @@ code { font: 0.92em/1.5 var(--font-mono); color: var(--color-glow-soft); }
 .icon-btn:hover { color: var(--color-text); border-color: var(--color-glow-soft); }
 .icon-btn.warn { color: var(--color-lamp); border-color: rgba(227, 163, 94, 0.45); }
 .icon-btn.warn:hover { border-color: var(--color-lamp); }
+.icon-btn.good { color: var(--color-up); border-color: rgba(123, 196, 160, 0.45); }   /* Going well: Watch out's opposite */
+.icon-btn.good:hover { border-color: var(--color-up); }
 
 /* Explainer boxes: stay open beside the chart, no dimming, movable by the title bar (popups.js). */
 .pop { width: min(30rem, calc(100vw - 2 * var(--space-3))); max-height: min(70vh, 34rem); margin: auto; padding: 0;
@@ -390,6 +392,8 @@ code { font: 0.92em/1.5 var(--font-mono); color: var(--color-glow-soft); }
 .pop-head.dragging { cursor: grabbing; }
 .pop-head h3 { font-size: var(--text-base); margin: 0 auto 0 0; }
 .pop.warn .pop-head h3 { color: var(--color-lamp); }
+.pop.good .pop-head h3 { color: var(--color-up); }
+.pop-note { margin: var(--space-3) 0 0; font-size: var(--text-xs); color: var(--color-text-faint); }
 .grip { width: 1.75rem; height: 1.75rem; display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--radius-sm);
   background: none; color: var(--color-text-faint); font-size: var(--text-base); cursor: inherit; }
 .grip:hover, .grip:focus-visible { color: var(--color-text); }
@@ -971,3 +975,15 @@ svg.spot-line #xray-top { animation: spot-line 2.4s ease-in-out 3; }
 .sc-story { stroke: var(--color-lamp); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0.7; }
 .sc-dot { fill: var(--color-lamp); }
 .sc-story-label { font: 500 10px var(--font-mono); fill: var(--color-lamp); }
+
+/* A link straight to one paragraph of a lesson (learn.js, #at-<id>): it glows softly for a few seconds. */
+.read-here { border-radius: var(--radius-sm); animation: read-here 4.2s ease-out; }
+@keyframes read-here {
+  0%, 55% { background: rgba(156, 196, 255, 0.10); box-shadow: 0 0 0 6px rgba(156, 196, 255, 0.10); }
+  100% { background: transparent; box-shadow: 0 0 0 6px transparent; }
+}
+@media (prefers-reduced-motion: reduce) { .read-here { animation: none; background: rgba(156, 196, 255, 0.10); } }
+.story-chart[hidden] { display: none; }
+.story-chart-tools { margin-left: auto; display: inline-flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.story-chart-show { justify-self: start; font-size: var(--text-xs); }
+.story-chart-show[hidden] { display: none; }

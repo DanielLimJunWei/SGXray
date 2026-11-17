@@ -25,7 +25,7 @@
         <div>
           <b>{{ r.title }}</b>{% if r.answer %} <span class="ready-answer">· you said: {{ r.answer|lower }}</span>{% endif %}
           <p>{{ r.why }}{% if r.state != "in place" %}
-            {% if r.lesson %} <a href="{{ url_for('lesson', slug=r.lesson) }}">Read "{{ r.lesson_title }}"</a>{% endif %}
+            {% if r.lesson %} <a href="{{ url_for('lesson', slug=r.lesson) }}{{ ('#at-' ~ r.at) if r.at }}">Read "{{ r.lesson_title }}"</a>{% endif %}
             {% if r.outside %} <a href="{{ r.outside }}" rel="noopener">MoneySense: basic financial planning</a>{% endif %}
           {% endif %}</p>
         </div>

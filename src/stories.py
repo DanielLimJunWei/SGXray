@@ -40,8 +40,8 @@ def holdings(conn, user_id):
 def _topic(key):
     label, _, slugs = news.TOPICS[key]
     return {"key": key, "label": label,
-            "lessons": [{"slug": s, "number": lessons.BY_SLUG[s].number, "title": lessons.BY_SLUG[s].title}
-                        for s in slugs]}
+            "lessons": [{"slug": s, "number": lessons.BY_SLUG[s].number, "title": lessons.BY_SLUG[s].title,
+                         "at": news.TOPIC_SPOTS.get((key, s), "")} for s in slugs]}
 
 
 THUMB_DAYS = 22                 # about a month of trading days in each row's little chart

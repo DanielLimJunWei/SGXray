@@ -747,8 +747,8 @@ def create_app(db_path=None):
                 ["There's nothing to compare with yet: no STI ETF prices are saved. Run the price update."]),
             divs_ex=explain_dividends_received(conn, uid),
             holdings=holdings,
-            holdings_ex=explain_holdings(conn, uid),
-            why=_why_notes(conn, uid, holdings),
+            holdings_ex=_notes_good(explain_holdings(conn, uid), why := _why_notes(conn, uid, holdings), holdings),
+            why=why,
             alloc=(alloc := allocation.split(df, {r["ticker"]: dict(r) for r in db.get_instruments(conn)})),
             alloc_ex=explain_allocation(alloc),
             risk_view=(risk_view := risk.risk(conn, uid, h) if h is not None else None),
@@ -850,6 +850,16 @@ def _stock_filter(rows, names):
     if stock not in names:
         return {"only": None, "trades": rows}
     return {"only": {"ticker": stock, "name": names[stock]}, "trades": [r for r in rows if r["ticker"] == stock]}
+
+
+def _notes_good(ex, why, holdings):
+    """Holdings' "Going well": a "why I bought" note for every stock you hold (the habit that stops panic selling)."""
+    held = [h["ticker"] for h in holdings]
+    if len(held) >= 2 and all(tk in why for tk in held):
+        ex.good.append(f"You've written down why you bought every one of your {len(held)} stocks. When a price "
+                       f"drops, rereading your own reason is the best check on whether to hold or sell, and it "
+                       f"stops a scary week from making the decision for you.")
+    return ex
 
 
 def _on_cost(y, positions_df):

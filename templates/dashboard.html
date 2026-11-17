@@ -391,7 +391,7 @@
       </div>
       {% endfor %}
     </div>
-    {% if alloc.warnings %}<p class="alloc-note">⚠ {{ alloc.warnings|length }} thing{{ "s" if alloc.warnings|length != 1 }} to look at in "Watch out" above. <a href="{{ url_for('lesson', slug='risk-and-time') }}">Why spreading out helps</a></p>{% endif %}
+    {% if alloc.warnings %}<p class="alloc-note">⚠ {{ alloc.warnings|length }} thing{{ "s" if alloc.warnings|length != 1 }} to look at in "Watch out" above. <a href="{{ url_for('lesson', slug='risk-and-time') }}#at-spread-out">Why spreading out helps</a></p>{% endif %}
     {% else %}
     <p class="muted">None of what you hold has a closing price saved yet, so it can't be split up. It appears after the next price update.</p>
     {% endif %}

@@ -1,4 +1,4 @@
-// "What does this mean?" and "Watch out" boxes you can keep open beside a chart and move around.
+// "What does this mean?", "Watch out" and "Going well" boxes you can keep open beside a chart and move around.
 // - They open right beside the button you clicked (below it, or above if there's no room), and stay
 //   open until Close or Esc. (They used to open in the bottom corner; looking there each time got tiring.)
 // - Drag them by the title bar, or focus the ⠿ handle and use the arrow keys (Shift = bigger steps).
