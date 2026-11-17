@@ -901,27 +901,36 @@ a.chip:hover { border-color: var(--color-glow-soft); }
 .lock-timer { font-family: var(--font-mono); font-weight: 500; color: var(--color-text); }
 .lock-note.unlocked { color: var(--color-up); border-color: rgba(123, 196, 160, 0.35); background: rgba(123, 196, 160, 0.08); }
 .lightbox.off .film-image, .lightbox.burst .film-image { opacity: 0.35; }
-.lightbox.burst::before { animation: bulb-burst 1500ms ease-out forwards; }
+.lightbox.burst::before { animation: bulb-burst 2100ms ease-out forwards; }
 .lightbox.relight::before { animation: bulb-relight 1100ms ease-out; }
-.bulb-glass { position: absolute; left: 50%; top: 14%; width: 2px; height: 2px; border-radius: 50%; pointer-events: none; opacity: 0;
-  box-shadow: -14px 0 0 rgba(206, 226, 255, 0.7), 9px 3px 0 rgba(206, 226, 255, 0.55), -4px 6px 0 rgba(227, 163, 94, 0.6),
-              17px -2px 0 rgba(206, 226, 255, 0.45), -22px 5px 0 rgba(206, 226, 255, 0.4); }
-.bulb-glass::after { content: ""; position: absolute; left: -20px; top: -14px; width: 40px; height: 28px; border-radius: 50%;
-  background: radial-gradient(rgba(227, 163, 94, 0.55), transparent 70%); opacity: 0; }   /* the filament, cooling */
-.lightbox.burst .bulb-glass { animation: glass-fall 1500ms ease-in forwards; }
-.lightbox.burst .bulb-glass::after { animation: filament 1500ms ease-out forwards; }
+.bulb-glass { position: absolute; z-index: 2; left: 50%; top: 14%; width: 3px; height: 3px; border-radius: 50%; pointer-events: none; opacity: 0;
+  box-shadow: -18px 0 0 rgba(226, 238, 255, 0.95), 11px 4px 0 rgba(226, 238, 255, 0.85), -5px 8px 0 rgba(227, 163, 94, 0.9),
+              22px -3px 0 rgba(226, 238, 255, 0.75), -28px 6px 0 rgba(226, 238, 255, 0.7), 4px -6px 0 rgba(226, 238, 255, 0.8),
+              30px 9px 0 rgba(227, 163, 94, 0.7), -12px 14px 0 rgba(226, 238, 255, 0.6); }
+.bulb-glass::before { content: ""; position: absolute; left: -90px; top: -40px; width: 180px; height: 90px; border-radius: 50%;
+  background: radial-gradient(rgba(255, 255, 255, 0.85), rgba(206, 226, 255, 0.35) 35%, transparent 70%); opacity: 0; }   /* the pop */
+.bulb-glass::after { content: ""; position: absolute; left: -32px; top: -20px; width: 64px; height: 40px; border-radius: 50%;
+  background: radial-gradient(rgba(227, 163, 94, 0.85), transparent 70%); opacity: 0; }   /* the filament, cooling */
+.lightbox.burst .bulb-glass { animation: glass-fall 2100ms ease-in forwards; }
+.lightbox.burst .bulb-glass::before { animation: pop 2100ms ease-out forwards; }
+.lightbox.burst .bulb-glass::after { animation: filament 2100ms ease-out forwards; }
+.lightbox.burst { animation: shake 260ms ease-out 80ms; }                   /* the frame jolts once as it goes */
 @keyframes bulb-burst {
-  0% { opacity: 1; filter: brightness(1); } 6% { opacity: 1; filter: brightness(2.3); } 12% { opacity: 0.12; filter: brightness(1); }
-  18% { opacity: 0.6; } 24% { opacity: 0.06; } 31% { opacity: 0.35; } 40%, 100% { opacity: 0.04; }
+  0% { opacity: 1; filter: brightness(1); } 5% { opacity: 1; filter: brightness(3.2); } 10% { opacity: 0.1; filter: brightness(1); }
+  15% { opacity: 0.75; } 20% { opacity: 0.05; } 26% { opacity: 0.5; } 31% { opacity: 0.04; } 38% { opacity: 0.22; }
+  45%, 100% { opacity: 0.03; }
 }
+@keyframes pop { 0% { opacity: 0; transform: scale(0.4); } 5% { opacity: 1; transform: scale(1); } 22% { opacity: 0; transform: scale(1.4); } 100% { opacity: 0; } }
+@keyframes shake { 25% { transform: translateX(-2px); } 50% { transform: translateX(2px); } 75% { transform: translateX(-1px); } }
 @keyframes bulb-relight {
   0% { opacity: 0.04; } 18% { opacity: 0.55; } 26% { opacity: 0.1; } 44% { opacity: 0.85; } 54% { opacity: 0.35; } 100% { opacity: 1; }
 }
-@keyframes glass-fall { 0% { opacity: 0; transform: translateY(0); } 8% { opacity: 1; } 100% { opacity: 0; transform: translateY(26px); } }
-@keyframes filament { 0% { opacity: 0; } 8% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes glass-fall { 0% { opacity: 0; transform: translateY(0); } 6% { opacity: 1; } 70% { opacity: 0.8; } 100% { opacity: 0; transform: translateY(48px); } }
+@keyframes filament { 0% { opacity: 0; } 6% { opacity: 1; } 40% { opacity: 0.7; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
   .lightbox.burst::before { animation: none; opacity: 0.04; }
-  .lightbox.relight::before, .lightbox.burst .bulb-glass, .lightbox.burst .bulb-glass::after { animation: none; }
+  .lightbox.relight::before, .lightbox.burst .bulb-glass, .lightbox.burst .bulb-glass::before,
+  .lightbox.burst .bulb-glass::after, .lightbox.burst { animation: none; }
 }
 
 /* ---------- "See it in the demo" from a lesson (spotlight.js) ----------

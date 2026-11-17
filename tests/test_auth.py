@@ -432,3 +432,8 @@ def test_a_successful_login_clears_the_emails_count(app, db_path):
     c.post("/logout", data={"csrf": csrf(c, "/portfolio")})
     assert "4 tries left" in login(c, password="wrong password guess").get_data(as_text=True)
 
+
+def test_the_login_film_stays_unidentified_while_typing(app):
+    page = app.test_client().get("/login").get_data(as_text=True)
+    assert "data-patient-from" not in page and "Patient: <span>unidentified</span>" in page
+

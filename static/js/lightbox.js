@@ -49,15 +49,8 @@
       });
     });
   });
-  // On the log-in film the patient is "unidentified" until you start typing your email, when the
-  // label quietly fills in with it, like a name being written on the film. Empty again: unidentified.
-  document.querySelectorAll("[data-patient-from]").forEach(label => {
-    const field = document.getElementById(label.dataset.patientFrom);
-    if (!field) return;
-    const show = () => { label.textContent = field.value.trim() || label.dataset.unknown; };
-    field.addEventListener("input", show);
-    show();
-  });
+  // The patient stays "unidentified" while you type: the film only gets your name once you've logged in
+  // (the account pages show it then).
   // Too many wrong passwords: count down to when logging in opens again. At 0:00 the form comes back, the
   // note says so, and the lightbox's light flickers back on. The server still decides: trying early is refused.
   const lockNote = document.querySelector("[data-lock-seconds]");

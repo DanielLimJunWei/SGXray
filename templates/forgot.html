@@ -3,7 +3,7 @@
 {% block title %}Forgot your password · SGXray{% endblock %}
 {% block content %}
 <div class="page wrap lightbox-page">
-  {% call lightbox("unidentified", "Records request", patient_from="email") %}
+  {% call lightbox("unidentified", "Records request") %}
     {% if sent %}
     <h1>Check your email</h1>
     <p class="film-lede">If an account uses {{ email }}, we've sent it a link to choose a new password. The link works for {{ minutes }} minutes, once. Nothing there? Check your spam folder, or ask again in a few minutes.</p>

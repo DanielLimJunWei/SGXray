@@ -3,7 +3,7 @@
 {% block title %}Log in · SGXray{% endblock %}
 {% block content %}
 <div class="page wrap lightbox-page">
-  {% call lightbox("unidentified", "Check-up due", patient_from="email", state=("burst" if lock and lock.fresh else ("off" if lock else ""))) %}
+  {% call lightbox("unidentified", "Check-up due", state=("burst" if lock and lock.fresh else ("off" if lock else ""))) %}
     <h1>Log in to see your own</h1>
     <p class="film-lede">This is the demo portfolio. Log in to X-ray yours.</p>
     {% if reset_done %}<p class="form-ok" role="status">Password reset. Every device has been logged out, so log in with your new password.</p>{% endif %}
