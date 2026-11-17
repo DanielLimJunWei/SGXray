@@ -6,6 +6,7 @@
   that explains the topic, and the link to the full story. Built by src/stories.py.
 #}
 {% from "_term.html" import term %}
+{% from "_explain.html" import explain_buttons %}
 
 {% macro move_short(m) -%}
   {%- if m and m.pct is not none -%}<span class="move {{ m.way }}">{{ {"up": "▲ ", "down": "▼ "}.get(m.way, "") }}{{ "%.1f%%"|format((m.pct * 100)|abs) }}</span>{%- endif -%}
@@ -51,11 +52,13 @@
       {#- The stock's last three months, drawn when the card opens, with a quick x-ray scan (news-chart.js). -#}
       <figure class="story-chart" data-story-chart>
         <figcaption class="story-chart-head"><b>{{ n.chart.code }}</b> {{ n.chart.name }} · last 3 months
-          <button class="icon-btn compact" type="button" data-chart-motion hidden>Animation: on</button></figcaption>
+          <span class="story-chart-tools">{{ explain_buttons(n.chart_ex, "story-" ~ n.id, n.chart.name ~ " chart", compact=True, label="How to read this") }}
+          <button class="icon-btn compact" type="button" data-chart-close aria-label="Close the chart">Close chart</button></span></figcaption>
         <svg viewBox="0 0 640 200" role="img" aria-label="{{ n.chart.name }}'s closing price over the last {{ n.chart.prices|length }} trading days, with the day of this story marked"></svg>
         <p class="story-chart-read" aria-live="polite"></p>
         <script type="application/json">{{ n.chart|tojson }}</script>
       </figure>
+      <button class="link-btn story-chart-show" type="button" data-chart-show hidden>Show the chart</button>
       {% endif %}
       {% if n.summary %}<p class="story-blurb"><span class="story-source">{{ n.summary_source }}:</span> “{{ n.summary }}”</p>{% endif %}
       {% if n.stocks %}

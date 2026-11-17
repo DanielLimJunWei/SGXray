@@ -531,4 +531,19 @@ A portfolio with nothing in it (yours, practice, or the demo before it's loaded)
   (news-chart.js, `stories.closes`), the story's day marked; its x-ray scans DOWN the film while the line develops from
   white to its colour (the portfolio's sweeps left to right). "Animation: on/off" shares the `sgxray-motion` setting.
 - **Home** is in the top bar on every page except the home page itself.
+- **Going well (17 Nov, his idea):** the opposite of Watch out, a green ✓ button beside ⓘ and ⚠ (`Explanation.good`,
+  `_explain.html`). Only facts about YOUR numbers and why they help, never "a good investment": spread over 3+
+  holdings with no warning (allocation `_good`), more than one kind of thing, 20%+ in an index fund, fees under 0.25%
+  with no costly small buy (`_fee_good`), a "why I bought" note on every held stock (`app._notes_good`). Each box ends
+  "not a prediction".
+- **"What does this mean?"** stays everywhere except the news cards' charts, which say "How to read this" (his call,
+  17 Nov: `explain_buttons(..., label=...)`).
+- **Links land on the paragraph:** "#at-<id>" (no element has that id, so the browser doesn't jump; learn.js glides
+  there and the paragraph glows for ~4 s). Used by "Why spreading out helps" (#at-spread-out), news topics
+  (`news.TOPIC_SPOTS`) and the self-check (`readiness.LESSON_SPOTS`); tests check every id exists.
+- **Login film:** the patient stays "unidentified" while typing (also on Forgot password); it shows your email only
+  once you're logged in. The bulb burst is bigger: brighter flash, longer stutter, a white pop, 8 specks, a jolt.
+- **Market today:** no source line under the title; a card's chart has "Close chart" / "Show the chart", its own
+  "How to read this" (and a Watch out: a move on a story's day isn't proof the story caused it), and the x-ray
+  replays every time a card opens (the on/off switch is gone; "reduce motion" still turns it off).
 

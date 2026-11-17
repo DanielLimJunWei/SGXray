@@ -966,7 +966,6 @@ svg.spot-line #xray-top { animation: spot-line 2.4s ease-in-out 3; }
   border: 1px solid var(--color-line); }
 .story-chart-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font-size: var(--text-xs);
   color: var(--color-text-muted); }
-.story-chart-head .icon-btn { margin-left: auto; }
 .story-chart svg { display: block; width: 100%; height: auto; margin-top: var(--space-2); touch-action: pan-y; }
 .story-chart-read { margin: var(--space-1) 0 0; font: 400 var(--text-xs)/1.5 var(--font-mono); color: var(--color-text-muted); }
 .sc-grid { stroke: var(--color-line); stroke-dasharray: 2 4; }

@@ -279,7 +279,8 @@ def test_story_cards_carry_three_months_for_their_chart(app, db_path):
     raw = app.test_client().get("/news").get_data(as_text=True)
     assert "data-story-chart" in raw and "news-chart.js" in raw and '"story_day":' in raw
     assert '"prices": [["2025-01-02", 30.0], ["2025-01-03", 31.0], ["2025-01-06", 33.0]]' in raw
-    assert "data-chart-motion" in raw                                                # the animation switch
+    assert "data-chart-motion" not in raw and "data-chart-close" in raw            # no switch; a close button
+    assert 'popovertarget="story-' in raw and "How to read this" in raw              # and its own explanation
 
 
 def test_market_today_has_no_topics_box_any_more(app, db_path):
@@ -350,3 +351,22 @@ def test_the_feed_comes_10_to_a_page(app, db_path):
     page = app.test_client().get("/news").get_data(as_text=True)
     assert 'id="news-feed" data-per-page="10"' in page and "news-pages.js" in page
     assert page.count("Singapore exports report") == 14                              # all sent: the script pages them
+
+
+def test_market_today_has_no_source_line_and_topics_link_to_the_paragraph(app, db_path):
+    conn = db.get_connection(db_path)
+    news.save(conn, [item("DBS declares a dividend", "https://www.businesstimes.com.sg/1")])
+    conn.close()
+    raw = app.test_client().get("/news").get_data(as_text=True)
+    assert "checked every 3 hours" not in raw and "Singapore business news from CNA" not in raw
+    assert 'href="/learn/dividends#at-qualify"' in raw
+
+
+def test_every_topic_spot_names_a_real_paragraph():
+    import re
+    from pathlib import Path as P
+    for (topic, slug), spot in news.TOPIC_SPOTS.items():
+        assert slug in news.TOPICS[topic][2], (topic, slug)
+        page = (P(__file__).resolve().parent.parent / "templates" / "learn" / f"{slug}.html").read_text(encoding="utf-8")
+        assert re.search(rf'id="{spot}"', page), (slug, spot)
+

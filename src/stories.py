@@ -94,6 +94,23 @@ def closes(conn, ticker, days=CHART_DAYS):
     return [[r["price_date"], round(r["close"], 4)] for r in reversed(rows)]
 
 
+def _chart_ex(c):
+    """The card chart's "How to read this" (and its one Watch out)."""
+    from explain import Explanation
+    p = c["prices"]
+    first, last = p[0][1], p[-1][1]
+    change = last / first - 1 if first else 0
+    return Explanation(
+        [f"The line is {c['name']}'s closing price on each trading day for about the last three months ({len(p)} "
+         f"days), from SGXray's own saved prices.",
+         f"It went from ${first:,.2f} to ${last:,.2f}: {change:+.1%}. The line is green when it ended higher than it "
+         f"started, red when lower.",
+         "The amber dot and dashed line mark the day this story came out, so you can see what the price was doing "
+         "before and after it. Point at the chart (or tap it) for any day's price."],
+        ["A price moving on the day of a story doesn't mean the story moved it: the whole market may have moved, "
+         "or other news came out the same day. And one story is rarely a reason to buy or sell."])
+
+
 def build(conn, items, owned, practice=None, now=None):
     """Adds what a story card needs to each headline: "stocks" and "topic_list". owned: holdings() of the
     portfolio being looked at; practice: the same for the practice portfolio, or None."""
@@ -125,6 +142,7 @@ def build(conn, items, owned, practice=None, now=None):
         # The card's bigger chart (static/js/news-chart.js): three months, with the story's own day marked.
         it["chart"] = ({"code": pick.removesuffix(".SI"), "name": names.get(pick, pick), "prices": charts[pick],
                         "story_day": it["published"][:10]} if pick and it["thumb"] else None)
+        it["chart_ex"] = _chart_ex(it["chart"]) if it["chart"] else None
     return items
 
 

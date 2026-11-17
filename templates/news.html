@@ -5,6 +5,7 @@
 #}
 {% extends "base.html" %}
 {% from "_term.html" import term, term_popups %}
+{% from "_explain.html" import explain_buttons %}
 {% from "_news.html" import story, move_short with context %}
 {% block title %}Market today · SGXray{% endblock %}
 
@@ -12,7 +13,6 @@
 <div class="page wrap market-today">
   <header class="page-head market-top">
     <h1>Market today</h1>
-    <p class="as-of">Singapore business news from CNA, The Business Times, The Straits Times and The Edge Singapore · checked every 3 hours{% if checked %}, last at {{ checked[11:16]|clock }} on {{ checked[:10]|shortdate }}{% else %} · {{ term("not-yet", "not checked yet") }}: the first check runs soon after the app starts{% endif %}</p>
     <nav class="news-tabs" aria-label="Which stories">
       {% for key, label in tabs %}
       <a href="{{ url_for('market_today', show=key) if key != 'all' else url_for('market_today') }}"{% if key == show %} aria-current="page"{% endif %}>{{ label }} <span class="tab-count">{{ counts[key] }}</span></a>
