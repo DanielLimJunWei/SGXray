@@ -28,7 +28,7 @@
 {% if sums and sums.last_buy and sums.last_buy != sums.first_day %}
 <p>It also didn't go in all at once: {{ sums.buys }} buys between {{ sums.first_day|longdate }} and {{ sums.last_buy|longdate }}, so no single day's price decided everything.</p>
 {% endif %}
-<a class="demo-link" href="{{ url_for('demo') }}#xray-title">See the fall and the recovery on the X-ray chart</a>
+<a class="demo-link" href="{{ url_for('demo', lesson='risk-and-time') }}#xray-title">See the fall and the recovery on the X-ray chart</a>
 {% else %}
 <p>The demo portfolio's history isn't loaded yet, so there's no real fall to show. It appears after the next price update.</p>
 {% endif %}

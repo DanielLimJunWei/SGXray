@@ -35,6 +35,11 @@ def app(db_path, monkeypatch):
     return create_app(db_path)
 
 
+@pytest.fixture
+def client(app):
+    return app.test_client()
+
+
 def load_demo(db_path):
     """A small demo: DBS and the STI ETF bought on 6 Jan, a 20% fall to 3 Mar, then back above by 2 Jun."""
     conn = db.get_connection(db_path)
@@ -294,3 +299,37 @@ def test_the_fall_film_never_draws_a_trade_as_a_market_move(app, db_path):
     film = lessons.dip_film(conn, uid, dip)
     conn.close()
     assert "from 27 January 2025" in film["label"]                               # not from before the buy
+
+
+# ---------- "See it in the demo": highlight, explain, back to the lesson, or stay ----------
+
+import lessons as _lessons  # noqa: E402
+
+
+@pytest.mark.parametrize("slug", [s for s in _lessons.SPOTS if _lessons.SPOTS[s]["page"] == "demo"])
+def test_every_lesson_link_carries_its_lesson_and_the_demo_explains_it(client, db_path, slug):
+    load_demo(db_path)
+    conn = db.get_connection(db_path)
+    db.save_dividends(conn, "D05.SI", [("2025-04-10", 0.60)])          # so the dividend lessons have their link
+    conn.close()
+    page = client.get(f"/learn/{slug}").get_data(as_text=True)
+    assert f"/demo?lesson={slug}#" in page
+    demo = client.get(f"/demo?lesson={slug}").get_data(as_text=True)
+    lesson = _lessons.BY_SLUG[slug]
+    assert "data-spot-bar" in demo and f"From lesson {lesson.number}" in demo and "spotlight.js" in demo
+    assert f'href="/learn/{slug}#demo-title">Back to lesson {lesson.number}' in demo
+    assert "Stay in the demo" in demo and f'data-spot-target="{_lessons.SPOTS[slug]["target"]}"' in demo
+    assert f'id="{_lessons.SPOTS[slug]["target"]}"' in demo or "isn't loaded yet" in demo
+
+
+def test_an_unknown_lesson_or_another_page_shows_no_spotlight(client):
+    assert "data-spot-bar" not in client.get("/demo?lesson=<script>").get_data(as_text=True)
+    assert "data-spot-bar" not in client.get("/demo").get_data(as_text=True)
+    assert "data-spot-bar" not in client.get("/learn?lesson=scams").get_data(as_text=True)
+
+
+def test_the_home_link_shows_everywhere_but_home(client):
+    assert 'class="nav-link" href="/">Home</a>' not in client.get("/").get_data(as_text=True)
+    for path in ("/learn", "/demo", "/news", "/login"):
+        assert 'class="nav-link" href="/">Home</a>' in client.get(path).get_data(as_text=True), path
+

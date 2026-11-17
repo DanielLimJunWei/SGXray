@@ -33,7 +33,7 @@
 {% if best and best.difference > (returns.your_profit - returns.sti_profit) %}
 <p>{{ best.name }} alone beat the market by {{ best.difference|money }}, more than the whole portfolio's lead of {{ (returns.your_profit - returns.sti_profit)|money }}. Without that one pick, the demo would have trailed the STI ETF.</p>
 {% endif %}
-<a class="demo-link" href="{{ url_for('demo') }}#vs-title">See each stock vs the STI ETF</a>
+<a class="demo-link" href="{{ url_for('demo', lesson='stocks-vs-market') }}#vs-title">See each stock vs the STI ETF</a>
 {% else %}
 <p>The demo portfolio or the STI ETF's prices aren't loaded yet, so there's nothing to compare. They appear after the next price update.</p>
 {% endif %}

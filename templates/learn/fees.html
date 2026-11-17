@@ -29,7 +29,7 @@
 {% if sums.smallest %}
 <p>Its smallest buy, {{ sums.smallest.amount|money }} of {{ sums.smallest.name }} on {{ sums.smallest.day|longdate }}, paid {{ sums.smallest.fees|money }}: {{ "%.2f%%"|format(sums.smallest.fees / sums.smallest.amount * 100) }}. Split into four trades of {{ (sums.smallest.amount / 4)|money }} instead, the same money would have paid the minimum fee four times: {{ (sums.smallest.fees * 4)|money }}.</p>
 {% endif %}
-<a class="demo-link" href="{{ url_for('trades_page') if current_user else url_for('demo') }}">{{ "See fees on your own trades" if current_user else "See the demo portfolio" }}</a>
+<a class="demo-link" href="{{ url_for('trades_page', lesson='fees') ~ '#list-title' if current_user else url_for('demo', lesson='fees') ~ '#key-figures' }}">{{ "See fees on your own trades" if current_user else "See the demo portfolio" }}</a>
 {% else %}
 <p>The demo portfolio isn't loaded yet, so there are no fees to show. They appear after the next price update.</p>
 {% endif %}

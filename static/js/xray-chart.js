@@ -69,6 +69,24 @@
   // Axis titles: what the numbers up the side and along the bottom are.
   axis.append(el("text", { class: "axis-title", x: LEFT - 8, y: -2, "text-anchor": "end" }, "S$"));
   axis.append(el("text", { class: "axis-title", x: (LEFT + RIGHT) / 2, y: H + 40, "text-anchor": "middle" }, unit === "day" ? "Each trading day" : "Month end"));
+  // From a lesson (spotlight.js): shade the demo's biggest fall, and/or make the line itself stand out.
+  const spot = document.querySelector("[data-spot-bar]");
+  if (spot && spot.dataset.spotBand && DATA.length > 1) {
+    const [from, to] = spot.dataset.spotBand.split(",");
+    const t = iso => new Date(iso + "T00:00:00").getTime();
+    const xAt = iso => {                                   // between two points: in proportion to the date
+      const v = t(iso), ts = DATA.map(d => t(d.date));
+      if (v <= ts[0]) return x(0);
+      for (let i = 1; i < ts.length; i++) if (v <= ts[i]) return x(i - 1) + (x(i) - x(i - 1)) * (v - ts[i - 1]) / (ts[i] - ts[i - 1]);
+      return x(last);
+    };
+    const mid = (xAt(from) + xAt(to)) / 2, half = Math.max((xAt(to) - xAt(from)) / 2, 7);   // at least 14px wide
+    const x0 = mid - half, x1 = mid + half;
+    const shade = el("rect", { class: "spot-band", x: x0, y: 0, width: x1 - x0, height: H });
+    axis.after(shade);
+    $("xray-labels").before(el("text", { class: "spot-band-label", x: (x0 + x1) / 2, y: 12, "text-anchor": "middle" }, "the fall"));
+  }
+  if (spot && spot.hasAttribute("data-spot-line")) svg.classList.add("spot-line");
   // A single point: a line needs two, so it shows as a dot (inside the reveal, so it scans in like the rest).
   if (DATA.length === 1) $("xray-top").after(el("circle", { cx: x(0), cy: y(total[0]), r: 4, fill: "#9CC4FF" }));
 

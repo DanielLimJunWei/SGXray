@@ -5,7 +5,6 @@
 {% block title %}{{ {"demo": "Demo portfolio", "practice": "Practice portfolio"}.get(mode, "Your portfolio") }} · SGXray{% endblock %}
 {% block navlinks %}
   <ul>
-    <li><a href="{{ url_for('home') }}">Home</a></li>
     <li><a href="{{ url_for('demo') }}"{% if mode == "demo" %} aria-current="page"{% endif %}>Demo</a></li>
   </ul>
 {% endblock %}
@@ -111,7 +110,7 @@
   </div>
   {% else %}
 
-  <section class="panel figures" aria-label="Key figures">
+  <section class="panel figures" id="key-figures" aria-label="Key figures">
     <div class="figure">
       <span class="label">{{ term("worth", "Worth now") }}</span>
       {# A missing price: the big figures say why in words, capitalised like a value (the page rule). #}

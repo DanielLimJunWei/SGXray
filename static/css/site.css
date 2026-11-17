@@ -921,3 +921,30 @@ a.chip:hover { border-color: var(--color-glow-soft); }
   .lightbox.burst::before { animation: none; opacity: 0.04; }
   .lightbox.relight::before, .lightbox.burst .bulb-glass, .lightbox.burst .bulb-glass::after { animation: none; }
 }
+
+/* ---------- "See it in the demo" from a lesson (spotlight.js) ----------
+   The part the lesson is about gets a soft outline and a small label; a panel at the bottom says what to look at,
+   with "Back to the lesson" and "Stay in the demo". On the X-ray chart a lesson can shade the biggest fall and
+   make the line itself stand out. Faint, like everything else: you see it, it doesn't shout. */
+.spotlit { position: relative; border-radius: var(--radius-lg); outline: 1px solid rgba(156, 196, 255, 0.45); outline-offset: 10px;
+  box-shadow: 0 0 0 10px rgba(156, 196, 255, 0.04), 0 0 32px 10px rgba(58, 115, 255, 0.10); scroll-margin-top: 6rem; }
+.spotlit::before { content: attr(data-spot-label); position: absolute; top: -2.1rem; left: 0; padding: 2px var(--space-2);
+  border-radius: var(--radius-sm); font: 500 var(--text-xs)/1.5 var(--font-sans); color: var(--color-glow-soft);
+  background: rgba(156, 196, 255, 0.10); }
+.spot-bar { position: fixed; z-index: 20; left: 50%; bottom: var(--space-4); transform: translateX(-50%);
+  width: min(40rem, calc(100% - 2 * var(--space-4))); padding: var(--space-4) var(--space-5); display: grid; gap: var(--space-2);
+  border-radius: var(--radius-lg); background: var(--color-surface-raised); border: 1px solid var(--color-line-strong);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45); }
+.spot-bar[hidden] { display: none; }
+.spot-from { margin: 0; font: 500 var(--text-xs)/1.4 var(--font-mono); color: var(--color-lamp); }
+.spot-text { margin: 0; font-size: var(--text-sm); color: var(--color-text); }
+.spot-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1); }
+body:has(.spot-bar:not([hidden])) .jump-btn { bottom: 11rem; }    /* the Sections button moves up out of the way */
+body:has(.spot-bar:not([hidden])) .jump-menu { bottom: calc(11rem + 48px); }
+body:has(.spot-bar:not([hidden])) .content { padding-bottom: 11rem; }
+.spot-band { fill: rgba(217, 130, 130, 0.10); stroke: rgba(217, 130, 130, 0.35); stroke-dasharray: 2 4; }
+.spot-band-label { font: 500 11px var(--font-mono); fill: var(--color-down); }
+svg.spot-line #xray-top, svg.spot-line #xray-plain { stroke-width: 2.5; filter: drop-shadow(0 0 3px rgba(156, 196, 255, 0.55)); }
+svg.spot-line #xray-top { animation: spot-line 2.4s ease-in-out 3; }
+@keyframes spot-line { 50% { filter: drop-shadow(0 0 6px rgba(156, 196, 255, 0.85)); } }
+@media (prefers-reduced-motion: reduce) { svg.spot-line #xray-top { animation: none; } }

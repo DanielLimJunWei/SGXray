@@ -85,6 +85,7 @@ def create_app(db_path=None):
     app.teardown_appcontext(_close_db)
     app.before_request(_load_user_and_check_csrf)
     app.after_request(_security_headers)
+    app.context_processor(_lesson_spot)             # "See it in the demo" from a lesson: the highlight and its panel
     app.context_processor(lambda: {"current_user": g.get("user"), "csrf_token": _csrf_token,
                                    "csp_nonce": g.get("csp_nonce", ""), "today": date.today().isoformat(),
                                    "minutes": auth.RESET_MINUTES})

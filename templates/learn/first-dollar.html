@@ -28,7 +28,7 @@
 {% else %}
 <p>Anyone who had to sell on {{ dip.low_day|longdate }} for a bill would have come out {{ dip.fall|money }} short. It hasn't climbed back to {{ dip.peak|money }} yet, which is exactly why money you'll need soon shouldn't be in shares.</p>
 {% endif %}
-<a class="demo-link" href="{{ url_for('demo') }}#xray-title">See it on the demo's X-ray chart</a>
+<a class="demo-link" href="{{ url_for('demo', lesson='first-dollar') }}#xray-title">See it on the demo's X-ray chart</a>
 {% else %}
 <p>The demo portfolio's history isn't loaded yet, so there's no real fall to show. It appears after the next price update.</p>
 {% endif %}

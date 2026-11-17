@@ -1,0 +1,17 @@
+{#
+  "See it in the demo" from a lesson: a small panel at the bottom of the page saying which lesson sent you, what
+  the highlighted part shows, and two ways on: back to the lesson, or stay here (which clears the highlight).
+  static/js/spotlight.js lights up the part; without it, the panel still works with plain links.
+#}
+{% if lesson_spot %}
+{% set sp = lesson_spot %}
+<aside class="spot-bar" role="region" aria-label="From lesson {{ sp.number }}" data-spot-bar
+       data-spot-target="{{ sp.target }}"{% if sp.line %} data-spot-line{% endif %}{% if sp.band %} data-spot-band="{{ sp.band[0] }},{{ sp.band[1] }}"{% endif %}>
+  <p class="spot-from">From lesson {{ sp.number }} · {{ sp.title }}</p>
+  <p class="spot-text"><b>{{ sp.label }}.</b> {{ sp.text }}</p>
+  <div class="spot-actions">
+    <a class="btn btn-primary compact" href="{{ url_for('lesson', slug=sp.slug) }}#demo-title">Back to lesson {{ sp.number }}</a>
+    <a class="btn btn-ghost compact" href="{{ request.path }}" data-spot-stay>Stay {{ "in the demo" if request.endpoint == "demo" else "here" }}</a>
+  </div>
+</aside>
+{% endif %}

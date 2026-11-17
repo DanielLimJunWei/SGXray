@@ -29,7 +29,7 @@
   {% endfor %}
 </ul>
 {% if sums.profit > 0 %}<p>That's {{ "%.0f%%"|format(sums.dividends / sums.profit * 100) }} of the demo's {{ sums.profit|money }} total profit, all of it tax-free because these are Singapore companies and funds. A price chart alone would leave it out.</p>{% endif %}
-<a class="demo-link" href="{{ url_for('demo') }}#yields-title">See the demo's dividends and yields</a>
+<a class="demo-link" href="{{ url_for('demo', lesson='dividends') }}#yields-title">See the demo's dividends and yields</a>
 {% elif sums %}
 <p>The demo hasn't been paid any dividends yet: none of its holdings has passed an ex-date since it bought them. Its first payment will show here.</p>
 {% else %}

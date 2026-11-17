@@ -30,7 +30,7 @@
 </ul>
 {% set big = owned[0] %}
 <p>{{ big.name }} alone is {{ "%.0f%%"|format(big.weight * 100) }} of the demo, so that one {{ big.noun }} moves most of it.{% for h in owned if h.ticker == "ES3.SI" %} The {{ h.value|money }} in the STI ETF, meanwhile, is spread over 30 companies.{% endfor %}</p>
-<a class="demo-link" href="{{ url_for('demo') }}#holdings-title">See them in the demo's holdings</a>
+<a class="demo-link" href="{{ url_for('demo', lesson='what-you-own') }}#holdings-title">See them in the demo's holdings</a>
 {% else %}
 <p>The demo portfolio isn't loaded yet, so there are no holdings to show. They appear after the next price update.</p>
 {% endif %}

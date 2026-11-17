@@ -345,3 +345,78 @@ def diff_film(stocks):
                     "y": round(mid - h if up else mid, 1), "h": round(h, 1), "up": up,
                     "name": s["name"], "difference": s["difference"]})
     return out
+
+
+# ---------- "See it in the demo": the lesson's spotlight ----------
+# A lesson's demo link carries ?lesson=<slug>. The page it opens (the demo, or Trades for the fees lesson when
+# you're logged in) then highlights the part the lesson is about, says in a sentence or two what to look at, and
+# offers "Back to the lesson" or "Stay in the demo" (which clears the highlight). static/js/spotlight.js does the
+# highlighting; without it the panel still shows, with plain links.
+# target: the id of the heading (or block) to light up; line: emphasise the X-ray chart's own line;
+# band: shade the demo's biggest fall on the X-ray chart.
+
+SPOTS = {
+    "first-dollar": {"page": "demo", "target": "xray-title", "band": True, "label": "The shaded stretch",
+                     "text": "That's the demo's biggest fall: {fall} in {days} days, from {peak_day} to {low_day}. "
+                             "Money it needed on the low day would have come out {fall} smaller, which is why you only "
+                             "invest money you won't need for years."},
+    "what-you-own": {"page": "demo", "target": "holdings-title", "label": "The holdings table",
+                     "text": "Each row is something the demo owns: shares in a company, a REIT (a piece of buildings) or "
+                             "an ETF (a basket of many companies). Weight is how much of the portfolio each one is."},
+    "where-shares-live": {"page": "demo", "target": "years-title", "label": "Dividends by year",
+                          "text": "Each bar is the dividends paid to the demo in one year. In a CDP account each payment "
+                                  "goes straight to your bank; through a custodian, to the broker first."},
+    "scams": {"page": "demo", "target": "xray-title", "line": True, "band": True, "label": "The wobbly line",
+              "text": "The light-blue line is the demo's real value. See how it wobbles, and the shaded fall of {fall}. "
+                      "Real investments go up and down like this. A \"guaranteed 3% a month\" scheme draws a perfectly "
+                      "smooth line that only rises, because it's made up."},
+    "fees": {"page": "demo", "target": "key-figures", "label": "Fees inside the profit",
+             "text": "Every fee the demo paid is already taken out of Total profit. Open its \u24d8 to see the fees as a "
+                     "share of what it bought."},
+    "dividends": {"page": "demo", "target": "yields-title", "label": "Dividend yields",
+                  "text": "Yield is a year's dividends divided by today's price. On cost is the same dividends divided by "
+                          "what the demo paid, so it grows as the price rises."},
+    "risk-and-time": {"page": "demo", "target": "xray-title", "band": True, "label": "The fall and the recovery",
+                      "text": "The shaded stretch is the demo's biggest fall: {fall} in {days} days. {back} Holding on, "
+                              "not selling at the low, is what got it back."},
+    "stocks-vs-market": {"page": "demo", "target": "vs-title", "label": "Each stock vs the STI ETF",
+                         "text": "Each row puts a stock's money into the STI ETF on the same days instead. Difference "
+                                 "shows whether picking that stock beat simply buying the market."},
+    "reading-sgxray": {"page": "demo", "target": "xray-title", "label": "The X-ray's layers",
+                       "text": "Bottom layer: your own money (not profit). Above it: price gains, then dividends. The dashed "
+                               "line is the same money in the STI ETF."},
+}
+# Logged in, the fees lesson points at your own trades instead.
+SPOT_FEES_OWN = {"page": "trades_page", "target": "list-title", "label": "The Fees column",
+                 "text": "That's what each of your trades cost in fees. On a small buy, a minimum fee can be a big share "
+                         "of the money."}
+
+
+def spot(conn, slug, page, logged_in=False):
+    """The spotlight for a lesson's link on this page, or None (an unknown lesson, or the wrong page).
+    {"slug", "number", "title", "target", "label", "text", "line", "band": ("YYYY-MM-DD", "YYYY-MM-DD") or None}."""
+    lesson = BY_SLUG.get(slug or "")
+    s = SPOT_FEES_OWN if slug == "fees" and logged_in and page == "trades_page" else SPOTS.get(slug or "")
+    if lesson is None or s is None or s["page"] != page:
+        return None
+    dip = None
+    if s.get("band") or "{fall}" in s["text"]:
+        uid = demo_user_id(conn)
+        dip = biggest_dip(conn, uid) if uid else None
+    words = {}
+    if dip:
+        words = {"fall": f"{-dip['fall_pct']:.0%}", "days": dip["days"], "peak_day": _day(dip["peak_day"]),
+                 "low_day": _day(dip["low_day"]),
+                 "back": f"It was back by {_day(dip['back_day'])}." if dip.get("back_day") else "It hasn't climbed back yet."}
+    try:
+        text = s["text"].format(**words)
+    except KeyError:                                      # no demo history: say what to look at, without numbers
+        text = "This part of the demo shows what the lesson describes."
+    return {"slug": lesson.slug, "number": lesson.number, "title": lesson.title, "target": s["target"],
+            "label": s["label"], "text": text, "line": bool(s.get("line")),
+            "band": (dip["peak_day"].isoformat(), dip["low_day"].isoformat()) if dip and s.get("band") else None}
+
+
+def _day(d):
+    return f"{d.day} {d:%b %Y}"
+
