@@ -21,6 +21,15 @@
         <dd><a class="btn btn-ghost" href="{{ url_for('account_password') }}">Change password</a></dd>
       </div>
       <div class="account-row">
+        <dt>This device</dt>
+        <dd>
+          <form method="post" action="{{ url_for('logout') }}">
+            <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+            <button class="btn btn-ghost" type="submit">Log out</button>
+          </form>
+        </dd>
+      </div>
+      <div class="account-row">
         <dt>Another account</dt>
         <dd>
           <form method="post" action="{{ url_for('logout') }}">

@@ -197,7 +197,7 @@ def test_done_needs_the_form_token(app):
 
 def test_a_lesson_that_doesnt_exist_cant_be_marked_done(app):
     c = signed_up(app)
-    assert c.post("/learn/not-a-lesson/done", data={"csrf": token(c, "/learn")}).status_code == 404
+    assert c.post("/learn/not-a-lesson/done", data={"csrf": token(c, "/account")}).status_code == 404
 
 
 def test_no_page_sends_visitors_to_google_fonts(app):

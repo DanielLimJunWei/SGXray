@@ -82,7 +82,7 @@ def login(client, password):
 def account_holder(app):
     c = app.test_client()
     signup(c)
-    c.post("/logout", data={"csrf": csrf(c, "/portfolio")})
+    c.post("/logout", data={"csrf": csrf(c, "/account")})
     return c
 
 

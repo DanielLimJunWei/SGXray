@@ -30,9 +30,22 @@ def test_logged_in_the_menu_reaches_every_page(app):
     c = signed_up(app)
     for path in ("/portfolio", "/practice", "/trades", "/account", "/learn"):
         links = menu(c.get(path).get_data(as_text=True))
-        for href in ('href="/learn"', 'href="/portfolio"', 'href="/practice"', 'href="/trades"', 'href="/account"'):
+        for href in ('href="/learn"', 'href="/portfolio"', 'href="/practice"', 'href="/news"', 'href="/demo"',
+                     'href="/account"'):
             assert href in links, (path, href)
-        assert "Log out" in links and 'name="csrf"' in links        # logging out is still a protected POST
+        assert 'href="/trades"' not in links and "Log out" not in links   # trades via the portfolio, log out on Account
+
+
+def test_the_top_bar_is_six_links_and_log_out_is_on_the_account_page(app):
+    c = signed_up(app)
+    page = c.get("/portfolio").get_data(as_text=True)
+    bar = page[page.index('<div class="nav-actions">'):page.index("</div>", page.index('<div class="nav-actions">'))]
+    assert [h for h in ("Home", "Your portfolio", "Practice", "Learn", "News", "Account") if f">{h}</a>" in bar] == \
+        ["Home", "Your portfolio", "Practice", "Learn", "News", "Account"]
+    assert "Trades" not in bar and "Log out" not in bar and "Demo" not in page[:page.index("</nav>")].split("nav-menu")[0]
+    assert 'href="/trades"' in page                                     # "Add or change trades" on the portfolio
+    account = c.get("/account").get_data(as_text=True)
+    assert "Log out</button>" in account and 'name="csrf"' in account   # logging out is still a protected POST
 
 
 def test_the_menu_marks_the_page_you_are_on(app):
@@ -40,6 +53,7 @@ def test_the_menu_marks_the_page_you_are_on(app):
     assert 'href="/practice" aria-current="page">Practice' in menu(c.get("/practice/trades").get_data(as_text=True))
     assert 'href="/learn" aria-current="page">Learn' in menu(c.get("/learn/scams").get_data(as_text=True))
     assert menu(c.get("/trades").get_data(as_text=True)).count('aria-current="page"') == 1
+    assert 'href="/portfolio" aria-current="page">Your portfolio' in menu(c.get("/trades").get_data(as_text=True))
 
 
 def test_detailed_only_sections_are_marked_and_the_essentials_are_not(app):

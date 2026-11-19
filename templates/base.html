@@ -26,18 +26,20 @@
     SGXray
   </a>
   {% block navlinks %}{% endblock %}
+  {#- The top bar (19 Nov): logged in, six links. Trades open from Your portfolio ("Add or change trades"), the
+      demo from Learn and the lessons, and Log out sits on the Account page. -#}
   {% block navaction %}
   <div class="nav-actions">
     {% if request.endpoint != "home" %}<a class="nav-link" href="{{ url_for('home') }}">Home</a>{% endif %}
-    <a class="nav-link" href="{{ url_for('learn') }}">Learn</a>
-    <a class="nav-link" href="{{ url_for('market_today') }}">News</a>
     {% if current_user %}
     <a class="nav-link" href="{{ url_for('portfolio') }}">Your portfolio</a>
     <a class="nav-link" href="{{ url_for('practice_page') }}">Practice</a>
-    <a class="nav-link" href="{{ url_for('trades_page') }}">Trades</a>
+    <a class="nav-link" href="{{ url_for('learn') }}">Learn</a>
+    <a class="nav-link" href="{{ url_for('market_today') }}">News</a>
     <a class="nav-link" href="{{ url_for('account') }}">Account</a>
-    <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn btn-ghost" type="submit">Log out</button></form>
     {% else %}
+    <a class="nav-link" href="{{ url_for('learn') }}">Learn</a>
+    <a class="nav-link" href="{{ url_for('market_today') }}">News</a>
     <a class="nav-link" href="{{ url_for('login') }}">Log in</a>
     <a class="btn btn-primary" href="{{ url_for('demo') }}">Try the demo</a>
     {% endif %}
@@ -49,16 +51,17 @@
   <div class="nav-menu" id="nav-menu" popover>
     {% set here = request.endpoint %}
     <a href="{{ url_for('home') }}"{% if here == "home" %} aria-current="page"{% endif %}>Home</a>
+    {% if current_user %}
+    <a href="{{ url_for('portfolio') }}"{% if here in ("portfolio", "trades_page", "edit_trade", "delete_trade") %} aria-current="page"{% endif %}>Your portfolio</a>
+    <a href="{{ url_for('practice_page') }}"{% if here in ("practice_page", "practice_trades", "practice_reset") %} aria-current="page"{% endif %}>Practice</a>
+    <a href="{{ url_for('learn') }}"{% if here in ("learn", "lesson", "ready") %} aria-current="page"{% endif %}>Learn</a>
+    <a href="{{ url_for('market_today') }}"{% if here == "market_today" %} aria-current="page"{% endif %}>News</a>
+    <a href="{{ url_for('demo') }}"{% if here == "demo" %} aria-current="page"{% endif %}>Demo</a>
+    <a href="{{ url_for('account') }}"{% if here in ("account", "account_password") %} aria-current="page"{% endif %}>Account</a>
+    {% else %}
     <a href="{{ url_for('demo') }}"{% if here == "demo" %} aria-current="page"{% endif %}>Demo</a>
     <a href="{{ url_for('learn') }}"{% if here in ("learn", "lesson", "ready") %} aria-current="page"{% endif %}>Learn</a>
-    <a href="{{ url_for('market_today') }}"{% if here == "market_today" %} aria-current="page"{% endif %}>Market today</a>
-    {% if current_user %}
-    <a href="{{ url_for('portfolio') }}"{% if here == "portfolio" %} aria-current="page"{% endif %}>Your portfolio</a>
-    <a href="{{ url_for('practice_page') }}"{% if here in ("practice_page", "practice_trades", "practice_reset") %} aria-current="page"{% endif %}>Practice</a>
-    <a href="{{ url_for('trades_page') }}"{% if here in ("trades_page", "edit_trade", "delete_trade") %} aria-current="page"{% endif %}>Trades</a>
-    <a href="{{ url_for('account') }}"{% if here in ("account", "account_password") %} aria-current="page"{% endif %}>Account</a>
-    <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn btn-ghost" type="submit">Log out</button></form>
-    {% else %}
+    <a href="{{ url_for('market_today') }}"{% if here == "market_today" %} aria-current="page"{% endif %}>News</a>
     <a href="{{ url_for('login') }}"{% if here == "login" %} aria-current="page"{% endif %}>Log in</a>
     <a href="{{ url_for('signup') }}"{% if here == "signup" %} aria-current="page"{% endif %}>Create an account</a>
     {% endif %}

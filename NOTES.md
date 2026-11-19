@@ -397,7 +397,7 @@ Plan for them (agreed 9 Nov 2026):
 ## Works well on phones (w307, 12 Nov 2026)
 
 Checked every page at 375px wide (a typical phone) on a scratch copy, logged in and out: nothing spilled off the screen, forms and lessons fit, wide tables scroll sideways inside their own box. Two real problems, both fixed:
-- The top bar hid its links on phones, so Learn, Practice, Trades and Account couldn't be reached at all. Now, at 720px and narrower, a "Menu" button opens a panel with every link (logged in: Home, Demo, Learn, Your portfolio, Practice, Trades, Account, Log out; logged out: Home, Demo, Learn, Log in, Create an account). It's the browser's own popover (`popover` / `popovertarget`), so it closes by tapping outside or pressing Esc with no extra script. Rows are 44px tall (a comfortable finger target), and the page you're on has a faint blue bar. Wider screens keep the links in the bar.
+- The top bar hid its links on phones, so Learn, Practice, Trades and Account couldn't be reached at all. Now, at 720px and narrower, a "Menu" button opens a panel with every link (logged in, since 19 Nov: Home, Your portfolio, Practice, Learn, News, Demo, Account; logged out: Home, Demo, Learn, Log in, Create an account). It's the browser's own popover (`popover` / `popovertarget`), so it closes by tapping outside or pressing Esc with no extra script. Rows are 44px tall (a comfortable finger target), and the page you're on has a faint blue bar. Wider screens keep the links in the bar.
 - Wide tables kept scrolling the stock's name out of view. On phones the first column is pinned (`position: sticky`), so you always know which row you're reading.
 - The tappable words inside sentences are under 24px tall; that's allowed for links inside text (WCAG 2.2 target size has an exception for them), so they stay.
 Tests: `tests/test_phone.py`.
@@ -531,6 +531,15 @@ A portfolio with nothing in it (yours, practice, or the demo before it's loaded)
   (news-chart.js, `stories.closes`), the story's day marked; its x-ray scans DOWN the film while the line develops from
   white to its colour (the portfolio's sweeps left to right). "Animation: on/off" shares the `sgxray-motion` setting.
 - **Home** is in the top bar on every page except the home page itself.
+- **Top bar (19 Nov, his call):** logged in, six links: Home · Your portfolio · Practice · Learn · News · Account.
+  Trades open from the portfolio's "Add or change trades" (the menu marks Your portfolio on them); the demo from
+  Learn ("Explore the demo portfolio") and the lessons, and the phone Menu; Log out is a row on the Account page. The
+  portfolio pages' own middle "Demo" link is gone (it floated alone in the bar). Learn and Practice stay separate:
+  one is reading, the other is doing, and Practice sits beside Your portfolio because it's the same dashboard.
+- **News window (19 Nov):** Market today shows today's stories plus the last trading day's (`news.window_start`):
+  on a Tuesday, Monday's; on a Monday or at the weekend, Friday's too, so the stories behind Monday's prices stay.
+  Public holidays aren't known, so after one the window is a weekday short. The page says "since yesterday" or
+  "since Friday".
 - **Going well (17 Nov, his idea):** the opposite of Watch out, a green ✓ button beside ⓘ and ⚠ (`Explanation.good`,
   `_explain.html`). Only facts about YOUR numbers and why they help, never "a good investment": spread over 3+
   holdings with no warning (allocation `_good`), more than one kind of thing, 20%+ in an index fund, fees under 0.25%

@@ -104,7 +104,7 @@ def test_one_plan_buy_cant_be_deleted_alone_but_can_be_changed(app, db_path):
     c = signed_up(app)
     add_plan(c)
     tid = saved(db_path)[0]["id"]
-    r = c.post(f"/trades/{tid}/delete", data={"csrf": token(c, f"/trades/{tid}/delete")})
+    r = c.post(f"/trades/{tid}/delete", data={"csrf": token(c, "/account")})
     assert r.status_code == 422 and "recorded by your monthly plan" in r.get_data(as_text=True)
     r = c.post(f"/trades/{tid}/edit", data={"csrf": token(c, f"/trades/{tid}/edit"), "ticker": "ES3.SI",
                                            "date": "2025-01-15", "side": "BUY", "quantity": "28", "price": "3.51",

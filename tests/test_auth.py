@@ -75,7 +75,7 @@ def test_weak_passwords_are_refused(app):
 def test_wrong_password_and_unknown_email_look_identical(app):
     c = app.test_client()
     signup(c)
-    c.post("/logout", data={"csrf": csrf(c, "/portfolio")})
+    c.post("/logout", data={"csrf": csrf(c, "/account")})
     wrong = login(c, "ann@example.com", "not the password at all")
     nobody = login(c, "nobody@example.com", "not the password at all")
     assert wrong.status_code == nobody.status_code == 401
@@ -86,7 +86,7 @@ def test_wrong_password_and_unknown_email_look_identical(app):
 def test_password_guessing_is_locked_out(app):
     c = app.test_client()
     signup(c)
-    c.post("/logout", data={"csrf": csrf(c, "/portfolio")})
+    c.post("/logout", data={"csrf": csrf(c, "/account")})
     for left in range(auth.MAX_ATTEMPTS - 1, 0, -1):                 # 4, 3, 2, 1 tries left
         r = login(c, password="wrong password guess")
         page = r.get_data(as_text=True)
@@ -120,7 +120,7 @@ def test_session_cookie_is_protected(app):
 def test_a_new_session_is_made_at_login(app):
     c = app.test_client()
     signup(c)
-    c.post("/logout", data={"csrf": csrf(c, "/portfolio")})
+    c.post("/logout", data={"csrf": csrf(c, "/account")})
     before = csrf(c, "/login")
     login(c)
     after = re.search(r'name="csrf" value="([^"]+)"', c.get("/account").get_data(as_text=True)).group(1)
@@ -178,7 +178,7 @@ def test_portfolio_needs_login_and_shows_only_your_own(app, db_path):
 def test_sql_injection_in_the_login_form_does_nothing(app):
     c = app.test_client()
     signup(c)
-    c.post("/logout", data={"csrf": csrf(c, "/portfolio")})
+    c.post("/logout", data={"csrf": csrf(c, "/account")})
     for attack in ["' OR '1'='1", "ann@example.com' --", "x'; DROP TABLE users; --"]:
         assert login(c, attack, attack).status_code == 401
     assert login(c).status_code == 302                  # the users table is still there
@@ -190,7 +190,7 @@ def test_sql_injection_in_the_login_form_does_nothing(app):
 def test_login_never_redirects_to_another_site(app, evil):
     c = app.test_client()
     signup(c)
-    c.post("/logout", data={"csrf": csrf(c, "/portfolio")})
+    c.post("/logout", data={"csrf": csrf(c, "/account")})
     r = c.post("/login", data={"csrf": csrf(c, "/login"), "email": "ann@example.com", "password": GOOD, "next": evil})
     assert r.status_code == 302 and r.headers["Location"].endswith("/portfolio")
 
@@ -209,7 +209,7 @@ def test_security_headers_and_a_fresh_nonce_each_page(app):
 def test_nothing_secret_is_written_to_the_security_log(app, db_path):
     c = app.test_client()
     signup(c)
-    c.post("/logout", data={"csrf": csrf(c, "/portfolio")})
+    c.post("/logout", data={"csrf": csrf(c, "/account")})
     login(c, password="a wrong password here")
     conn = db.get_connection(db_path)
     rows = [tuple(r) for r in conn.execute("SELECT * FROM security_log")]
@@ -224,7 +224,7 @@ def test_a_copied_cookie_stops_working_after_logout(app):
     victim = app.test_client()
     signup(victim)
     stolen = victim.get_cookie("session").value          # what an attacker could copy off the laptop
-    victim.post("/logout", data={"csrf": csrf(victim, "/portfolio")})
+    victim.post("/logout", data={"csrf": csrf(victim, "/account")})
     attacker = app.test_client()
     attacker.set_cookie("session", stolen)
     assert attacker.get("/portfolio").status_code == 302  # back to the login page
@@ -242,7 +242,7 @@ def test_signups_from_one_address_are_limited(app):
     c = app.test_client()
     for n in range(auth.SIGNUPS_PER_HOUR):
         assert signup(c, f"user{n}@example.com").status_code == 302
-        c.post("/logout", data={"csrf": csrf(c, "/portfolio")})
+        c.post("/logout", data={"csrf": csrf(c, "/account")})
     assert signup(c, "one-too-many@example.com").status_code == 429
 
 
@@ -297,7 +297,7 @@ def test_two_signups_for_one_email_at_the_same_moment(app, db_path, monkeypatch)
     real = db.get_user_by_email
     monkeypatch.setattr(web.db, "get_user_by_email", lambda conn, email: None)   # both see "free"
     assert signup(c, "race@example.com").status_code == 302
-    c.post("/logout", data={"csrf": csrf(c, "/portfolio")})
+    c.post("/logout", data={"csrf": csrf(c, "/account")})
     loser = signup(c, "race@example.com")
     monkeypatch.setattr(web.db, "get_user_by_email", real)
     assert loser.status_code == 422 and "couldn&#39;t create an account" in loser.get_data(as_text=True)
@@ -425,11 +425,11 @@ def test_another_email_on_the_same_network_isnt_locked_by_one_persons_mistakes(a
 def test_a_successful_login_clears_the_emails_count(app, db_path):
     c = app.test_client()
     signup(c)
-    c.post("/logout", data={"csrf": csrf(c, "/portfolio")})
+    c.post("/logout", data={"csrf": csrf(c, "/account")})
     for _ in range(auth.MAX_ATTEMPTS - 1):
         login(c, password="wrong password guess")
     assert login(c).status_code == 302
-    c.post("/logout", data={"csrf": csrf(c, "/portfolio")})
+    c.post("/logout", data={"csrf": csrf(c, "/account")})
     assert "4 tries left" in login(c, password="wrong password guess").get_data(as_text=True)
 
 
