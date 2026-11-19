@@ -420,9 +420,27 @@ def for_tickers(conn, tickers, days=30, limit=8):
                  (_since(days), *tickers), limit)
 
 
-def recent(conn, days=3, limit=60):
-    """Every kept headline from the last few days, newest first (the Market today page)."""
-    return _rows(conn, "n.published >= ?", (_since(days),), limit)
+def window_start(now=None):
+    """The first day Market today shows: the last trading day before today, so the feed is today's stories plus
+    that day's. On a Tuesday that's Monday; on a Monday (or a weekend) it's Friday, so the stories behind
+    Monday's prices stay. Weekends are skipped; public holidays aren't known, so after one the window is a
+    weekday shorter than it could be."""
+    day = (now or datetime.now(SGT)).date() - timedelta(days=1)
+    while day.weekday() >= 5:                       # 5 = Saturday, 6 = Sunday
+        day -= timedelta(days=1)
+    return day
+
+
+def window_words(now=None):
+    """The window in words for the page: "yesterday", or the day's name ("Friday") when it's further back."""
+    now = now or datetime.now(SGT)
+    start = window_start(now)
+    return "yesterday" if (now.date() - start).days == 1 else start.strftime("%A")
+
+
+def recent(conn, limit=60, now=None):
+    """Every kept headline from the start of the last trading day to now, newest first (the Market today page)."""
+    return _rows(conn, "n.published >= ?", (window_start(now).strftime("%Y-%m-%dT00:00"),), limit)
 
 
 def most_mentioned(items, limit=5):

@@ -168,7 +168,7 @@ def create_app(db_path=None):
         owned = stories.holdings(conn, uid)
         twin = conn.execute("SELECT id FROM users WHERE practice_of = ?", (uid,)).fetchone() if uid else None
         practice_owned = stories.holdings(conn, twin["id"]) if twin else {}
-        items = stories.build(conn, news.recent(conn, days=3, limit=80), owned, practice_owned)
+        items = stories.build(conn, news.recent(conn, limit=80), owned, practice_owned)
         mine, others, market = stories.split(items, owned)
         groups = {"all": items, "mine": mine, "others": others, "market": market}
         tabs = ([("all", "All")] + ([("mine", "Your stocks")] if uid else [])
@@ -183,7 +183,7 @@ def create_app(db_path=None):
                 for t, n in news.most_mentioned(todays or items)]
         return render_template("news.html", feed=groups[show], show=show, tabs=tabs,
                                counts={k: len(v) for k, v in groups.items()}, owned=owned,
-                               most=most, most_today=bool(todays),
+                               most=most, most_today=bool(todays), since=news.window_words(),
                                checked=news.last_checked(conn))
 
     # ---------- Practice portfolio (w320) ----------

@@ -1,5 +1,6 @@
 {#
   Market today (/news): the day's Singapore business headlines as one feed, newest first, read like a news app.
+  Only today's stories and the last trading day's (news.window_start): on a Monday, Friday's too.
   Tabs pick which stories (All, Your stocks, Other companies, Market & economy); "Most in the news" and the topics
   sits beside the feed (each story's own card links its topic to a lesson). Open to everyone; "Your stocks" only when logged in. Rows: templates/_news.html.
 #}
@@ -32,13 +33,13 @@
       {% if show == "mine" and not owned %}
       <p class="muted feed-empty">You don't hold any stocks yet, so there's nothing to match. <a href="{{ url_for('trades_page') }}">Add your trades</a> and the stories about them show here.</p>
       {% elif show == "mine" %}
-      <p class="muted feed-empty">No story in the last 3 days names a stock you hold. Quiet news is normal: most days, most companies aren't in the papers.</p>
+      <p class="muted feed-empty">No story since {{ since }} names a stock you hold. Quiet news is normal: most days, most companies aren't in the papers.</p>
       {% elif show == "others" %}
-      <p class="muted feed-empty">No other SGX company is named in the last 3 days' stories.</p>
+      <p class="muted feed-empty">No other SGX company is named in the stories since {{ since }}.</p>
       {% elif show == "market" %}
-      <p class="muted feed-empty">No market or economy stories in the last 3 days yet.</p>
+      <p class="muted feed-empty">No market or economy stories since {{ since }} yet.</p>
       {% else %}
-      <p class="muted feed-empty">No stories from the last 3 days yet. They arrive with the next check.</p>
+      <p class="muted feed-empty">No stories since {{ since }} yet. They arrive with the next check.</p>
       {% endif %}
       </div>
       {% endif %}
@@ -46,7 +47,7 @@
 
     <aside class="market-side" aria-label="At a glance">
       <section class="glance" aria-labelledby="most-title">
-        <h2 id="most-title">Most in the news <span class="muted">{{ "last 24 hours" if most_today else "last 3 days" }}</span></h2>
+        <h2 id="most-title">Most in the news <span class="muted">{{ "last 24 hours" if most_today else "since " ~ since }}</span></h2>
         {% if most %}
         <ol class="most-list">
           {% for m in most %}

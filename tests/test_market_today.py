@@ -222,7 +222,7 @@ def test_the_portfolio_has_no_news_section_any_more(app, db_path):
 def test_empty_news_says_why(app):
     page = text(app.test_client().get("/news"))
     assert "No company has been named in a story yet" in page
-    assert "No stories from the last 3 days yet" in page
+    assert "No stories since " in page and " yet. They arrive with the next check." in page
     assert "No market or economy stories" in text(app.test_client().get("/news?show=market"))
 
 
@@ -337,7 +337,7 @@ def test_the_home_bar_says_learn_once():
 
 def test_headlines_that_differ_only_in_numbers_are_different_stories(db_path):
     conn = db.get_connection(db_path)
-    news.save(conn, [item("Singapore shares rise; STI up 0.6%", "https://www.businesstimes.com.sg/a", hours_ago=30),
+    news.save(conn, [item("Singapore shares rise; STI up 0.6%", "https://www.businesstimes.com.sg/a", hours_ago=20),
                      item("Singapore shares rise; STI up 1.1%", "https://www.businesstimes.com.sg/b", hours_ago=2)])
     assert len(news.recent(conn)) == 2
     conn.close()
