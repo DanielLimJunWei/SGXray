@@ -101,3 +101,34 @@ def test_moving_with_accounts_keeps_each_trade_with_its_owner(old_sqlite, monkey
     ann = db.get_user_by_email(conn, "ann@example.com")["id"]
     assert [tuple(r) for r in conn.execute("SELECT ticker, quantity FROM trades WHERE user_id = ?", (ann,))] == [("D05.SI", 1)]
     conn.close()
+
+
+@needs_pg
+def test_several_workers_setting_up_a_new_database_at_once_all_succeed(tmp_path):
+    """The live site starts two workers together, each creating the tables. On a brand-new database that used to
+    crash one of them ("users_id_seq already exists"), and a worker re-running the setup could deadlock with one
+    already deleting old rows. The schema lock makes them take turns, and a finished schema isn't re-run."""
+    import threading
+    path = tmp_path / "fresh.db"                  # its own, empty schema
+    conns = [db.get_connection(path) for _ in range(4)]           # connected first, so they all start together
+    start, errors = threading.Barrier(4, timeout=30), []
+
+    def worker(conn):
+        try:
+            start.wait()
+            db.init_db(conn)                      # what each worker does at start-up (create_app)
+            db.prune(conn)
+        except Exception as e:                    # noqa: BLE001 - any failure fails the test
+            errors.append(e)
+        finally:
+            conn.close()
+
+    threads = [threading.Thread(target=worker, args=(c,)) for c in conns]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert errors == []
+    conn = db.get_connection(path)
+    assert "users" in db.tables(conn) and "approx" in db.columns(conn, "trades")
+    conn.close()

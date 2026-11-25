@@ -227,14 +227,37 @@ def schema_sql(dialect):
     return text
 
 
+# Any fixed number: the PostgreSQL lock that lets only one server worker set up the tables at a time.
+SCHEMA_LOCK = 0x5367587261790001
+
+
 def init_db(conn):
     """Creates any missing tables and columns. Safe to run every time the app starts."""
     if is_postgres(conn):
-        conn.execute_script(schema_sql("postgres"))
+        # The live site starts several workers at once, and each runs this. On a brand-new database two of them
+        # creating the same table together makes one crash, so they take turns: the lock is held until this
+        # transaction ends, and the next worker then finds the tables already there.
+        # And when every table and index is already there, the script is skipped: "CREATE INDEX IF NOT EXISTS"
+        # still locks its table first, which can deadlock with a worker that's already deleting old rows (prune).
+        with conn:
+            conn.execute("SELECT pg_advisory_xact_lock(?)", (SCHEMA_LOCK,))
+            if not _schema_complete(conn):
+                conn.execute_script(schema_sql("postgres"))
+            _migrate(conn)
+        return
     else:
         conn.executescript(schema_sql("sqlite"))
     _migrate(conn)
     conn.commit()
+
+
+def _schema_complete(conn):
+    """True when every table and index in SCHEMA already exists (PostgreSQL only)."""
+    want_tables = set(re.findall(r"CREATE TABLE IF NOT EXISTS (\w+)", SCHEMA))
+    want_indexes = set(re.findall(r"CREATE (?:UNIQUE )?INDEX IF NOT EXISTS (\w+)", SCHEMA))
+    have_indexes = {r[0] for r in conn.execute(
+        "SELECT indexname FROM pg_indexes WHERE schemaname = current_schema()").fetchall()}
+    return want_tables <= set(tables(conn)) and want_indexes <= have_indexes
 
 
 def columns(conn, table):
