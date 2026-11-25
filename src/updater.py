@@ -76,6 +76,24 @@ def prices_version(conn):
     return f"{row['d']}/{row['n']}/{row['t']:.4f}" if row["d"] else ""
 
 
+def seconds_to_next_close(conn, now=None):
+    """How long open pages should wait before asking for new prices again (static/js/live.js). New closes come
+    once a trading day, so asking every couple of minutes all day was wasted work (audit 4, from "make sure your
+    app isn't polling"). 0 while a close is due but not saved yet (then pages keep checking every 2 minutes);
+    otherwise the time until about 5:45pm on the next weekday."""
+    now = now or singapore_now()
+    latest = _benchmark_latest(conn)
+    if latest is None or latest < last_trading_day(now).isoformat():
+        return 0
+    day = now.date()
+    if day.weekday() >= 5 or now.time() >= READY_AT:
+        day += timedelta(days=1)
+        while day.weekday() >= 5:
+            day += timedelta(days=1)
+    target = datetime.combine(day, READY_AT, tzinfo=now.tzinfo)
+    return max(0, int((target - now).total_seconds()))
+
+
 def _benchmark_latest(conn):
     from market import BENCHMARK
     return db.get_latest_price_date(conn, BENCHMARK)

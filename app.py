@@ -108,7 +108,17 @@ def create_app(db_path=None):
         """A label that changes whenever new closing prices are saved, e.g. {"version": "2026-11-12/6043"}. Open portfolio pages
         ask this every couple of minutes (static/js/live.js) and update themselves when it changes. It
         carries no personal data, so it needs no login."""
-        response = jsonify(version=updater.prices_version(get_db()))
+        # Every open page asks this, so the answer is worked out at most every 30 seconds per server process
+        # instead of adding up the whole prices table each time. "next": seconds until it's worth asking again
+        # (2 minutes while a close is due, else until about 5:45pm on the next trading day, at most 6 hours).
+        import time
+        cache, now = app.extensions.setdefault("sgxray_prices", {}), time.monotonic()
+        if cache.get("until", 0) <= now:
+            conn = get_db()
+            cache.update(version=updater.prices_version(conn), next=updater.seconds_to_next_close(conn), at=now,
+                         until=now + 30)
+        wait = max(0, cache["next"] - int(now - cache["at"]))
+        response = jsonify(version=cache["version"], next=min(max(wait, 120), 6 * 3600))
         response.headers["Cache-Control"] = "no-store"
         return response
 

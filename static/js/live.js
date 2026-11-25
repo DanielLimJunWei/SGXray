@@ -1,5 +1,5 @@
-// New closing prices, without refreshing (w410). Every couple of minutes, while the tab is open and visible,
-// this asks /prices/latest for the newest close SGXray has. When it's newer than what the page shows:
+// New closing prices, without refreshing (w410). While the tab is open and visible, this asks /prices/latest
+// for the newest close SGXray has, but only when one is due (see "When to ask" below). When it's newer:
 //   1. it fetches the same page again in the background,
 //   2. the key figures and the holdings' prices roll smoothly from the old close to the new one (up or
 //      down, about a second, then they sit still),
@@ -96,22 +96,37 @@
   // Only counts the new prices as shown once the page really shows them: if the page couldn't be fetched
   // (a dropped connection, a busy server), it tries again every 10 seconds, up to 3 times, and after that
   // at the next regular check.
-  let busy = false, retries = 0;
+  //
+  // When to ask (audit 4: "make sure your app isn't polling" for nothing): new closes come once a trading day,
+  // so the server answers with "next", the seconds until a new close is due. The page waits that long (until
+  // about 5:45pm on the next trading day), and only checks every 2 minutes while a close is due but not in yet.
+  // A hidden tab asks nothing; coming back to it checks only if a check fell due meanwhile.
+  let busy = false, retries = 0, timer = null, dueAt = Date.now() + EVERY;
+  function schedule(seconds) {
+    clearTimeout(timer);
+    dueAt = Date.now() + Math.max(EVERY, seconds * 1000);
+    timer = setTimeout(check, dueAt - Date.now());
+  }
   const later = () => { if (retries < 3) { retries++; setTimeout(check, 10000); } };
   async function check() {
     if (document.visibilityState !== "visible" || busy) return;
     busy = true;
+    let wait = EVERY / 1000;
     try {
       const r = await fetch("/prices/latest", { cache: "no-store" });
       if (r.ok) {
-        const { version } = await r.json();
+        const { version, next } = await r.json();
+        if (Number.isFinite(next)) wait = next;
         if (version && version !== shown) {
           if (await update()) { shown = version; retries = 0; } else later();
         }
       }
     } catch (e) { later(); }                                          // offline for a moment
     busy = false;
+    schedule(wait);
   }
-  setInterval(check, EVERY);
-  document.addEventListener("visibilitychange", check);              // coming back to the tab checks straight away
+  schedule(EVERY / 1000);
+  document.addEventListener("visibilitychange", () => {               // back on the tab: check if one fell due
+    if (document.visibilityState === "visible" && Date.now() >= dueAt) check();
+  });
 })();

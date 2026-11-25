@@ -140,3 +140,21 @@ def test_the_daily_update_covers_every_held_stock_real_and_practice(db_path, mon
 ])
 def test_the_next_update_is_said_in_words(now, words):
     assert updater.next_update(now) == words
+
+
+# ---------- Not polling for nothing (audit 4) ----------
+
+def test_pages_wait_until_the_next_close_is_due(db_path):
+    conn = conn_with_sti(db_path, "2026-11-13")                      # Friday's close is saved
+    sat_noon = datetime(2026, 11, 14, 12, 0, tzinfo=SGT)
+    # Nothing new until Monday 5:45pm: 2 days 5 hours 45 minutes away.
+    assert updater.seconds_to_next_close(conn, sat_noon) == (2 * 24 + 5) * 3600 + 45 * 60
+    mon_6pm = datetime(2026, 11, 16, 18, 0, tzinfo=SGT)
+    assert updater.seconds_to_next_close(conn, mon_6pm) == 0          # Monday's close is due and not in yet
+    conn.close()
+
+
+def test_the_page_is_told_when_to_ask_again(app, db_path):
+    conn_with_sti(db_path, "2026-11-13").close()
+    nxt = app.test_client().get("/prices/latest").get_json()["next"]
+    assert 120 <= nxt <= 6 * 3600                                     # never more often than every 2 minutes
