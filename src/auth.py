@@ -81,6 +81,11 @@ def password_problem(password, email=""):
 def email_problem(email):
     if not EMAIL.match(email) or len(email) > 254:
         return "Enter a valid email address."
+    if not email.isascii():
+        # Audit 4: some letters change when lower-cased (the Kelvin sign "K" becomes a plain "k"), so a
+        # look-alike address would quietly turn into someone else's. Plain letters only, so what you type is
+        # exactly what's stored and where emails go.
+        return "Use your email address in plain letters (a to z, numbers and . _ - +)."
     if email.strip().lower().endswith(".invalid"):     # reserved: practice twins use it, and it can't get email
         return "Enter a valid email address."
     return None

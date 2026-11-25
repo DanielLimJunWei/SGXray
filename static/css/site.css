@@ -999,3 +999,6 @@ svg.spot-line #xray-top { animation: spot-line 2.4s ease-in-out 3; }
 .story-chart-show[hidden] { display: none; }
 .feed-empty-box, .trades .panel.empty { min-height: 9rem; display: grid; align-content: center; }   /* room for the trace */
 .feed-empty-box .feed-empty { padding: 0; }
+
+/* A form on its way (forms.js): its buttons fade a little and can't be pressed again until the next page. */
+.is-sending { opacity: 0.6; cursor: progress; pointer-events: none; }
