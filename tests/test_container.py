@@ -50,3 +50,17 @@ def test_the_github_checks_are_locked_down():
     assert "persist-credentials: false" in ci and ci.count("persist-credentials: false") == ci.count("actions/checkout")
     assert "SGXRAY_TEST_PG" in ci and "pip_audit -r requirements.lock" in ci and "docker build" in ci
     assert "secrets." not in ci                                                     # no secret is needed or used
+
+
+def test_the_render_settings_hold_no_secrets():
+    """w404: render.yaml is on GitHub, so the database address is typed into Render (sync: false) and the secret
+    key is made by Render (generateValue). Both live-site settings are on."""
+    text = (ROOT / "render.yaml").read_text(encoding="utf-8")
+    assert "postgresql://" not in text and "password" not in text.lower()
+    lines = text.splitlines()
+    after = {k: lines[i + 1].strip() for i, line in enumerate(lines) for k in ("DATABASE_URL", "SGXRAY_SECRET_KEY")
+             if f"key: {k}" in line}
+    assert after == {"DATABASE_URL": "sync: false", "SGXRAY_SECRET_KEY": "generateValue: true"}
+    assert "region: singapore" in text and "autoDeployTrigger: checksPass" in text
+    for key in ("SGXRAY_HTTPS", "SGXRAY_PROXIES"):
+        assert lines[[i for i, l in enumerate(lines) if f"key: {key}" in l][0] + 1].strip() == 'value: "1"'

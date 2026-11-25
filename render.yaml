@@ -1,0 +1,27 @@
+# How Render runs SGXray (w404): a Render "Blueprint". In Render: New → Blueprint → pick this repo.
+#
+# It builds the same Dockerfile as on your computer, in Singapore, on the Starter plan (0.5 CPU, 512 MB; the free
+# plan sleeps when nobody visits, which also stops the daily price updates).
+#
+# No secret is written here. Render makes the secret key itself, and asks you for the database address once,
+# in its dashboard (it's never in the code or on GitHub).
+
+services:
+  - type: web
+    name: sgxray
+    runtime: docker
+    region: singapore
+    plan: starter
+    healthCheckPath: /login          # Render only switches to a new version once this page answers
+    autoDeployTrigger: checksPass    # deploy a push only after GitHub's checks (.github/workflows/ci.yml) pass
+    envVars:
+      - key: DATABASE_URL            # Neon's connection address (Singapore). Typed into Render's dashboard.
+        sync: false
+      - key: SGXRAY_SECRET_KEY       # signs log-in cookies; Render generates a random one
+        generateValue: true
+      - key: SGXRAY_HTTPS            # cookies only over HTTPS, and HSTS
+        value: "1"
+      - key: SGXRAY_PROXIES          # Render's one proxy: trust one hop of X-Forwarded-For for real visitor addresses
+        value: "1"
+      - key: WEB_CONCURRENCY         # two gunicorn workers fit in 512 MB
+        value: "2"
