@@ -114,7 +114,7 @@ def create_app(db_path=None):
 
     @app.get("/")
     def home():
-        return render_template("home.html")
+        return render_template("home.html", account_deleted=session.pop("account_deleted", False))
 
     @app.get("/demo")
     def demo():
@@ -711,6 +711,50 @@ def create_app(db_path=None):
         session["password_changed"] = True
         return redirect(url_for("account"))
 
+    # ---------- Your data (audit 4, Singapore's PDPA): download it, or delete everything ----------
+
+    @app.get("/account/data")
+    @login_required
+    def account_data():
+        """"Download my data": everything SGXray keeps about you, as one JSON file. Your own data only (the id
+        comes from the session). A GET changes nothing, and another site can't read the answer (no CORS)."""
+        import json
+        body = json.dumps(db.export_data(get_db(), g.user["id"]), indent=2, ensure_ascii=False)
+        db.log_security_event(get_db(), "data_downloaded", g.user["id"], request.remote_addr)
+        response = current_app.response_class(body, mimetype="application/json")
+        response.headers["Content-Disposition"] = f'attachment; filename="sgxray-my-data-{sgtime.today()}.json"'
+        return response
+
+    @app.route("/account/delete", methods=["GET", "POST"])
+    @login_required
+    def account_delete():
+        """GET explains what goes; the POST needs your current password (someone at your unlocked computer can't
+        do it), with the same tries limit as changing it. Then the account and everything in it is gone."""
+        if request.method == "GET":
+            return render_template("account_delete.html")
+        conn = get_db()
+        key = f"pwchange:{g.user['id']}"
+        if auth.limited(conn, key, auth.PASSWORD_TRIES, auth.WINDOW_MINUTES):
+            return render_template("account_delete.html", error=f"Too many tries. Wait {auth.WINDOW_MINUTES} minutes."), 429
+        if auth.check_login(conn, g.user["email"], request.form.get("current", "")[:auth.MAX_LENGTH]) is None:
+            auth.count(conn, key)
+            db.log_security_event(conn, "account_delete_failed", g.user["id"], request.remote_addr)
+            return render_template("account_delete.html", error="Your password isn't right."), 401
+        db.delete_user(conn, g.user["id"])
+        db.log_security_event(conn, "account_deleted")            # no id or address: the account is gone
+        db.clear_login_attempts(conn, key)
+        session.clear()
+        session["account_deleted"] = True
+        return redirect(url_for("home"))
+
+    @app.get("/privacy")
+    def privacy():
+        return render_template("privacy.html", contact=os.environ.get("SGXRAY_CONTACT_EMAIL", ""))
+
+    @app.get("/terms")
+    def terms():
+        return render_template("terms.html", contact=os.environ.get("SGXRAY_CONTACT_EMAIL", ""))
+
     def _portfolio_page(uid, mode, **extra):
         """extra: anything else the page needs (the practice portfolio passes its pretend cash)."""
         conn = get_db()
@@ -1053,7 +1097,7 @@ def _security_headers(response):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     if request.endpoint in ("reset_link", "reset_password", "forgot"):
         response.headers["Referrer-Policy"] = "no-referrer"       # the reset link's secret is never passed on
-    if g.get("user") or request.endpoint in ("login", "signup", "account", "account_password", "forgot",
+    if g.get("user") or request.endpoint in ("login", "signup", "account", "account_password", "forgot", "home",
                                              "reset_link", "reset_password", "ready", "market_today"):
         # Private pages aren't kept in the browser cache. Logged in, that's EVERY page (audit 4: Learn shows your
         # progress and the top bar is yours, so someone opening the same browser later mustn't see them).

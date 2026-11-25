@@ -1002,3 +1002,14 @@ svg.spot-line #xray-top { animation: spot-line 2.4s ease-in-out 3; }
 
 /* A form on its way (forms.js): its buttons fade a little and can't be pressed again until the next page. */
 .is-sending { opacity: 0.6; cursor: progress; pointer-events: none; }
+
+/* Privacy notice and terms of use (audit 4): plain reading pages, one comfortable column. */
+.legal { max-width: 46rem; }
+.legal section { margin-top: var(--space-8); }
+.legal h2 { font-size: var(--text-lg); margin: 0 0 var(--space-3); }
+.legal p, .legal li, .legal dd { color: var(--color-text-muted); line-height: 1.65; }
+.legal b, .legal dt { color: var(--color-text); font-weight: 500; }
+.legal ul { padding-left: var(--space-5); display: grid; gap: var(--space-2); }
+.legal-list { display: grid; gap: var(--space-4); margin: 0 0 var(--space-4); }
+.legal-list dd { margin: var(--space-1) 0 0; }
+.consent { font-size: var(--text-sm); color: var(--color-text-muted); margin: var(--space-2) 0 0; }

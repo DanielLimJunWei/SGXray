@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_lightbox.html" import lightbox %}
+{% block title %}Delete your account · SGXray{% endblock %}
+{% block content %}
+<div class="page wrap lightbox-page">
+  {% call lightbox(current_user.email, "Details") %}
+    <h1>Delete your account?</h1>
+    {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+    <p class="muted">This deletes your account and everything in it, straight away and for good: your trades and
+      notes, monthly plans, practice portfolio, the lessons you've read, and your security log. It can't be undone.
+      Want a copy first? <a href="{{ url_for('account_data') }}" download>Download my data</a>.</p>
+    <form method="post" action="{{ url_for('account_delete') }}" class="auth-form">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <input type="text" name="username" autocomplete="username" value="{{ current_user.email }}" hidden>
+      <label for="current">Your password <span class="hint">to show it's really you</span></label>
+      <input id="current" name="current" type="password" autocomplete="current-password" required maxlength="128" data-private>
+      <button class="btn btn-primary" type="submit">Delete my account</button>
+    </form>
+    <p class="film-foot"><a href="{{ url_for('account') }}">Keep my account</a></p>
+  {% endcall %}
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/lightbox.js') }}" defer></script>{% endblock %}

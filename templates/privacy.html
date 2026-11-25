@@ -1,0 +1,67 @@
+{#
+  Privacy notice (audit 4). Written from what the code really stores: if a table, cookie or outside service is
+  added or changed, change this page in the same commit (tests/test_legal.py checks the key promises).
+  Singapore's Personal Data Protection Act 2012 (PDPA): say what's collected and why (s20), let people see and
+  download it (s21), correct it (s22), withdraw consent (s16), and name who to contact (s11(5)).
+  A draft by a developer, not a lawyer: to be reviewed before launch (SECURITY.md check 72).
+#}
+{% extends "base.html" %}
+{% block title %}Privacy notice · SGXray{% endblock %}
+{% block content %}
+<div class="page wrap legal">
+  <header class="page-head">
+    <p class="eyebrow">Privacy notice · last changed 25 November 2026</p>
+    <h1>What SGXray keeps, and why</h1>
+    <p class="muted">SGXray is a learning and portfolio-tracking site for people investing in Singapore. It keeps as
+      little about you as it can, never sells it, and shows no ads. This page follows Singapore's Personal Data
+      Protection Act 2012 (PDPA).</p>
+  </header>
+
+  <section aria-labelledby="p-keep">
+    <h2 id="p-keep">What it keeps</h2>
+    <dl class="legal-list">
+      <div><dt>Your email address</dt><dd>To log you in, and to send a password-reset link if you ask for one. Nothing else: no newsletters, no marketing.</dd></div>
+      <div><dt>Your password</dt><dd>Never the password itself: only a scrambled, salted version (a scrypt hash) that can check it but can't be turned back into it.</dd></div>
+      <div><dt>Your trades, notes and monthly plans</dt><dd>What you type in, to work out your portfolio. Your practice portfolio is kept the same way, apart from your real one.</dd></div>
+      <div><dt>Lessons you've finished</dt><dd>Only which ones and when, so Learn can show your progress. Not how you answered anything.</dd></div>
+      <div><dt>Security records</dt><dd>When you sign up, log in or out, change your password or your trades, with the network address it came from: kept 180 days, to spot and stop break-ins. Failed log-in counts are kept one day at most.</dd></div>
+      <div><dt>A login cookie</dt><dd>One cookie, holding a random session number, so you stay logged in for up to 7 days. It's needed for the site to work. There are no tracking, analytics or advertising cookies.</dd></div>
+    </dl>
+    <p>Not kept: your answers to "Am I ready to start?" (they're used once to show the result, then gone), your
+      broker or bank details (SGXray never asks for them), and anything about you from other sites.</p>
+    <p>In your browser only (never sent to SGXray): whether animations are on, Simple or Detailed view, and, when
+      you're logged out, which lessons you've read. Clearing your browser's site data removes them.</p>
+  </section>
+
+  <section aria-labelledby="p-share">
+    <h2 id="p-share">Who else is involved</h2>
+    <ul>
+      <li><b>The hosting company</b> that runs SGXray's server and database stores everything above on SGXray's behalf, under contract, and may not use it for anything else.</li>
+      <li><b>An email service</b> receives your email address when a password-reset email is sent.</li>
+      <li><b>Yahoo Finance</b> supplies prices and dividends. SGXray's server asks it about stock codes only: never anything about you.</li>
+      <li><b>News publishers</b> (CNA, The Business Times, The Straits Times, The Edge Singapore): SGXray's server reads their public headline feeds. Your browser only contacts them if you open an article.</li>
+      <li><b>jsDelivr</b>, a code library service, supplies the home page's 3D scene, so your browser contacts it when you open the home page.</li>
+    </ul>
+    <p>Your data isn't sold, rented or shared with anyone else, unless the law requires it.</p>
+  </section>
+
+  <section aria-labelledby="p-rights">
+    <h2 id="p-rights">What you can do</h2>
+    <ul>
+      <li><b>See and download it:</b> Account → <a href="{{ url_for('account_data') }}">Download my data</a> gives you everything above in one file.</li>
+      <li><b>Correct it:</b> change or delete any trade, note or plan on your Trades page, and your password on your Account page.</li>
+      <li><b>Delete it:</b> Account → <a href="{{ url_for('account_delete') }}">Delete my account</a> removes your account and everything in it straight away. Server backups that may still hold it are overwritten within 30 days.</li>
+      <li><b>Ask or complain:</b> {% if contact %}email <a href="mailto:{{ contact }}">{{ contact }}</a>, SGXray's data protection contact, and you'll get an answer within 30 days{% else %}contact SGXray's data protection officer (the address is added here before launch){% endif %}. You can also contact Singapore's Personal Data Protection Commission at <a href="https://www.pdpc.gov.sg" rel="noopener noreferrer">pdpc.gov.sg</a>.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="p-safe">
+    <h2 id="p-safe">Keeping it safe</h2>
+    <p>Pages are sent over an encrypted connection (HTTPS). Every form is protected against forgery, nobody can open
+      another person's portfolio, and log-ins slow right down after a few wrong passwords. How each protection works
+      and is tested is published in SGXray's security log. If a data breach ever puts you at risk, you'll be told,
+      and so will the PDPC within 3 days, as the PDPA requires.</p>
+    <p>SGXray is meant for adults. If you're under 18, use it with a parent's or guardian's agreement.</p>
+  </section>
+</div>
+{% endblock %}

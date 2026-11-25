@@ -6,7 +6,7 @@
   {% call lightbox(current_user.email, "Details", switch=True) %}
     <h1>Your account</h1>
     {% if changed %}<p class="form-ok" role="status">Password changed. Any other devices have been logged out.</p>{% endif %}
-    {# One row per thing you can see or do. Export my data and Delete my account (w411) go here later. #}
+    {# One row per thing you can see or do. #}
     <dl class="account-list">
       <div class="account-row">
         <dt>Email</dt>
@@ -30,6 +30,10 @@
         </dd>
       </div>
       <div class="account-row">
+        <dt>Your data</dt>
+        <dd><a class="btn btn-ghost" href="{{ url_for('account_data') }}" download>Download my data</a></dd>
+      </div>
+      <div class="account-row">
         <dt>Another account</dt>
         <dd>
           <form method="post" action="{{ url_for('logout') }}">
@@ -39,7 +43,12 @@
           </form>
         </dd>
       </div>
+      <div class="account-row">
+        <dt>Leave SGXray</dt>
+        <dd><a class="quiet-link" href="{{ url_for('account_delete') }}">Delete my account</a></dd>
+      </div>
     </dl>
+    <p class="film-foot"><a href="{{ url_for('privacy') }}">Privacy notice</a> · <a href="{{ url_for('terms') }}">Terms of use</a></p>
   {% endcall %}
 </div>
 {% endblock %}

@@ -1,0 +1,65 @@
+{#
+  Terms of use (audit 4). The main protections: education, not advice (Singapore's Financial Advisers Act: SGXray
+  isn't licensed by MAS, so it must never recommend); numbers are estimates from third-party data; no liability
+  for investment decisions; others' trade marks and news belong to them. A draft by a developer, not a lawyer: to
+  be reviewed before launch (SECURITY.md check 72).
+#}
+{% extends "base.html" %}
+{% block title %}Terms of use · SGXray{% endblock %}
+{% block content %}
+<div class="page wrap legal">
+  <header class="page-head">
+    <p class="eyebrow">Terms of use · last changed 25 November 2026</p>
+    <h1>The ground rules</h1>
+    <p class="muted">Using SGXray means you agree to these. They're short, and in plain English on purpose.</p>
+  </header>
+
+  <section aria-labelledby="t-advice">
+    <h2 id="t-advice">Education, not advice</h2>
+    <p>SGXray explains numbers and teaches the basics. It doesn't tell you what to buy, sell or hold, and nothing
+      on it is a recommendation or financial advice. SGXray isn't a licensed financial adviser and isn't regulated
+      by the Monetary Authority of Singapore. Every decision about your money is yours: if you need advice, speak
+      to a licensed financial adviser. Past returns don't predict future ones, and investing can lose money.</p>
+  </section>
+
+  <section aria-labelledby="t-numbers">
+    <h2 id="t-numbers">The numbers are estimates</h2>
+    <p>Prices and dividends come from Yahoo Finance as end-of-day closes, not live prices, and can be late,
+      missing or wrong. Your figures are only as accurate as the trades you enter. Forecasts assume the past repeats,
+      which it often doesn't. For anything that matters (taxes, legal records, selling), use your broker's and
+      CDP's own statements. The practice portfolio uses pretend money: no real trade ever happens on SGXray.</p>
+  </section>
+
+  <section aria-labelledby="t-you">
+    <h2 id="t-you">Your part</h2>
+    <ul>
+      <li>Keep your password to yourself. You're responsible for what's done with your account.</li>
+      <li>Don't try to break in, overload the site, get at other people's data, scrape it or create accounts automatically. Found a security problem? Report it privately (see the security log), and thank you.</li>
+      <li>Only enter your own data.</li>
+    </ul>
+    <p>Accounts that break these rules may be suspended or deleted.</p>
+  </section>
+
+  <section aria-labelledby="t-others">
+    <h2 id="t-others">Other people's work</h2>
+    <p>Headlines and summaries on Market today belong to their publishers, are shown with credit and link to the
+      full article. SGXray doesn't write, check or endorse them. Company, fund and index names (including SGX and
+      the Straits Times Index) belong to their owners; SGXray isn't affiliated with or endorsed by any of them.</p>
+  </section>
+
+  <section aria-labelledby="t-limits">
+    <h2 id="t-limits">Limits</h2>
+    <p>SGXray is provided as it is, free of charge, and may sometimes be unavailable or have mistakes. As far as
+      Singapore law allows, SGXray isn't liable for any loss from using it or relying on it, including investment
+      losses. Nothing here takes away rights you have by law.</p>
+  </section>
+
+  <section aria-labelledby="t-end">
+    <h2 id="t-end">Changes and leaving</h2>
+    <p>These terms may change; the date at the top says when. If a change matters, logged-in users are told on the
+      site. You can stop using SGXray and <a href="{{ url_for('account_delete') }}">delete your account</a> at any
+      time. These terms are governed by the laws of Singapore. Your privacy is covered by the
+      <a href="{{ url_for('privacy') }}">privacy notice</a>.{% if contact %} Questions: <a href="mailto:{{ contact }}">{{ contact }}</a>.{% endif %}</p>
+  </section>
+</div>
+{% endblock %}

@@ -589,6 +589,47 @@ def lessons_read(conn, user_id):
     return {r["lesson"] for r in rows}
 
 
+# ---------- Your data: download it, or delete the account (audit 4, PDPA) ----------
+
+def export_data(conn, user_id):
+    """Everything SGXray keeps about one person, as plain lists and dicts (for "Download my data"). Never a
+    password hash, session or reset secret: those are hashes of secrets, useless to the person and risky to hand out."""
+    user = conn.execute("SELECT email, created_at FROM users WHERE id = ?", (user_id,)).fetchone()
+    twin = conn.execute("SELECT id, fee_rate, fee_min FROM users WHERE practice_of = ?", (user_id,)).fetchone()
+
+    def rows(sql, *args):
+        return [dict(r) for r in conn.execute(sql, args).fetchall()]
+    trade_sql = ("SELECT trade_date AS date, ticker, side, quantity, price, fees, note, approx AS approximate "
+                 "FROM trades WHERE user_id = ? ORDER BY trade_date, id")
+    return {
+        "account": {"email": user["email"], "joined_utc": user["created_at"]},
+        "trades": rows(trade_sql, user_id),
+        "monthly_plans": rows("SELECT ticker, amount, day, start_month, end_month, fee_rate, fee_min FROM plans "
+                              "WHERE user_id = ? ORDER BY id", user_id),
+        "practice": {"trades": rows(trade_sql, twin["id"]) if twin else [],
+                     "own_fee": ({"rate": twin["fee_rate"], "minimum": twin["fee_min"]}
+                                 if twin and twin["fee_rate"] is not None else None)},
+        "lessons_read": rows("SELECT lesson, read_at AS read_at_utc FROM lesson_reads WHERE user_id = ? ORDER BY read_at",
+                             user_id),
+        "security_log": rows("SELECT event, ip AS network_address, at AS at_utc FROM security_log WHERE user_id = ? "
+                             "ORDER BY at", user_id),
+    }
+
+
+def delete_user(conn, user_id):
+    """Deletes an account and everything in it, at once and for good: its trades, notes, monthly plans, practice
+    portfolio (the hidden twin and its trades), lessons read, sessions, reset links and security log entries
+    (all ON DELETE CASCADE), plus the failed-login counts kept under its email. True if an account was deleted."""
+    with conn:
+        user = conn.execute("SELECT email FROM users WHERE id = ? AND practice_of IS NULL", (user_id,)).fetchone()
+        if user is None:
+            return False
+        conn.execute("DELETE FROM login_attempts WHERE key = ?", ("email:" + user["email"],))
+        conn.execute("DELETE FROM users WHERE practice_of = ?", (user_id,))      # the practice twin, explicitly
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    return True
+
+
 # ---------- Prices ----------
 
 def save_prices(conn, ticker, rows):

@@ -12,6 +12,7 @@
 
 {% block content %}
   <section class="hero wrap">
+    {% if account_deleted %}<p class="form-ok" role="status">Your account and everything in it have been deleted. Thanks for trying SGXray.</p>{% endif %}
     <p class="eyebrow">For new and future investors in SGX stocks, REITs and ETFs</p>
     <h1>See inside your portfolio.</h1>
     <p>Learn what the numbers mean before you invest a dollar. When you're ready, track your own stocks, with every figure explained in plain English: what you put in, what you've made, and whether you're beating the market.</p>
