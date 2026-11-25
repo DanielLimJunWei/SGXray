@@ -1,127 +1,190 @@
 # SGXray security
 
-SGXray holds people's portfolios, so security is built in, tested, and written down here.
+SGXray holds people's portfolios, so security is built in, tested and written down here. Every number on this
+page is the one in the code (`src/auth.py`, `app.py`), and every "PASS" points at a test or a file.
 
-**Reporting a problem:** please don't open a public issue. Use GitHub's "Report a vulnerability"
-(Security tab → Advisories) so it can be fixed before anyone else sees it.
+**Found a problem?** Please don't open a public issue. Use GitHub's **Report a vulnerability** (Security tab →
+Advisories) so it can be fixed before anyone else sees it.
 
-## How it's protected
+## The limits, exactly
 
-The full list, with what each protection stops, is in [NOTES.md → Accounts and security](NOTES.md).
-In short: salted scrypt password hashes, login/sign-up/password-change rate limits, server-side
-sessions that end on logout, CSRF tokens on every form, a strict Content Security Policy, users
-only ever reaching their own data, generic error pages, and a security log that never holds secrets.
-Every protection has an attack test in `tests/test_auth.py`.
+| What | Limit | Then |
+|---|---|---|
+| Wrong passwords for one email | **5** within 15 minutes | Log-ins for that email pause: 15 minutes the first time that day, then 30, then 60 (never longer). The right password is refused too while paused. A countdown shows. |
+| Wrong passwords from one network address | 20 within 15 minutes (schools and offices share one) | The same pause, for that address |
+| Wrong "current password" on Change password or Delete my account | 5 within 15 minutes | Wait 15 minutes |
+| New accounts from one network address | 5 an hour | Wait an hour |
+| Password-reset emails | 3 an hour per email, 10 an hour per network address | Wait an hour; the reply is the same whether or not the email has an account |
+| Reset link | Works once, for 30 minutes | Only a hash of it is stored |
+| Stock-code lookups on Yahoo | 20 an hour per person | Wait an hour |
+| Logged-in session | 7 days | Log in again. Logging out or changing your password ends it on the server, so a copied cookie stops working |
+| One request | 2 MB | Refused (413) |
+| Password length | 12 to 128 characters | Refused, with the reason |
 
-## Security audit: 70-point launch checklist (10 November 2026)
+**Why the log once seemed to say 5 when 10 worked (fixed 25 Nov 2026).** Until 17 Nov the log-in limit really
+was 10 per email (the database shows a 12 Nov test with 20 failures across two emails). This page's old check 28
+said "5 per 15 minutes", but that line was about the *change-password* page, and it read as if it were the
+log-in limit. Since 17 Nov the code says 5, and audit 4 proved it on a running copy: wrong tries 1 to 4 answer
+"N tries left", the 5th pauses log-ins, and the right password, upper-case or space-padded versions of the email
+and a faked network address are all refused while paused.
 
-Checked against a 70-point web application security checklist covering secrets, authentication, input handling, sessions, APIs, dependencies, data, infrastructure, CI/CD and AI risks, which draws on the [OWASP Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/), the [OWASP API Security Top 10](https://owasp.org/www-project-api-security/) and the [OWASP Top 10 for LLM Applications](https://genai.owasp.org/llm-top-10/). Rule used: **no PASS without
-evidence** (a file, setting or test). FAIL items found in this audit were fixed the same day (marked FIXED).
-UNKNOWN = can only be checked on the live site; each has a Week 4 task.
+## Audits
 
-| # | Check | Result | Evidence or plan |
+| Date | Audit | Result |
+|---|---|---|
+| 10 Nov 2026 | 70-point launch checklist (OWASP ASVS, API Top 10, LLM Top 10) | 7 fixes (checks 1-70) |
+| 11 Nov 2026 | Pre-launch checklist and "ways to get sued" (US law + Singapore's PDPA) | 2 fixes, 4 launch tasks (checks 71-79) |
+| 12-17 Nov 2026 | Each new feature checked as it was built | Checks 80-86 |
+| **25 Nov 2026** | **Audit 4: full audit.** Automated scanners, black-box attacks on a running copy, the "20 pen-test attacks on vibe-coded apps" list, every calculation against outside references, and a lawyer's read | **11 problems fixed, each with a test that fails on the old code (except the double-click guard, checked in a browser, and the speed-up, timed)**; checks 87-100 |
+
+### Audit 4, 25 November 2026
+
+**How it was checked**
+- **Known-vulnerable libraries:** `pip-audit -r requirements.lock` (all 29 libraries): no known vulnerabilities.
+- **Static analysis:** Bandit 1.9.4 over `app.py` and `src/`: 7 notes, all reviewed. The XML ones are covered
+  by refusing DTDs and entities (check 83); the redirect one is fixed (check 89); the 3 SQL ones are
+  fixed text with `?` placeholders, not user input.
+- **Leaked secrets:** detect-secrets over every file, plus a search of the whole Git history for keys,
+  tokens, private keys and passwords. Only test passwords and the banned-password list matched, and no
+  `.env`, database or key file has ever been committed.
+- **Black-box attacks:** 125 attacks from a throwaway script on a running copy of the app, with a scratch
+  copy of the database (never the real one). Covered: the log-in limit, two-user data theft (IDOR) on every
+  trade, plan, note and practice route, CSRF, 12 cross-site scripting reflections and a stored one,
+  12 open-redirect tricks, SQL injection, impossible numbers and dates, 3 MB uploads, session fixation, stolen
+  and forged cookies, security headers, path traversal (`/.git`, `/.env`, the database, the secret key),
+  TRACE, account enumeration on log-in and "forgot password", template injection, and the new data and
+  delete routes. All pass after the fixes below.
+- **The "20 pen-test attacks" list** (murphmaxxing.com):
+  - Not used by SGXray, so not applicable: HTTP/2 server, bcrypt, SAML, Microsoft login, GraphQL, TOTP, JWT,
+    request smuggling, Postgres views, padding oracles, Node prototype pollution and WebSockets.
+  - Pass: ReDoS (the email check takes microseconds on crafted input), weak random numbers (secrets
+    come from `secrets`; `Math.random` only names a chart element), timing attacks (`hmac.compare_digest`),
+    template injection (no template is ever built from user text; `{{7*7}}` stays text) and XXE (DTDs refused).
+  - Fixed: spoofed X-Forwarded-For (check 87), cache poisoning via the Host header (never trusted) and Unicode
+    email look-alikes (check 90).
+- **OWASP ZAP** (an automated scanner for a running site): not run. Docker Desktop wouldn't start on this
+  computer, so it's a Week 4 task against the deployed site (check 99).
+
+**What was found and fixed**
+
+| # | Problem | Who could hit it | Fix and test |
 |---|---|---|---|
-| 01 | Exposed database credentials | PASS | SQLite file on the server, no credentials. Postgres (Week 4): URL from Render's secret settings only |
-| 02 | Public .env files | PASS | `.gitignore` has `.env` and `instance/`; `git log --name-only` shows no env, key or database file ever committed |
-| 03 | Hardcoded secrets | PASS | Secret key from `SGXRAY_SECRET_KEY` or a random `instance/secret_key` (`app._secret_key`); history searched for key patterns: none |
-| 04 | Weak or missing authentication | PASS | Werkzeug scrypt hashing, `login_required` on `/portfolio`, `/account` and `/account/password` (`test_portfolio_needs_login...`) |
-| 05 | Missing server-side authorization | PASS | Every private action checks the session's user on the server; password change re-checks the current password |
-| 06 | Cross-user data access | PASS | User id only from the session; `test_portfolio_needs_login_and_shows_only_your_own` (with `?user=` tampering) |
-| 07 | Open database permissions | PASS / Week 4 | The database file isn't reachable over the web (Flask only serves `static/`). Week 4: a Postgres role with only the rights SGXray needs |
-| 08 | Firebase / Supabase / S3 rules | N/A | Not used |
-| 09 | Unprotected admin routes | PASS | No admin routes; the design preview route returns 404 unless debug mode (`test_design_preview_is_hidden...`) |
-| 10 | Production debug tools | PASS | Debug only with `--debug` locally; `test_errors_are_generic_and_debug_is_off` checks `app.debug is False` |
-| 11 | Build logs leaking secrets | N/A / Week 4 | No CI yet. When added (w402): secrets only as masked CI secrets, never echoed |
-| 12 | Verbose production errors | FIXED | Generic pages for 400/404/405/413/429/500 (`templates/error.html`); test raises an error with a "secret" message and checks it never reaches the page |
-| 13 | Secrets in Git history | PASS | `git log -p --all` searched for keys, tokens, private keys and password assignments: none |
-| 14 | Secrets in frontend JavaScript | PASS | `static/js` holds no keys; nothing secret is sent to the browser |
-| 15 | Client-side-only checks | PASS | Form `minlength`/`required` are only hints; the server repeats every check (`auth.password_problem`, `email_problem`) |
-| 16 | Missing input validation | PASS | Length caps on every field, email format, password 12-128, 2 MB request cap (`MAX_CONTENT_LENGTH`). Trade forms reuse the importer's checks (`importer.check_fields`), each field is cut to 32 characters first, and quantity, price and fees have upper limits (`test_trades.py`). The "Why I bought" note (w317) is capped at 280 characters in the form and by a CHECK rule in the table, with control characters removed (`test_notes.py`) |
-| 17 | SQL injection | PASS | Every query uses `?` placeholders; the one f-string (`PRAGMA table_info`) uses fixed table names from code; `test_sql_injection_in_the_login_form_does_nothing` |
-| 18 | NoSQL injection | N/A | No NoSQL database |
-| 19 | Cross-site scripting | PASS | Jinja escapes everything; scripts build the page with `textContent`; CSP with a per-page nonce (`test_security_headers_and_a_fresh_nonce...`). Trade notes, the first free text other than emails, are tested with a `<script>` note on both pages that show them (`test_a_note_is_shown_as_text_never_as_html`) |
-| 20 | CSRF | PASS | Token in every form, constant-time check, SameSite=Lax, logout POST-only (`test_forms_without_the_token...`, `test_logout_needs_a_post...`). The Learn page's "Done" button is a POST with the token too (`test_done_needs_the_form_token`); logged out it saves nothing on the server |
-| 21 | Insecure file uploads | N/A now | No uploads yet. CSV import in the app (w308) will cap size, accept only CSV text, never save the file or use its name |
-| 22 | Path traversal | PASS | The only file route uses `send_from_directory` (safe join) and is debug-only |
-| 23 | SSRF | PASS | SGXray never fetches a user-supplied URL. Ticker lookup only sends a code matching `^[A-Z0-9]{1,6}$` (+ `.SI`), only through yfinance to Yahoo, logged in only, 20 lookups an hour each; Yahoo's answer must say SGX and a share or ETF before anything is saved (`test_lookup.py`) |
-| 24 | Password-reset flows | PASS (11 Nov 2026) / Week 4 | Built: 256-bit random link, only its SHA-256 hash stored, 30 minutes, works once (marked used in the same transaction as the new password), a new request cancels the old link, the same reply and status whether or not the email exists, 3 emails an hour per address and 10 requests an hour per network address, every session ended on reset, `Referrer-Policy: no-referrer` and the secret moved out of the address bar, link address only from `SGXRAY_BASE_URL` on the live site (no host-header poisoning), nothing secret in logs. All in `tests/test_reset.py`. Small gap: a real account does a few extra milliseconds of database writes, so the reply is not perfectly timing-equal (the email itself is sent in the background). Week 4: set the email service settings and send a real reset |
-| 25 | Weak session management | FIXED | Was: logging out only cleared the browser cookie, so a copied cookie still worked for 7 days. Now: server-side `sessions` table (only SHA-256 hashes stored), ended on logout and on password change, 7-day limit (`test_a_copied_cookie_stops_working_after_logout`) |
-| 26 | JWTs | N/A | Not used (signed Flask session + server-side session id) |
-| 27 | Permissive CORS | PASS | No CORS headers at all: browsers only allow SGXray's own pages to read its responses |
-| 28 | Missing rate limits | FIXED | Login already limited; added sign-up (5 an hour per address) and current-password tries on the account page (5 per 15 minutes). Tests for all three |
-| 29 | Unprotected staging | N/A / Week 4 | No staging yet. If one is made: login required, no real user data, its own secret key |
-| 30 | Default credentials | PASS | No default accounts; the demo account can't be logged into (`test_the_demo_account_cannot_be_logged_into`); the secret key is random per install |
-| 31 | Webhook signatures | N/A | No webhooks |
-| 32 | Frontend-only payment checks | N/A | No payments |
-| 33 | IDOR / BOLA | PASS | Same as 06. Trade view/edit/delete query `WHERE id = ? AND user_id = ?`, so someone else's trade id gives 404, exactly like one that doesn't exist (`test_someone_elses_trade_is_invisible_and_untouchable`) |
-| 34 | Trusting user-sent roles or IDs | PASS | Identity only from the server-side session, never from form fields or the URL |
-| 35 | Sensitive data in logs | FIXED | `security_log` never stores passwords (`test_nothing_secret...`); added retention: security events 180 days, failed-login counts 1 day, expired sessions removed (`db.prune`, `test_old_security_records_are_deleted`) |
-| 36 | Source maps / build artifacts | PASS | No build step; `static/` holds only the site's own CSS and JS |
-| 37 | Vulnerable dependencies | FIXED | Added `requirements.txt` with exact versions (and `requirements.lock`, see 62). `pip-audit -r requirements-dev.txt` on 10 Nov 2026 (every direct and indirect dependency): **no known vulnerabilities**. Re-run before each release and in CI (w402) |
-| 38 | Malicious packages | PASS / ongoing | 7 well-known direct dependencies, pinned; no install scripts of our own. Review any new one before adding |
-| 39 | Prompt injection | N/A now | No AI yet. "What is going on?" (w412) will treat news text as data and enforce limits in code |
-| 40 | AI tools bypassing permissions | N/A now | Same: the AI feature will get no tools that touch user data |
-| 41 | Excess database privileges | N/A / Week 4 | See 07 |
-| 42 | Missing audit logs | PASS | `security_log` records actor, event, time and address for sign-up, login, failures, blocks, logout and password changes. Trade added / edited / deleted are logged too |
-| 43 | Security monitoring and alerts | UNKNOWN / Week 4 | Plan: alert on bursts of failed logins and on server errors (Render logs + an uptime check) |
-| 44 | Backup and restore | UNKNOWN / Week 4 | Plan: Render Postgres daily backups, and a restore actually tested before launch |
-| 45 | Public internal dashboards | N/A | None |
-| 46 | Security headers | PASS / verify live | CSP, X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, HSTS on HTTPS, no-store on private pages. Re-check the deployed responses in Week 4 |
-| 47 | Cookie settings | PASS / verify live | HttpOnly and SameSite=Lax tested; Secure is on when `SGXRAY_HTTPS=1`, which the live site must set |
-| 48 | Data in transit / at rest | UNKNOWN / Week 4 | HTTPS + HSTS on Render; Postgres at-rest encryption from the provider; passwords are hashed regardless |
-| 49 | Tenant isolation | PASS | One user = one scope; every query filters by the session's user id |
-| 50 | Over-trusting AI-generated code | PASS / ongoing | 186 tests incl. 24 attack tests; every change reviewed before commit. Also worth running the built-in `/security-review` before launch, and Strix in Week 4 |
-| 51 | Mass assignment | PASS | Forms read only named fields (email, password); nothing copies a whole form into the database |
-| 52 | Command / OS injection | PASS | No shell commands anywhere in the app (searched for `subprocess`, `os.system`, `eval`, `exec`) |
-| 53 | Unsafe deserialization | PASS | No `pickle` or `yaml.load`; the session cookie is signed JSON |
-| 54 | OAuth / social login | N/A | Not used |
+| 87 | Behind the hosting proxy, every visitor would have looked like ONE network address: 20 wrong log-ins by anyone would have locked everyone out, and 5 sign-ups an hour would have been the whole site's limit | Anyone, on the live site | `SGXRAY_PROXIES=1` on Render trusts exactly one proxy hop; a typed-in X-Forwarded-For is ignored. `test_audit4.py` |
+| 88 | Learn, the demo and the news weren't marked "don't store" while logged in, so your progress could show to the next person on a shared computer | Shared computers | Every page is `no-store` while logged in. `test_audit4.py` |
+| 89 | Fetching an article's summary followed a redirect before checking where it led, even to `http`, `ftp` or the server's own network; a backslash in a link's host passed the publisher check | A compromised publisher feed | Every redirect checked first; plain host names only. `test_audit4.py` |
+| 90 | Look-alike letters: the Kelvin sign "K" lower-cases to a plain "k", so `Kate@…` written with it became `kate@…` | Sign-up tricks | Emails must be plain letters. `test_audit4.py` |
+| 91 | A double click on "Add trade" saved the trade twice (the holding doubled) | Anyone | `static/js/forms.js`: a form sends once until the next page arrives (checked in a browser: 3 clicks, 1 trade) |
+| 92 | The open demo page took 3.3 seconds of server work per view, an easy way to overload the server | Anyone, no log-in | Dividend counting rewritten as one pass (same results on every account and 600 random portfolios): 0.4 s. A page cache for the demo is a Week 4 task |
+| 93 | Selling on the same day as a buy that was saved later: the check passed, then the whole portfolio page crashed (500) | The account's owner | The check now adds same-day trades in the same order as the maths (save order; an edit keeps its place). `test_audit4.py` |
+| 94 | "Today" came from the server's clock: on a UTC server, a trade made before 8am in Singapore was "in the future" | Everyone, every morning, once hosted | `src/sgtime.py`, Singapore time everywhere. `test_audit4.py` |
+| 95 | A trade dated 1900 was accepted (and 126 years of prices requested) | The account's owner | Dates from 1990 on. `test_audit4.py` |
+| 96 | A monthly plan in a suspended stock bought every missed month on the same day it reopened | Plan owners | A month's buy must be within a week of its day, or that month is skipped (as banks do). `test_audit4.py` |
+| 97 | No way to download or delete your data; no privacy notice or terms (PDPA) | Every user | Account → Download my data (JSON, your data only) and Delete my account (password needed, everything removed, every device logged out); `/privacy` and `/terms`, linked from every page and at sign-up. `test_legal.py` (10 tests) |
 
-| 55 | No MFA on privileged accounts | UNKNOWN: your action | Can't be seen from the code (your GitHub token can't read the setting). Turn on two-factor sign-in for **GitHub**, the **Google account** for your email, and later **Render** and any database host. See "Your to-do" below |
-| 56 | Account enumeration | PASS (login) / MITIGATED (sign-up) | Login: same words, status and timing whether or not the email exists (`test_wrong_password_and_unknown_email_look_identical`). Sign-up: the reply doesn't say "taken", every valid sign-up is hashed so timing matches, and 5 sign-ups an hour per address stops mass checking. Full fix comes with email verification ("check your inbox" either way) |
-| 57 | Business-logic abuse | PASS | The importer refuses impossible trades on the server: selling more than you hold (including after bonus issues), future or weekend dates, zero or negative amounts (`importer._check_row`, `_check_sells`, the importer tests). The trade forms reuse exactly these checks, and also refuse an edit or delete that would leave a later sale with too few shares |
-| 58 | Race conditions | FIXED | `users.email` is UNIQUE in the database; two sign-ups for one email at the same instant now give the calm message instead of a crash (`test_two_signups_for_one_email_at_the_same_moment`). Each write runs inside a transaction (`with conn:`) |
-| 59 | Webhook replay | N/A | No webhooks |
-| 60 | Overpowered CI/CD credentials | N/A now / w402 | No CI yet. When added: the workflow's token limited to `contents: read`, no deploy keys in CI, Render deploys from its own GitHub link |
-| 61 | Untrusted build actions or scripts | N/A now / w402 | Only GitHub's own actions (checkout, setup-python), reviewed before use |
-| 62 | Unpinned build dependencies | FIXED | `requirements.lock` lists all 29 libraries (direct and indirect) at exact versions, built from a clean environment; the app was checked to run with only those; `pip-audit -r requirements.lock`: no known vulnerabilities. CI actions will be pinned to exact commit IDs |
-| 63 | Security checks fail open | PASS | Every check defaults to "no": a missing or wrong form token is refused, an unknown or forged session cookie means logged out, an unsafe `next=` falls back to your portfolio, a database error gives a 500, never access (`test_a_forged_or_broken_cookie_means_logged_out`, `test_forms_without_the_token...`) |
-| 64 | Missing resource limits | PASS / Week 4 | 2 MB request cap, 128-character password cap (scrypt is deliberately slow), rate limits, yfinance downloads use their 10-second timeout. Week 4: a request timeout on the live server (gunicorn) and caching the demo page so visitors can't make it recompute every time |
-| 65 | AI sensitive-information disclosure | N/A now / w412 | No AI yet. The "What is going on?" box will send only public news and the stock's public prices, never anyone's portfolio |
-| 66 | Unsafe use of AI output | N/A now / w412 | Its answer will be shown as plain text (escaped), never used as HTML, SQL, a link target or a command |
-| 67 | AI agents with excessive agency | N/A | SGXray's AI will have no tools: it can't trade, delete or spend |
-| 68 | Sensitive browser storage | PASS | Browser storage holds only the animation on/off choice (`sgxray-motion`) and, when logged out, which lessons you've read (`sgxray-lessons-read`); the login cookie is HttpOnly and holds only a random session id |
-| 69 | Open redirects | PASS | `auth.safe_next` allows only paths inside SGXray; 4 attack forms tested (`test_login_never_redirects_to_another_site`) |
-| 70 | GraphQL / WebSocket / realtime endpoints | N/A | None |
+**Calculations, against outside references** (all match):
+- XIRR (the money-weighted return) gives Microsoft Excel's own documented example, 0.373362535, and matches
+  scipy's solver on 486 random cash-flow sets (largest gap 0.00000005%).
+- The time-weighted return is exactly 21% on a hand-worked case.
+- Average cost, realised profit, a bonus issue's rounding and a same-day dividend match working by hand.
+- The practice fees ($11.34 on a $1,000 trade, $76.30 on $50,000) match SGX's published fees and 9% GST.
+- On the demo portfolio, volatility and the biggest fall match numpy, the per-stock profits add up exactly to
+  the portfolio's, and two separate code paths give the same total profit.
+- SGXray shows no Sharpe ratio, so there was none to check.
 
-**Totals (70 checks):** 37 PASS (some to re-check on the live site; check 56 passes for login and is mitigated for sign-up until email verification), 7 FIXED in this audit, 22 N/A (features SGXray doesn't have, or doesn't have yet), 4 UNKNOWN (3 need the live site, 1 needs you).
+## Every check
 
-### Second pass: pre-launch checklist and "ways to get sued" (11 November 2026)
+PASS = proven by the evidence named. FIXED = was a problem, now proven fixed. N/A = SGXray doesn't have that
+feature. OPEN = still to do, with its task. LIVE = can only be proven on the deployed site (Week 4).
 
-Checked against a 30-point pre-launch security checklist and a 10-point list of ways apps get sued (both written for US law), plus Singapore's own rules. Almost everything was already covered above. New findings:
-
-| # | Check | Status | Evidence / plan |
+### Secrets and setup
+| # | Check | Status | Evidence |
 |---|---|---|---|
-| 71 | Visitor data sent to outside companies | FIXED | Google Fonts sent every visitor's network address to Google. The three fonts are now served by SGXray (`static/fonts/`, open licence), and the CSP allows fonts only from SGXray (`test_no_page_sends_visitors_to_google_fonts`). Still outside: jsDelivr on the home page (the 3D scene's code), Yahoo Finance (server only, stock codes, no personal data) |
-| 72 | Privacy policy matches what the code stores | TO DO / w409 | Must list every table with personal data and how long it's kept, every outside company, a named Data Protection Officer (PDPA requires one), and a breach plan (tell the PDPC within 3 days if a breach is notifiable) |
-| 73 | Deletion does what the policy promises | TO DO / w411 | Account deletion must remove trades, notes, lesson reads, sessions and reset links, and be as easy as signing up |
-| 74 | Licence for the price data | TO DO / w418 | yfinance's README says Yahoo's data is for personal use. Confirm Yahoo's terms allow a public site, or switch to a licensed provider before launch |
-| 75 | Someone else's trade mark | TO DO / w419 | "SGX" is Singapore Exchange's registered trade mark. The footer says "not affiliated"; ask a lawyer about the name before launch |
-| 76 | Bot protection on sign-up | PARTLY / w420 | Rate limits only (5 sign-ups an hour per address). Add email confirmation once the email service exists |
-| 77 | "Past returns" and advice wording | FIXED | Footer and the returns panels say past returns don't predict future ones; lessons only explain, never recommend (MAS: general education isn't financial advice) |
-| 78 | Fake reviews, subscriptions, chatbots | N/A now | No testimonials (and never invented ones), no payments. The AI explainer (w412) must say it's AI, and the privacy policy must name its provider |
-| 79 | Sensitive answers in the self-check | PASS | "Am I ready to start?" asks about savings, debt and insurance. Nothing is stored: answers come in the POST body (never the address, history or server logs), the page is `no-store`, no database write or log event; tested by counting every table's rows before and after (`test_nothing_anyone_answers_is_saved`). Only listed answers are accepted (`test_tampered_answers_are_ignored`) |
-| 80 | Practice portfolio's hidden twin account | PASS | Each account's practice trades belong to a hidden user that can't log in or get a reset email (`!` password marker, like the demo), found only from the logged-in user's id, never the address; deleted with its owner (ON DELETE CASCADE); `.invalid` emails refused at sign-up so its address can't be taken. Practice trades take only stock, side, shares and a note from the form: price, date and fees are set by the server. Tests: `test_someone_elses_practice_is_invisible`, `test_the_practice_twin_cant_log_in_reset_or_be_signed_up_for`, `test_a_practice_buy_uses_the_latest_close_and_a_real_fee` |
-| 81 | Background price updates and the live-prices endpoint | PASS | The updater only calls Yahoo Finance for stocks already in SGXray's list (no user-supplied URL, so no SSRF), runs one at a time under a database lock, and never stops on an error. `/prices/latest` is public but returns only a version label made from shared market data (no personal data), `no-store`. live.js only re-fetches the page you're already on, with your own cookie; if you've been logged out meanwhile it leaves the page alone |
-| 82 | Monthly plans | PASS | Every plan query has `user_id` in it, so someone else's plan id gives 404 for stop and delete (`test_someone_elses_plan_is_untouchable`); stop and delete are POSTs with the form token; delete asks first. Only allowed values are accepted (amount, day 1-28, start not in the future, fee 0-5% and $0-100), with CHECK rules in the table too. Plan buys only use saved closing prices, never anything typed in |
-| 83 | News feeds | PASS / w422 | Only four fixed publisher addresses are fetched (no user-supplied URL: no SSRF); 2 MB cap and 10-second time-out; feeds with DOCTYPE/ENTITY refused; links must be https on the publisher's own domain (look-alikes refused); titles stored as plain text, shown escaped (also inside the chart's JSON); links `noopener noreferrer nofollow`, no referrer. Only headline, source, date and link are shown. Each publisher's feed terms to be confirmed before launch (w422). Tests: `tests/test_news.py` |
-| 84 | Market today page and story cards | PASS | Open to everyone; logged in, "you own" lines come from the session's user id only, never the address, and the page is `no-store` so another person on the same computer can't see it from the cache (`test_nobody_sees_someone_elses_holdings_on_the_news`, `test_logged_in_your_stocks_come_first_and_say_you_own_them`). Headline and summary HTML is stripped when saved and escaped when shown (`test_headline_html_never_runs`, `test_the_publishers_summary_is_kept_as_plain_text`). No AI, no rewriting, no good/bad ratings (advice risk). Companies named in the news join the stock list only from a fixed list in `src/news.py`, so a headline can't make SGXray fetch any other code. MAS, TODAY and SGX were checked and not added (no feed, or terms that forbid it) Summaries the feeds leave out come from each article page's own link-preview description: only links already saved from the four feeds are fetched, re-checked to be https on that publisher's site before and after any redirect, 600 KB cap, 10-second time-out, once per article (`test_only_publisher_article_links_are_ever_fetched`, `test_missing_summaries_come_from_the_article_page_once`); script and style blocks are stripped so page code never shows as text (`test_page_code_never_shows_in_a_summary`). Rows show a small chart drawn from SGXray's own prices, never a publisher's photo (no copyright question, and visitors' browsers never contact the publishers) |
-| 86 | Login lock: 5 tries, growing waits, a visible timer | PASS | 5 wrong passwords for one email (or 20 from one network address, since schools and offices share one) within 15 minutes lock logins; each lock in 24 hours lasts longer, 15 then 30 then 60 minutes and no more (OWASP: lockouts that grow, capped so a stranger can't keep someone out for days). Even the right password is refused while locked. "N tries left" is counted for any email typed, so it reveals nothing about which emails have accounts; the page shows a countdown, and only this browser's own session remembers which email it locked. Tests: `test_password_guessing_is_locked_out`, `test_each_lock_in_a_day_lasts_longer_up_to_an_hour`, `test_another_email_on_the_same_network_isnt_locked_by_one_persons_mistakes` |
-| 85 | Edit note, practice undo, holdings Change, "a stock I already own" | PASS | Every new route needs a login and the form token; each looks up the trade with the session's own user id (or their practice twin's), so another person's trade id is a 404 (`test_someone_elses_note_cant_be_edited`, `test_nobody_can_undo_someone_elses_or_a_real_trade`). Note edits change only the note, tidied to one line and capped at 280 characters, shown escaped; "back" accepts only two fixed pages, never an address (`test_back_only_goes_to_one_of_two_pages_and_html_stays_text`). Practice undo is refused once a newer close exists, so it can't be used with hindsight. The share-count correction only prefills the normal trade form (every check still runs when it's saved). "A stock I already own" accepts only listed stocks, whole shares, a positive cost and a past month (`test_impossible_existing_stocks_are_refused`) |
+| 01 | Database credentials | PASS | SQLite file, no credentials; Postgres URL only from Render's secret settings (Week 4) |
+| 02 | Public `.env` files | PASS | `.gitignore` has `.env`, `instance/`, `*.db`; history shows none ever committed (audit 4) |
+| 03 | Hard-coded secrets | PASS | Secret key from `SGXRAY_SECRET_KEY` or a random `instance/secret_key` |
+| 13 | Secrets in Git history | PASS | Searched 10 Nov and again 25 Nov (detect-secrets + history search) |
+| 14 | Secrets in browser JavaScript | PASS | `static/js` holds no keys |
+| 36 | Source maps, build files | PASS | No build step |
+| 10 | Debug tools in production | PASS | `app.debug` is off (`test_errors_are_generic_and_debug_is_off`); the design preview is a 404 unless debugging |
+| 12 | Detailed error pages | FIXED | Generic pages for 400/404/405/413/429/500 |
 
+### Log-in and accounts
+| # | Check | Status | Evidence |
+|---|---|---|---|
+| 04 | Password storage | PASS | scrypt with a random salt per password (Werkzeug) |
+| 28, 86 | Guessing limits | FIXED | See "The limits, exactly". `test_auth.py` |
+| 25 | Sessions end for real | FIXED | Server-side sessions (only hashes stored), ended at log-out, password change, reset and account deletion |
+| 47 | Cookie settings | PASS / LIVE | HttpOnly, SameSite=Lax; Secure once `SGXRAY_HTTPS=1` |
+| 56 | Who has an account (enumeration) | PASS / mitigated | Log-in and "forgot password" answer identically (checked again in audit 4); sign-up says nothing about "taken" and is limited |
+| 24 | Password reset | PASS / LIVE | 256-bit one-time link, hash stored, 30 minutes, every session ended; email settings in Week 4 |
+| 30 | Default accounts | PASS | None; the demo and practice twins can't log in |
+| 55 | Two-factor on your own accounts | OPEN: you | See "Your to-do" |
+| 76 | Bot sign-ups | PARTLY | Rate limit only; email confirmation once email works (w420) |
+| 90 | Look-alike Unicode emails | FIXED | Audit 4 |
+
+### What each person can reach
+| # | Check | Status | Evidence |
+|---|---|---|---|
+| 05, 06, 33, 34, 49 | Only your own data | PASS | Every query has the session's user id; another person's id gives 404 (audit 4: 9 routes attacked) |
+| 09 | Admin pages | PASS | None |
+| 51 | Extra form fields | PASS | Forms read named fields only (`user_id=1` ignored, audit 4) |
+| 80 | Practice twin | PASS | Can't log in or reset; reached only through its owner's session |
+| 82 | Monthly plans | PASS | `test_someone_elses_plan_is_untouchable` |
+| 85 | Notes, undo, corrections | PASS | `test_someone_elses_note_cant_be_edited` and others |
+
+### Input and output
+| # | Check | Status | Evidence |
+|---|---|---|---|
+| 15, 16 | Checks on the server | PASS | Every limit is re-checked by the server; database CHECK rules too |
+| 17 | SQL injection | PASS | `?` placeholders everywhere (Bandit's 3 notes reviewed) |
+| 19 | Cross-site scripting | PASS | Escaped templates, `textContent` in scripts, CSP with a per-page nonce |
+| 20 | CSRF | PASS | A token on every form, compared in constant time; log-out is POST-only |
+| 22 | Path traversal | PASS | `/.git`, `/.env`, the database and the secret key all 404 (audit 4) |
+| 52, 53 | Shell commands, unsafe loading | PASS | None |
+| 57 | Impossible trades | PASS / FIXED | Over-selling, future and weekend dates refused; same-day order (93) and pre-1990 dates (95) fixed |
+| 58 | Two requests at once | FIXED | Unique emails, transactions; double clicks (91) |
+| 63 | Checks fail closed | PASS | A missing token or forged cookie means "no" |
+| 69 | Open redirects | PASS | `auth.safe_next`; 12 tricks tried in audit 4 |
+| 100 | Template injection | PASS | `{{7*7}}` in a note is shown as text (audit 4) |
+
+### Outside services
+| # | Check | Status | Evidence |
+|---|---|---|---|
+| 23 | SSRF | PASS / FIXED | Yahoo gets only SGX-shaped codes; news only from 4 fixed feeds; redirects checked (89) |
+| 81 | Background price updates | PASS | Yahoo only, listed stocks only, one at a time under a lock |
+| 83, 84 | News feeds and Market today | PASS / FIXED | DTDs refused, 2 MB and 600 KB caps, 10-second time-outs, plain-text titles; link hosts tightened (89) |
+| 71 | Visitor data sent elsewhere | FIXED / OPEN | Fonts served by SGXray. jsDelivr still serves the home page's 3D scene: see 98 |
+| 98 | Outside scripts without a fingerprint | OPEN | Three.js and Lenis load from jsDelivr with no integrity check. Fix: serve them from SGXray (needs your OK to download them) |
+| 74 | Licence for price data | OPEN (w418) | Yahoo's data is for personal use; confirm or switch provider before launch |
+| 83b | News publishers' terms | OPEN (w422) | Confirm each publisher allows headlines + summaries with links |
+
+### Server and data
+| # | Check | Status | Evidence |
+|---|---|---|---|
+| 46 | Security headers | PASS / LIVE | CSP, frame-ancestors none, X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, HSTS on HTTPS |
+| 87 | Real visitor addresses behind the proxy | FIXED | Audit 4; set `SGXRAY_PROXIES=1` on Render |
+| 88 | Private pages kept out of the browser cache | FIXED | Audit 4 |
+| 64, 92 | Server load limits | PASS / FIXED / LIVE | 2 MB cap, rate limits, the demo page 3.3 s → 0.4 s; Week 4: a request time-out and a demo cache |
+| 35 | Logs never hold secrets | PASS | `test_nothing_secret_is_written_to_the_security_log` |
+| 42 | Audit trail | PASS | Sign-ups, log-ins, failures, pauses, log-outs, password changes, trades, plans (stopping too, since audit 4), data downloads, account deletions |
+| 37, 38, 62 | Libraries | PASS | 29 pinned (`requirements.lock`); pip-audit clean 25 Nov 2026 |
+| 97 | Privacy and deletion (PDPA) | FIXED | Download my data, Delete my account, privacy notice, terms. `test_legal.py` |
+| 72 | Privacy notice reviewed | OPEN | Drafted from the code (25 Nov); needs a lawyer's read and `SGXRAY_CONTACT_EMAIL` (the data protection contact) before launch |
+| 75 | Trade marks | OPEN (w419) | "SGX" is Singapore Exchange's; the footer says "not affiliated" and names belong to their owners; ask a lawyer about the name |
+| 77 | Advice wording | PASS | Re-read 25 Nov: lessons explain and warn, never recommend; terms say SGXray isn't MAS-licensed advice |
+| 43, 44, 48 | Monitoring, backups, encryption | LIVE (Week 4) | Alerts on failed-log-in bursts and errors; daily backups with a tested restore; HTTPS + provider encryption |
+| 99 | Automated scan of the live site | LIVE (Week 4) | Run OWASP ZAP against the deployed site; recheck the demo page's speed under real load |
+
+Not applicable now (no such feature): NoSQL (18), file uploads (21: the CSV upload will cap size and never use
+the file's name), JWT (26), CORS (27: no CORS headers at all), staging (29), webhooks (31, 59), payments (32),
+AI (39, 40, 65-67: the "What is going on?" box will treat news as data and get no tools), dashboards (45),
+OAuth (54), CI/CD (11, 60, 61: GitHub's own actions, pinned, read-only token), browser storage (68: only
+animation, view and lessons-read choices) and GraphQL/WebSockets (70).
 
 ## Your to-do (things only you can do)
 
-1. **Two-factor sign-in on GitHub** (check 55): github.com → your photo → Settings → Password and authentication → Enable two-factor authentication. Use an authenticator app, and save the recovery codes somewhere safe. Your code is only as safe as this account.
-2. **Two-factor on your Google account** (the email password resets will go to): myaccount.google.com → Security → 2-Step Verification.
-3. **Week 4:** the same for Render and the database host, set `SGXRAY_SECRET_KEY` and `SGXRAY_HTTPS=1`, then re-check checks 43, 44, 46, 47 and 48 on the live site.
-4. **Week 4, for "Forgot your password?":** pick an email service with SMTP (Resend, Brevo or Postmark; free tiers are enough), verify your domain with it (so emails don't land in spam), and set `SGXRAY_BASE_URL`, `SGXRAY_SMTP_HOST`, `SGXRAY_SMTP_USER`, `SGXRAY_SMTP_PASSWORD` and `SGXRAY_MAIL_FROM` in Render's settings. Never in code. Then reset your own password on the live site once.
+1. **Two-factor sign-in on GitHub:** github.com → your photo → Settings → Password and authentication. Save the recovery codes.
+2. **Two-factor on your Google account** (where reset emails will go): myaccount.google.com → Security → 2-Step Verification.
+3. **Week 4, on Render:** set `SGXRAY_SECRET_KEY`, `SGXRAY_HTTPS=1`, `SGXRAY_PROXIES=1` and `SGXRAY_CONTACT_EMAIL`; two-factor on Render and the database host; then recheck checks 43, 44, 46, 47, 48, 92 and 99 on the live site.
+4. **Week 4, for "Forgot your password?":** pick an email service with SMTP (Resend, Brevo or Postmark), verify your domain, and set `SGXRAY_BASE_URL`, `SGXRAY_SMTP_HOST`, `SGXRAY_SMTP_USER`, `SGXRAY_SMTP_PASSWORD` and `SGXRAY_MAIL_FROM` in Render's settings (never in code). Then reset your own password once.
+5. **Before launch:** a lawyer's read of `/privacy`, `/terms` and the name (checks 72, 75); Yahoo's and the publishers' terms (74, 83b).

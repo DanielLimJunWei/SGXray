@@ -247,7 +247,7 @@ The 70-check audit (results and evidence) is in `SECURITY.md`. Part 4 (checks 55
 - Two-factor sign-in with an authenticator app (TOTP), and backup codes.
 - Checking new passwords against known breaches (Have I Been Pwned's private range lookup; it never sends the password itself, but it's an outside service).
 - "Your devices": see and log out individual sessions; an email when there's a login from a new device.
-- Delete my account and export my data (w411), including the security log.
+- ~~Delete my account and export my data (w411), including the security log.~~ Built in audit 4 (25 Nov 2026).
 - A dependency audit (`pip-audit`) and GitHub's secret scanning and Dependabot in CI (w402).
 - An automated penetration test with Strix against a staging copy (Week 4), plus Content-Security-Policy violation reports.
 - Encrypted, regularly tested database backups on the live host.
@@ -324,6 +324,39 @@ Fixed in audit 2:
 - My first TWR counted buys at the start of the day, priced at the previous close. A test buying at the bottom of a dip caught it (0% showed as +50%). Buys now count at the end of the day, except the very first.
 
 Known gaps (unchanged): rights and preferential-offering adjustments in Yahoo data, mergers and ticker changes, floats for money, dividends counted on the ex-date rather than the payment date, ES3 Aug 2026 (9.3c in Yahoo, about 9c in one unofficial source; not confirmed officially).
+
+## Audit 4 (25 Nov 2026): the full audit
+
+Everything, in one pass: automated scanners (pip-audit, Bandit, detect-secrets and a Git-history search), 125
+black-box attacks on a running copy with a scratch database, the "20 pen-test attacks on vibe-coded apps" list,
+every calculation against outside references (Excel's XIRR example, scipy, numpy, hand-worked cases), and a
+lawyer's read. Every finding and its test is in SECURITY.md (checks 87-100). The rules it set:
+- **Same-day trades** are added up in the order they were saved (their id), by the check AND the maths. An
+  edited trade keeps its id, so it keeps its place; a new one comes after that day's saved ones. (Putting buys
+  before sales was rejected: it changes realised profit for someone who sells and buys back the same day.)
+- **"Today" is Singapore's date** everywhere (`src/sgtime.py`), never the server's clock. Times saved by SQLite
+  stay UTC and are converted when shown.
+- **Trade dates from 1990** (`importer.EARLIEST_DATE`): Yahoo's SGX prices start around 2000.
+- **Monthly plans** buy within 7 days of the plan's day (`plans.MAX_DELAY_DAYS`), or skip that month, as banks
+  do when a stock is suspended.
+- **Emails are plain ASCII.** Unicode letters can lower-case into another address (the Kelvin sign).
+- **Behind a proxy**, `SGXRAY_PROXIES` = the number of proxies in front (1 on Render). 0 = the X-Forwarded-For
+  header is ignored.
+- **Logged in, every page is `no-store`.**
+- **News redirects** are checked hop by hop (`news._SameSiteRedirects`); link hosts must be plain names.
+- **One click, one save:** `static/js/forms.js` lets a POST form send once until the next page arrives.
+- **Dividends received** are counted in one walk through the dates instead of recounting the trades for each
+  dividend: the demo page went from 3.3 s to 0.4 s, with identical results on every account and 600 random
+  portfolios.
+- **Your data (PDPA):** Account → Download my data (`/account/data`, JSON: account, trades, plans, practice,
+  lessons read, security log; never a password hash or session secret), Delete my account (`/account/delete`,
+  current password needed, the same 5-per-15-minutes limit as changing it; deletes the user and the practice
+  twin, and ON DELETE CASCADE removes every per-person row; logged as "account_deleted" with no id or
+  address). `/privacy` and `/terms` were written from what the code stores and are linked from the footer and at
+  sign-up. `SGXRAY_CONTACT_EMAIL` names the data protection contact. **They're drafts: a lawyer reads them before
+  launch.**
+- Still open: serve Three.js and Lenis from SGXray instead of jsDelivr (no integrity check today), OWASP ZAP
+  against the live site (Docker wouldn't start), a demo page cache, and the licences (Yahoo, publishers, the name).
 
 ## Audit 3 (9 Nov 2026): property-based testing
 
