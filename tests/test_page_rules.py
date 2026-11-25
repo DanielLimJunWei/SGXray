@@ -68,7 +68,7 @@ def _add(c, **f):
     assert c.post("/trades", data={"csrf": tok, **data}).status_code == 302
 
 
-# The reason words a cell or figure shows instead of a number (NOTES.md, "The page rule").
+# The reason words a cell or figure shows instead of a number (docs/notes.md, "The page rule").
 REASON = re.compile(r"\b(pending|no price yet|per stock|too soon|after today's close|waiting|not yet|a year|in \d+ (?:days?|months?|years?)"
                     r"|in 1 year(?: and \d+ months?)?)\b", re.I)
 TERM_BUTTON = re.compile(r'<button class="term"[^>]*data-term="([a-z-]+)"[^>]*>(.*?)</button>', re.S)

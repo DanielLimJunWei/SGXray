@@ -150,7 +150,7 @@ TERMS = {
                "A stock's highest and lowest closing price over the last 52 weeks (one year), and where today's "
                "price sits between them. History, not a forecast.",
                "DBS: low $53.38, high $78.65, today $69.72, in the middle of its range."),
-    # The reason words: what a cell says instead of a number (the page rule in NOTES.md).
+    # The reason words: what a cell says instead of a number (the page rule in docs/notes.md).
     "pending": ("Pending",
                 "Waiting for tonight's closing price. You bought a stock today, and SGX publishes its first "
                 "closing price at about 5:45pm, so numbers that need that price fill in then.",
