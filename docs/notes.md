@@ -248,7 +248,7 @@ The 70-check audit (results and evidence) is in `docs/security-audits.md`. Part 
 - Checking new passwords against known breaches (Have I Been Pwned's private range lookup; it never sends the password itself, but it's an outside service).
 - "Your devices": see and log out individual sessions; an email when there's a login from a new device.
 - ~~Delete my account and export my data (w411), including the security log.~~ Built in audit 4 (25 Nov 2026).
-- A dependency audit (`pip-audit`) and GitHub's secret scanning and Dependabot in CI (w402).
+- ~~A dependency audit (`pip-audit`) in CI (w402).~~ Built 26 Nov 2026: `.github/workflows/ci.yml`. Still to switch on in GitHub's settings: secret scanning and Dependabot alerts.
 - An automated penetration test with Strix against a staging copy (Week 4), plus Content-Security-Policy violation reports.
 - Encrypted, regularly tested database backups on the live host.
 

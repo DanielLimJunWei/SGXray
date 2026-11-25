@@ -37,3 +37,16 @@ def test_the_server_keeps_no_access_log_and_names_no_version():
     conf = (ROOT / "gunicorn.conf.py").read_text(encoding="utf-8")
     assert "accesslog = None" in conf                                               # reset links never logged
     assert 'gunicorn.http.wsgi.SERVER = "SGXray"' in conf
+
+
+def test_the_github_checks_are_locked_down():
+    """w402: the checks GitHub runs on every push. Outside actions pinned to an exact commit (a tag can be moved
+    to new code), read-only access, and both databases tested."""
+    import re
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    uses = re.findall(r"uses:\s*(\S+)", ci)
+    assert uses and all(re.fullmatch(r"[\w.-]+/[\w.-]+@[0-9a-f]{40}", u) for u in uses)
+    assert "permissions:\n  contents: read" in ci and "write" not in ci
+    assert "persist-credentials: false" in ci and ci.count("persist-credentials: false") == ci.count("actions/checkout")
+    assert "SGXRAY_TEST_PG" in ci and "pip_audit -r requirements.lock" in ci and "docker build" in ci
+    assert "secrets." not in ci                                                     # no secret is needed or used

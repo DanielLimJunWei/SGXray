@@ -1,0 +1,153 @@
+# GitHub Actions (w402): GitHub's own computers check every push and pull request before it can reach the live site.
+#
+#   tests-sqlite    every test, on SQLite (what you use on your computer)
+#   tests-postgres  every test again, on PostgreSQL 17 (what the live site uses)
+#   audit           the libraries the live site installs, checked for known security holes
+#   container       builds the Docker image, starts it, and checks the site answers safely
+#
+# A red cross on GitHub means one of these failed: fix it before deploying.
+#
+# Safety:
+# - Each outside action is pinned to an exact commit, not a tag like "v7" that its owner could move.
+# - The workflow can only read the code (permissions below); it can't push, comment or touch settings.
+# - Nothing here uses a secret. The database passwords below exist only inside a throwaway test machine.
+
+name: Checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:                         # a newer push to the same branch cancels the older, now-pointless run
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.14.7"           # the same Python as the Docker image
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  tests-sqlite:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0   # v7.1.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install the exact libraries
+        run: python -m pip install -r requirements.lock -r requirements-dev.txt
+      - name: Run every test on SQLite
+        run: python -m pytest -q
+
+  tests-postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:f9cf3e1f0066f0eb0c48707d864f0ac5941e9ff454a072077d97a4d278d07d73
+        env:
+          POSTGRES_USER: sgxray
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: sgxray
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sgxray"
+          --health-interval 2s
+          --health-retries 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0   # v7.1.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install the exact libraries
+        run: python -m pip install -r requirements.lock -r requirements-dev.txt
+      - name: Run every test on PostgreSQL
+        env:
+          SGXRAY_TEST_PG: postgresql://sgxray:ci-only@127.0.0.1:5432/sgxray
+        run: python -m pytest -q
+
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0   # v7.1.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install pip-audit
+        run: python -m pip install pip-audit==2.10.1
+      - name: Check every library the live site installs for known security holes
+        # The lock file already lists every library at an exact version, so pip-audit just looks each one up.
+        run: python -m pip_audit -r requirements.lock --no-deps --disable-pip --progress-spinner off
+
+  container:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:f9cf3e1f0066f0eb0c48707d864f0ac5941e9ff454a072077d97a4d278d07d73
+        env:
+          POSTGRES_USER: sgxray
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: sgxray
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sgxray"
+          --health-interval 2s
+          --health-retries 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the image
+        run: docker build -t sgxray:ci .
+      - name: Start it the way Render will, with a throwaway key
+        run: |
+          docker run -d --name sgxray --network host \
+            -e DATABASE_URL="postgresql://sgxray:ci-only@127.0.0.1:5432/sgxray?sslmode=disable" \
+            -e SGXRAY_SECRET_KEY="ci-$(openssl rand -hex 24)" \
+            -e SGXRAY_AUTO_PRICES=0 \
+            -e PORT=8000 \
+            sgxray:ci
+          for i in $(seq 1 30); do curl -fs -o /dev/null http://127.0.0.1:8000/login && break; sleep 1; done
+      - name: Check the site answers, hides its software, and keeps private files private
+        run: |
+          set -eu
+          check() {  # check <path> <expected status>
+            got=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8000$1")
+            echo "$1 -> $got (want $2)"
+            [ "$got" = "$2" ]
+          }
+          check / 200
+          check /login 200
+          check /news 200
+          check /data/sgxray.db 404
+          check /instance/secret_key 404
+          check /.env 404
+          check /app.py 404
+          server=$(curl -sI http://127.0.0.1:8000/login | tr -d '\r' | awk -F': ' 'tolower($1)=="server"{print $2}')
+          echo "Server header: $server"
+          [ "$server" = "SGXray" ]
+          [ "$(docker exec sgxray id -u)" = "10001" ]    # runs as the ordinary user, never root
+      - name: Show the server's log if anything failed
+        if: failure()
+        run: docker logs sgxray || true
+      - name: Refuse to start without a secret key
+        run: |
+          # It must stop, and for the right reason (not, say, because db.example.com doesn't exist).
+          if out=$(docker run --rm -e DATABASE_URL="postgresql://x:y@db.example.com/z" sgxray:ci \
+                     python -c "import app" 2>&1); then
+            echo "The app started without SGXRAY_SECRET_KEY"; exit 1
+          fi
+          echo "$out" | tail -3
+          echo "$out" | grep -q "SGXRAY_SECRET_KEY"
