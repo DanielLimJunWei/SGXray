@@ -19,6 +19,7 @@ import math
 from datetime import date
 
 import db
+import fmt
 import sgtime
 
 MIN_AMOUNT, MAX_AMOUNT = 1, 100_000
@@ -27,7 +28,7 @@ MAX_DELAY_DAYS = 7          # a month's buy must happen within a week of the pla
 
 def fee(amount, rate, minimum):
     """One month's fee: the rate on the amount, but never less than the minimum. Rounded to cents."""
-    return round(max(amount * rate, minimum), 2)
+    return fmt.cents(max(amount * rate, minimum))
 
 
 def buy(amount, price, rate, minimum):
@@ -133,8 +134,8 @@ def from_form(conn, form, today=None):
         problems.append("Choose the month the plan started (this month or earlier).")
     if problems:
         return None, problems
-    return {"ticker": ticker, "amount": amount, "day": day, "start_month": f"{y:04d}-{m:02d}",
-            "fee_rate": rate / 100, "fee_min": minimum}, []
+    return {"ticker": ticker, "amount": fmt.cents(amount), "day": day, "start_month": f"{y:04d}-{m:02d}",
+            "fee_rate": rate / 100, "fee_min": fmt.cents(minimum)}, []
 
 
 def add(conn, user_id, v):

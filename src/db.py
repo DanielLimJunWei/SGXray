@@ -18,6 +18,8 @@ import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import fmt
+
 try:                                   # only needed for PostgreSQL
     import psycopg
     from psycopg.types.numeric import FloatLoader
@@ -621,7 +623,8 @@ def get_instruments(conn):
 # ---------- Trades ----------
 
 def add_trade(conn, user_id, ticker, trade_date, side, quantity, price, fees=0.0, note=None):
-    """Saves one trade and returns its id. The table's CHECK rules reject impossible values.
+    """Saves one trade and returns its id. The table's CHECK rules reject impossible values. Fees are kept in
+    whole cents (fmt.cents), as a broker charges them; the price keeps its decimals (SGX prices go to 0.001).
     note is your "why I bought / sold", or None."""
     with conn:
         cur = conn.execute(
@@ -629,7 +632,7 @@ def add_trade(conn, user_id, ticker, trade_date, side, quantity, price, fees=0.0
             INSERT INTO trades (user_id, ticker, trade_date, side, quantity, price, fees, note)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
             """,
-            (user_id, ticker, trade_date, side, quantity, price, fees, note or None),
+            (user_id, ticker, trade_date, side, quantity, price, fmt.cents(fees), note or None),
         )
         return cur.fetchone()[0]
 
@@ -647,7 +650,7 @@ def add_trades(conn, user_id, trades):
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             [
-                (user_id, t["ticker"], t["trade_date"], t["side"], t["quantity"], t["price"], t["fees"])
+                (user_id, t["ticker"], t["trade_date"], t["side"], t["quantity"], t["price"], fmt.cents(t["fees"]))
                 for t in trades
             ],
         )
@@ -672,7 +675,7 @@ def update_trade(conn, user_id, trade_id, t):
             UPDATE trades SET ticker = ?, trade_date = ?, side = ?, quantity = ?, price = ?, fees = ?, note = ?
             WHERE id = ? AND user_id = ?
             """,
-            (t["ticker"], t["trade_date"], t["side"], t["quantity"], t["price"], t["fees"], t.get("note") or None,
+            (t["ticker"], t["trade_date"], t["side"], t["quantity"], t["price"], fmt.cents(t["fees"]), t.get("note") or None,
              trade_id, user_id),
         )
     return cur.rowcount == 1

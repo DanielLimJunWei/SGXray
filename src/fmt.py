@@ -26,10 +26,21 @@ def missing(x):
     return x is None or x != x
 
 
+def cents(x):
+    """Money rounded to the cent the way people and brokers do it: half a cent goes up (2.675 -> 2.68).
+
+    Python's round() and "%.2f" work on the binary number, which for 2.675 is 2.67499999..., so they give 2.67.
+    Going through the shortest decimal form ('2.675') rounds the number as it was typed or calculated."""
+    from decimal import ROUND_HALF_UP, Decimal
+    return float(Decimal(repr(float(x))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+
 def money(x, signed=False):
-    """$1,234.56 / -$1,234.56 / n/a. signed=True also puts + on positives (for changes)."""
+    """$1,234.56 / -$1,234.56 / n/a. signed=True also puts + on positives (for changes).
+    Rounded to the cent first, so a tiny -0.004 shows as $0.00, not -$0.00."""
     if missing(x):
         return "n/a"
+    x = cents(x)
     sign = "-" if x < 0 else ("+" if signed and x > 0 else "")
     return f"{sign}${abs(x):,.2f}"
 

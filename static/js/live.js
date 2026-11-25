@@ -12,6 +12,14 @@
   let shown = page.dataset.livePrices;
   const EVERY = 2 * 60 * 1000;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Rounds like the server (fmt.cents): half a cent goes up, on the number as written (2.675 -> 2.68). The
+  // browser's own rounding works on the binary value (2.67499...) and would show 2.67.
+  const roundHalfUp = (x, d) => {
+    const a = Math.abs(x);
+    if (a < 1e-6) return 0;
+    const r = Number(Math.round(Number(Number(a.toPrecision(15)) + "e" + d)) + "e-" + d);
+    return x < 0 ? -r : r;
+  };
 
   // "$22,695.20", "+$11,517.48", "▼ -$13.94", "69.720": the number inside some text, and how to write
   // another number the same way (same sign style, $ and decimals).
@@ -23,6 +31,7 @@
              signed: !!m[2] };
   }
   function write(p, x, arrow) {
+    x = roundHalfUp(x, p.decimals);                                  // so -0.004 never shows as "-$0.00"
     const sign = x < 0 ? "-" : (p.signed && x > 0 ? "+" : "");
     const body = Math.abs(x).toLocaleString("en-SG", { minimumFractionDigits: p.decimals, maximumFractionDigits: p.decimals });
     return p.before.replace(/[▲▼]\s*$/, "") + (arrow ? arrow + " " : "") + sign + (p.dollar ? "$" : "") + body + p.after;

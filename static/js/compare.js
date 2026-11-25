@@ -102,8 +102,16 @@ window.SGXrayCompare = function ({ svg, panel, count, xy, indexAt, describe, tit
 };
 
 // Small helpers both charts use to word a change.
-window.SGXrayCompare.money = v => (v < 0 ? "-" : "") + "$" + Math.abs(v).toLocaleString("en-SG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-window.SGXrayCompare.signed = v => (v > 0 ? "+" : v < 0 ? "-" : "") + "$" + Math.abs(v).toLocaleString("en-SG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Money rounds like the server (fmt.cents): half a cent goes up, on the number as written (2.675 -> 2.68), and
+// rounding comes before the sign, so -0.004 shows as $0.00, never -$0.00.
+window.SGXrayCompare.cents = v => {
+  const a = Math.abs(v);
+  if (a < 1e-6) return 0;
+  const r = Number(Math.round(Number(Number(a.toPrecision(15)) + "e2")) + "e-2");
+  return v < 0 ? -r : r;
+};
+window.SGXrayCompare.money = v => { v = window.SGXrayCompare.cents(v); return (v < 0 ? "-" : "") + "$" + Math.abs(v).toLocaleString("en-SG", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+window.SGXrayCompare.signed = v => { v = window.SGXrayCompare.cents(v); return (v > 0 ? "+" : v < 0 ? "-" : "") + "$" + Math.abs(v).toLocaleString("en-SG", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
 window.SGXrayCompare.pct = v => (v > 0 ? "+" : "") + (v * 100).toFixed(1) + "%";
 window.SGXrayCompare.trend = v => v > 0.005 ? "up" : v < -0.005 ? "down" : "";
 window.SGXrayCompare.days = (a, b) => Math.round((new Date(b + "T00:00:00") - new Date(a + "T00:00:00")) / 86400000);

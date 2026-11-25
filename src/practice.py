@@ -12,6 +12,7 @@ portfolio pages works on them exactly as on real trades, and real and practice t
 """
 
 import db
+import fmt
 import trades as trade_rules
 from portfolio import positions, summary
 
@@ -33,12 +34,13 @@ def fee_settings(twin):
 
 def fee(amount, rate=TYPICAL_RATE, minimum=TYPICAL_MIN):
     """What one trade of `amount` dollars costs, in parts: {"commission", "sgx", "gst", "total"}.
-    Commission is the broker's rate with its minimum; SGX adds its two fees; GST is 9% of both."""
-    commission = max(amount * rate, minimum)
-    sgx = amount * (SGX_CLEARING + SGX_ACCESS)
-    gst = GST * (commission + sgx)
-    return {"commission": round(commission, 2), "sgx": round(sgx, 2), "gst": round(gst, 2),
-            "total": round(commission + sgx + gst, 2)}
+    Commission is the broker's rate with its minimum; SGX adds its two fees; GST is 9% of both.
+    Each part is rounded to the cent, as on a contract note, and the total is the sum of those parts, so the
+    parts shown always add up to the total shown."""
+    commission = fmt.cents(max(amount * rate, minimum))
+    sgx = fmt.cents(amount * (SGX_CLEARING + SGX_ACCESS))
+    gst = fmt.cents(GST * (commission + sgx))
+    return {"commission": commission, "sgx": sgx, "gst": gst, "total": fmt.cents(commission + sgx + gst)}
 
 
 def cash(conn, twin_id):
@@ -141,4 +143,4 @@ def fee_problem(rate_text, min_text):
         return None, None, "The rate must be between 0% and 2%."
     if not 0 <= minimum <= 100:
         return None, None, "The minimum must be between $0 and $100."
-    return rate, minimum, None
+    return rate, fmt.cents(minimum), None
