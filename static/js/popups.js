@@ -19,10 +19,13 @@
     if (b) openers.set(b.getAttribute("popovertarget"), b);
   }, true);
 
-  function clamp(pop, left, top) {
+  function fit(pop, left, top) {
     const w = pop.offsetWidth, h = pop.offsetHeight;
-    left = Math.min(Math.max(PAD, left), viewW() - w - PAD);
-    top = Math.min(Math.max(PAD, top), viewH() - Math.min(h, 56) - PAD);   // keep at least the title bar on screen
+    return [Math.min(Math.max(PAD, left), viewW() - w - PAD),
+            Math.min(Math.max(PAD, top), viewH() - Math.min(h, 56) - PAD)];   // keep at least the title bar on screen
+  }
+  function clamp(pop, left, top) {
+    [left, top] = fit(pop, left, top);
     pop.style.left = left + "px";
     pop.style.top = top + "px";
   }
@@ -73,11 +76,17 @@
       const start = { x: e.clientX, y: e.clientY, left: pop.offsetLeft, top: pop.offsetTop };
       try { head.setPointerCapture(e.pointerId); } catch (err) { /* keep dragging without capture */ }
       head.classList.add("dragging");
+      // While dragging, the box moves by transform only (no layout work each frame); on release it settles
+      // into its new left/top once.
+      let to = [start.left, start.top];
       const move = ev => {
-        clamp(pop, start.left + ev.clientX - start.x, start.top + ev.clientY - start.y);
+        to = fit(pop, start.left + ev.clientX - start.x, start.top + ev.clientY - start.y);
+        pop.style.transform = `translate(${to[0] - start.left}px, ${to[1] - start.top}px)`;
         pop.dataset.moved = "1";
       };
       const up = () => {
+        pop.style.transform = "";
+        clamp(pop, to[0], to[1]);
         head.classList.remove("dragging");
         head.removeEventListener("pointermove", move);
         head.removeEventListener("pointerup", up);

@@ -174,7 +174,10 @@ nav.site ul a:hover, nav.site ul a[aria-current="page"] { color: var(--color-tex
 /* ---------- Buttons ---------- */
 .btn { display: inline-flex; align-items: center; gap: var(--space-2); font: 500 var(--text-sm)/1 var(--font-sans);
   text-decoration: none; border-radius: var(--radius-md); padding: var(--space-3) var(--space-5); cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out); }
+  transition: background var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out),
+    scale var(--duration-press) ease-out; }
+/* Pressed: the button gives a little under your finger (it never shrinks further than 97%). */
+.btn:active, .icon-btn:active { scale: 0.97; }
 .btn-primary { color: var(--color-night); background: var(--color-accent); border: 0; font-weight: 600; }
 .btn-primary:hover { background: var(--color-accent-hover); }
 .btn-ghost { color: var(--color-text); background: transparent; border: 1px solid var(--color-line-strong); }
@@ -371,7 +374,8 @@ code { font: 0.92em/1.5 var(--font-mono); color: var(--color-glow-soft); }
 .icon-btn { display: inline-flex; align-items: center; gap: var(--space-2); height: 2rem; padding: 0 var(--space-3);
   font: 500 var(--text-xs)/1 var(--font-mono); letter-spacing: 0.04em; color: var(--color-text-muted);
   background: transparent; border: 1px solid var(--color-line-strong); border-radius: var(--radius-md); cursor: pointer;
-  transition: border-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out); }
+  transition: border-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out),
+    scale var(--duration-press) ease-out; }
 .icon-btn:hover { color: var(--color-text); border-color: var(--color-glow-soft); }
 .icon-btn.warn { color: var(--color-lamp); border-color: rgba(227, 163, 94, 0.45); }
 .icon-btn.warn:hover { border-color: var(--color-lamp); }
@@ -385,6 +389,10 @@ code { font: 0.92em/1.5 var(--font-mono); color: var(--color-glow-soft); }
   border-radius: var(--radius-lg); font-size: var(--text-sm); line-height: 1.65;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45); }
 .pop:popover-open { display: flex; }
+/* Opening: from 97% and see-through to full size, never from nothing. */
+.pop { transition: opacity var(--duration-fast) var(--ease-out), scale var(--duration-fast) var(--ease-out),
+  display var(--duration-fast) allow-discrete, overlay var(--duration-fast) allow-discrete; }
+@starting-style { .pop:popover-open { opacity: 0; scale: 0.97; } }
 .pops-js .pop { position: fixed; inset: auto; margin: 0; }                  /* placed and moved by popups.js */
 .pop::backdrop { background: transparent; }
 .pop-head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-3) var(--space-3) var(--space-2);
@@ -1013,3 +1021,17 @@ svg.spot-line #xray-top { animation: spot-line 2.4s ease-in-out 3; }
 .legal-list { display: grid; gap: var(--space-4); margin: 0 0 var(--space-4); }
 .legal-list dd { margin: var(--space-1) 0 0; }
 .consent { font-size: var(--text-sm); color: var(--color-text-muted); margin: var(--space-2) 0 0; }
+
+/* ---------- Motion rules (25 Nov 2026) ---------- */
+/* Every fold-out (<details>) opens and closes smoothly to its natural height, where the browser supports it;
+   elsewhere it just opens. */
+:root { interpolate-size: allow-keywords; }
+details::details-content { block-size: 0; overflow: clip;
+  transition: block-size var(--duration-fast) var(--ease-out), content-visibility var(--duration-fast) allow-discrete; }
+details[open]::details-content { block-size: auto; }
+
+/* A wrong password: the field turns red and gives a short shake, like a head shaking no. */
+.field-wrong { border-color: var(--color-down) !important; animation: field-no 360ms ease-out; }
+@keyframes field-no { 0%, 100% { translate: 0; } 17% { translate: -8px; } 33% { translate: 8px; } 50% { translate: -5px; }
+  67% { translate: 5px; } 83% { translate: -2px; } }
+@media (prefers-reduced-motion: reduce) { .field-wrong { animation: none; } }

@@ -81,6 +81,9 @@ def test_wrong_password_and_unknown_email_look_identical(app):
     assert wrong.status_code == nobody.status_code == 401
     msg = "That email and password don&#39;t match."
     assert msg in wrong.get_data(as_text=True) and msg in nobody.get_data(as_text=True)
+    for r in (wrong, nobody):                          # the password box turns red and shakes, the same for both
+        assert 'class="field-wrong" aria-invalid="true" aria-describedby="login-error"' in r.get_data(as_text=True)
+    assert "field-wrong" not in c.get("/login").get_data(as_text=True)              # a fresh page: no red
 
 
 def test_password_guessing_is_locked_out(app):

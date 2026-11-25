@@ -87,3 +87,9 @@
     setTimeout(() => form.submit(), reduce ? 0 : 380);
   });
 })();
+
+// A wrong password turns its box red (login.html); typing again clears the red, since it's a new try.
+document.querySelectorAll(".field-wrong").forEach(f => f.addEventListener("input", () => {
+  f.classList.remove("field-wrong");
+  f.removeAttribute("aria-invalid");
+}, { once: true }));
