@@ -159,8 +159,13 @@ def download_all(conn):
     import news
     # Companies in the last week's headlines too, so Market today can show how they moved.
     tickers = sorted(set(db.get_traded_tickers(conn)) | {market.BENCHMARK} | set(news.recent_tickers(conn)))
-    results = (market.update_actions(conn, tickers) + market.update_prices(conn, tickers)
-               + market.update_dividends(conn, tickers))
+    actions = market.update_actions(conn, tickers)          # splits first: prices are un-adjusted with them
+    prices = market.update_prices(conn, tickers)
+    results = actions + prices + market.update_dividends(conn, tickers)
+    for r in prices:                         # to the server log (Render's Logs tab), for a person to check
+        for day, old, new in r.held_back or []:
+            print(f"SGXray prices: held back {r.ticker} {day}: saved {old:g}, Yahoo now says {new:g}",
+                  file=sys.stderr, flush=True)
     import plans
     plans.catch_up_all(conn)                 # monthly plans: record any month whose buy day now has a close
     return not any(r.error for r in results)

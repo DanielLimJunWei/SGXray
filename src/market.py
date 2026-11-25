@@ -25,6 +25,8 @@ BENCHMARK = "ES3.SI"                    # STI ETF, to compare portfolios against
 DEFAULT_HISTORY_DAYS = 365              # how far back to start when nobody has traded yet
 PAUSE_SECONDS = 0.5                     # wait between downloads, to be polite to Yahoo
 DIVIDEND_LOOKBACK_DAYS = 400            # dividends are saved from this long before the first trade
+RECHECK_DAYS = 7                        # each update also re-reads the last week's saved closes (w413)
+MAX_CORRECTION = 0.25                   # a "correction" bigger than 25% is held back as a likely glitch
 
 # yfinance logs noisy messages for normal things like "no data on a holiday". We report problems ourselves.
 logging.getLogger("yfinance").setLevel(logging.CRITICAL)
@@ -34,6 +36,8 @@ logging.getLogger("yfinance").setLevel(logging.CRITICAL)
 class PriceUpdate:
     ticker: str
     added: int = 0          # new days saved in this run
+    corrected: int = 0      # saved days whose close Yahoo has since corrected, now fixed
+    held_back: list = None  # [(day, saved close, Yahoo's new close)] changes too big to trust without a look
     latest: str = None      # newest saved day afterwards
     error: str = None
 
@@ -89,6 +93,11 @@ def download_closes(ticker, start, end):
 def update_prices(conn, tickers, now=None, download=download_closes, pause=PAUSE_SECONDS):
     """Brings saved prices up to date for each ticker. One failing ticker doesn't stop the others.
 
+    Whenever there's a new day to fetch, the last week's saved closes are downloaded again too (w413): Yahoo
+    sometimes corrects a close a day or two later, and before this the first figure was kept forever. A saved
+    close that has changed is corrected; one that has changed by more than 25% is held back and reported
+    instead, since that's more likely a glitch (or an unrecorded split) than a correction.
+
     download is the function that fetches prices. Tests pass a fake one, so they never use the internet.
     """
     end = last_complete_day(now)
@@ -105,8 +114,11 @@ def update_prices(conn, tickers, now=None, download=download_closes, pause=PAUSE
         # that gap at the start is downloaded too. (Before audit 3 it was never filled, and the app crashed.)
         if latest:
             earliest = date.fromisoformat(db.get_earliest_price_date(conn, ticker))
-            ranges = [(needed_from, earliest - timedelta(days=1)),
-                      (date.fromisoformat(latest) + timedelta(days=1), end)]
+            newest = date.fromisoformat(latest)
+            fresh_from = newest + timedelta(days=1)
+            if _next_weekday(fresh_from) <= end:            # new days to fetch: re-read the last week as well
+                fresh_from = max(earliest, newest - timedelta(days=RECHECK_DAYS))
+            ranges = [(needed_from, earliest - timedelta(days=1)), (fresh_from, end)]
         else:
             ranges = [(needed_from, end)]
 
@@ -123,6 +135,12 @@ def update_prices(conn, tickers, now=None, download=download_closes, pause=PAUSE
                 # Undo Yahoo's split/bonus adjustment, so we store the price really traded.
                 actions = yahoo_actions(conn, ticker)
                 rows = [(d, round(c * price_factor(actions, d), 4)) for d, c in rows]
+                if latest:                                  # days already saved: compare, correct if changed
+                    fixed, held = db.correct_prices(conn, ticker, [(d, c) for d, c in rows if d <= latest],
+                                                    MAX_CORRECTION)
+                    update.corrected += fixed
+                    if held:
+                        update.held_back = (update.held_back or []) + held
                 update.added += db.save_prices(conn, ticker, rows)
                 if not rows and latest is None:
                     update.error = "no price data found. Is the ticker right?"
@@ -246,7 +264,11 @@ def main():
             print(f"  {r.ticker:<8} no prices yet")
         else:
             close = db.get_prices(conn, r.ticker, start=r.latest)[0]["close"]
-            print(f"  {r.ticker:<8} {r.added:>4} new days   latest {r.latest}   close {close:.2f}")
+            fixed = f"   {r.corrected} corrected" if r.corrected else ""
+            print(f"  {r.ticker:<8} {r.added:>4} new days   latest {r.latest}   close {close:.3f}{fixed}")
+            for day, old, new in r.held_back or []:
+                print(f"           held back: {day} saved {old:g}, Yahoo now says {new:g} (more than "
+                      f"{MAX_CORRECTION:.0%} apart: check it before changing it by hand)")
 
     print("Updating dividends")
     div_results = update_dividends(conn, tickers)

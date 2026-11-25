@@ -47,15 +47,43 @@ def test_first_run_starts_at_first_trade(conn, user_id):
     assert (result.added, result.latest, result.error) == (5, "2026-11-06", None)
 
 
-def test_second_run_only_fetches_new_days(conn, user_id):
+def test_second_run_adds_the_new_day_and_re_reads_the_last_week(conn, user_id):
     add_buy(conn, user_id, "D05.SI", "2026-11-02")
     update_prices(conn, ["D05.SI"], now=FRIDAY_AFTERNOON, download=FakeDownload(), pause=0)   # saves up to Thu
     fake = FakeDownload()
 
     [result] = update_prices(conn, ["D05.SI"], now=FRIDAY_EVENING, download=fake, pause=0)
 
-    assert fake.calls == [("D05.SI", date(2026, 11, 6), date(2026, 11, 6))]
-    assert result.added == 1
+    # Friday is new; Monday to Thursday are fetched again (w413), but nothing changed, so nothing is corrected.
+    assert fake.calls == [("D05.SI", date(2026, 11, 2), date(2026, 11, 6))]
+    assert (result.added, result.corrected, result.held_back) == (1, 0, None)
+
+
+def test_re_reading_reaches_back_one_week_not_to_the_first_trade(conn, user_id):
+    add_buy(conn, user_id, "D05.SI", "2026-09-01")
+    update_prices(conn, ["D05.SI"], now=FRIDAY_AFTERNOON, download=FakeDownload(), pause=0)   # saves up to Thu 5th
+    fake = FakeDownload()
+    update_prices(conn, ["D05.SI"], now=FRIDAY_EVENING, download=fake, pause=0)
+    assert fake.calls == [("D05.SI", date(2026, 10, 29), date(2026, 11, 6))]          # 7 days before the 5th
+
+
+def test_a_close_yahoo_corrected_is_fixed_and_a_suspicious_one_held_back(conn, user_id):
+    add_buy(conn, user_id, "D05.SI", "2026-11-02")
+    update_prices(conn, ["D05.SI"], now=FRIDAY_AFTERNOON, download=FakeDownload(), pause=0)   # 10.0 Mon-Thu
+
+    def corrected(ticker, start, end):
+        rows = dict(FakeDownload()(ticker, start, end))
+        rows["2026-11-04"] = 10.05            # Wednesday's close corrected by 0.5%
+        rows["2026-11-03"] = 4.0              # Tuesday "corrected" by 60%: a glitch, not a correction
+        return sorted(rows.items())
+
+    [result] = update_prices(conn, ["D05.SI"], now=FRIDAY_EVENING, download=corrected, pause=0)
+
+    closes = {r["price_date"]: r["close"] for r in db.get_prices(conn, "D05.SI")}
+    assert closes["2026-11-04"] == 10.05 and closes["2026-11-03"] == 10.0 and closes["2026-11-06"] == 10.0
+    assert (result.added, result.corrected) == (1, 1)
+    assert result.held_back == [("2026-11-03", 10.0, 4.0)]
+    assert result.error is None                                 # a held-back day isn't a failed download
 
 
 def test_up_to_date_over_the_weekend_downloads_nothing(conn, user_id):

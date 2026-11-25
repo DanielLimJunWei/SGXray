@@ -158,3 +158,18 @@ def test_the_page_is_told_when_to_ask_again(app, db_path):
     conn_with_sti(db_path, "2026-11-13").close()
     nxt = app.test_client().get("/prices/latest").get_json()["next"]
     assert 120 <= nxt <= 6 * 3600                                     # never more often than every 2 minutes
+
+
+def test_a_daily_update_does_splits_before_prices_and_logs_held_back_closes(conn, monkeypatch, capsys):
+    """Prices are un-adjusted with the saved splits, so splits must be fetched first. A close held back as a
+    likely glitch (w413) goes to the server log, where a person will see it."""
+    import market
+    from market import PriceUpdate
+    order = []
+    monkeypatch.setattr(market, "update_actions", lambda c, t: order.append("splits") or [])
+    monkeypatch.setattr(market, "update_prices", lambda c, t: order.append("prices") or [
+        PriceUpdate("D05.SI", held_back=[("2026-11-03", 10.0, 4.0)])])
+    monkeypatch.setattr(market, "update_dividends", lambda c, t: order.append("dividends") or [])
+    assert updater.download_all(conn) is True
+    assert order == ["splits", "prices", "dividends"]
+    assert "held back D05.SI 2026-11-03: saved 10, Yahoo now says 4" in capsys.readouterr().err

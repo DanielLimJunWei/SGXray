@@ -848,6 +848,28 @@ def save_prices(conn, ticker, rows):
     return max(cur.rowcount, 0)
 
 
+def correct_prices(conn, ticker, rows, max_change):
+    """Re-downloaded (price_date, close) pairs for days already saved (w413). A close that differs from the saved
+    one is corrected, unless it's more than max_change apart (0.25 = 25%): that's returned instead, for a person to
+    check. Days not saved yet are left to save_prices. Returns (corrected, [(day, saved, new), ...])."""
+    if not rows:
+        return 0, []
+    saved = {r["price_date"]: r["close"] for r in conn.execute(
+        "SELECT price_date, close FROM prices WHERE ticker = ? AND price_date BETWEEN ? AND ?",
+        (ticker, min(d for d, _ in rows), max(d for d, _ in rows))).fetchall()}
+    fix, held = [], []
+    for day, close in rows:
+        old = saved.get(day)
+        if old is None or close <= 0 or abs(close - old) < 0.00005:   # not saved, nonsense, or the same
+            continue
+        (held if abs(close - old) / old > max_change else fix).append((day, old, close))
+    if fix:
+        with conn:
+            conn.executemany("UPDATE prices SET close = ? WHERE ticker = ? AND price_date = ?",
+                             [(new, ticker, day) for day, _, new in fix])
+    return len(fix), held
+
+
 def get_latest_price_date(conn, ticker):
     """The newest day we have a price for, or None. Used to fetch only newer days."""
     row = conn.execute(
