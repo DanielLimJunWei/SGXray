@@ -1,11 +1,19 @@
-"""PostgreSQL support (w408): the same SQL on both databases.
+"""PostgreSQL support (w408): the same SQL on both databases, and the one-off copy from SQLite.
 
-The whole test suite also runs on PostgreSQL when SGXRAY_TEST_PG is set (see conftest.py).
+The whole test suite also runs on PostgreSQL when SGXRAY_TEST_PG is set (see conftest.py). The tests marked
+`needs_pg` here only run then.
 """
+
+import os
 
 import pytest
 
 import db
+import lessons
+from instruments import seed_instruments
+
+PG = os.environ.get("SGXRAY_TEST_PG")
+needs_pg = pytest.mark.skipif(not PG, reason="set SGXRAY_TEST_PG to a PostgreSQL URL")
 
 
 def test_question_marks_become_psycopg_placeholders_outside_quotes():
@@ -36,3 +44,60 @@ def test_no_sqlite_only_sql_is_left_in_the_app():
         for word in ("INSERT OR IGNORE", "INSERT OR REPLACE", "GROUP_CONCAT", "TOTAL(", "lastrowid", "total_changes"):
             assert word not in text, (f.name, word)
 
+
+@pytest.fixture
+def old_sqlite(tmp_path, monkeypatch):
+    """A small SQLite database like data/sgxray.db: the demo (2 trades), one real account, prices."""
+    monkeypatch.delenv("SGXRAY_TEST_PG", raising=False)          # this one must be a real SQLite file
+    path = tmp_path / "old.db"
+    conn = db.get_connection(path)
+    db.init_db(conn)
+    seed_instruments(conn)
+    db.save_prices(conn, "D05.SI", [("2025-01-02", 30.0), ("2025-01-03", 31.0)])
+    demo = db.create_user(conn, lessons.DEMO_EMAIL, "!demo")
+    db.add_trade(conn, demo, "D05.SI", "2025-01-02", "BUY", 100, 30.0, 10.0)
+    db.add_trade(conn, demo, "D05.SI", "2025-01-03", "BUY", 50, 31.0, 10.0)
+    real = db.create_user(conn, "ann@example.com", "scrypt:x")
+    db.add_trade(conn, real, "D05.SI", "2025-01-02", "BUY", 1, 30.0, 0.0)
+    db.log_security_event(conn, "login", real, "1.2.3.4")
+    conn.close()
+    return path
+
+
+def _fresh_pg_database(monkeypatch, name):
+    import psycopg
+    with psycopg.connect(PG, autocommit=True) as pg:
+        pg.execute(f'DROP SCHEMA IF EXISTS "{name}" CASCADE')
+        pg.execute(f'CREATE SCHEMA "{name}"')
+    monkeypatch.delenv("SGXRAY_TEST_PG", raising=False)
+    sep = "&" if "?" in PG else "?"
+    monkeypatch.setenv("DATABASE_URL", f"{PG}{sep}options=-csearch_path%3D{name}")
+
+
+@needs_pg
+def test_moving_copies_the_shared_data_and_the_demo_but_no_accounts(old_sqlite, monkeypatch):
+    import move_to_postgres
+    _fresh_pg_database(monkeypatch, "t_move_shared")
+    counts = move_to_postgres.copy(old_sqlite)
+    assert counts["prices"] == 2 and counts["users"] == 1 and counts["trades"] == 2
+    conn = db.get_connection()
+    assert [r[0] for r in conn.execute("SELECT email FROM users").fetchall()] == [lessons.DEMO_EMAIL]
+    assert conn.execute("SELECT COUNT(*) FROM security_log").fetchone()[0] == 0     # never copied
+    # New accounts and trades get ids after the copied ones (no clash with the demo's)
+    new = db.create_user(conn, "new@example.com", "!x")
+    assert new > lessons.demo_user_id(conn)
+    conn.close()
+    with pytest.raises(SystemExit):                                     # a second run refuses to mix
+        move_to_postgres.copy(old_sqlite)
+
+
+@needs_pg
+def test_moving_with_accounts_keeps_each_trade_with_its_owner(old_sqlite, monkeypatch):
+    import move_to_postgres
+    _fresh_pg_database(monkeypatch, "t_move_accounts")
+    counts = move_to_postgres.copy(old_sqlite, accounts=True)
+    assert counts["users"] == 2 and counts["trades"] == 3
+    conn = db.get_connection()
+    ann = db.get_user_by_email(conn, "ann@example.com")["id"]
+    assert [tuple(r) for r in conn.execute("SELECT ticker, quantity FROM trades WHERE user_id = ?", (ann,))] == [("D05.SI", 1)]
+    conn.close()

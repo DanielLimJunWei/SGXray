@@ -29,9 +29,14 @@ Then open http://127.0.0.1:5000. New closing prices arrive by themselves after a
 
 Tests: `python -m pip install -r requirements-dev.txt`, then `python -m pytest`.
 
+**PostgreSQL** (the live site): set `DATABASE_URL=postgresql://...` and SGXray uses it instead of the SQLite file.
+Copy an existing database across once with `python src/move_to_postgres.py data/sgxray.db` (the demo and shared
+data; add `--accounts` for every account). To run the tests on PostgreSQL too, set
+`SGXRAY_TEST_PG=postgresql://...` (each test gets its own schema there).
+
 ## How it's built
 
-Python, Flask, SQLite and pandas, with plain HTML, CSS and JavaScript (no build step).
+Python, Flask, SQLite (PostgreSQL when hosted) and pandas, with plain HTML, CSS and JavaScript (no build step).
 
 | Folder | What's in it |
 |---|---|

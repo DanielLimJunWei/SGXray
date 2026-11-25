@@ -189,6 +189,7 @@ feature. OPEN = still to do, with its task. LIVE = can only be proven on the dep
 | 104 | Inline styles allowed by the CSP | FIXED (audit 4b) | `style-src 'self'`; no `style=""` or `<style>` in any template or script (`test_audit4.py`) |
 | 105 | Cross-origin isolation headers | FIXED (audit 4b) | COOP, CORP and COEP set on every response (`test_audit4.py`) |
 | 106 | Server software version shown | LIVE (Week 4) | Hide the `Server` header on Render (gunicorn) |
+| 107 | The live database (w408) | BUILT, LIVE (Week 4) | PostgreSQL via `DATABASE_URL`, kept only in Render's settings (never in code); the provider's URL must include `sslmode=require` so data is encrypted on the way. Same queries as SQLite, all with placeholders (client-side quoting by psycopg); the whole suite passes on PostgreSQL 17. psycopg 3.3.9 pinned; pip-audit clean. The copy script never moves sessions, failed log-ins, reset links or the security log |
 
 ### Server and data
 | # | Check | Status | Evidence |

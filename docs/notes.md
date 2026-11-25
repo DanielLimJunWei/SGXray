@@ -617,3 +617,24 @@ A portfolio with nothing in it (yours, practice, or the demo before it's loaded)
   needs each publisher's written OK, or launches switched off.
 - **Second audit (4b):** 16 wording/logic fixes; ZAP found no real issue, but its notes led to `style-src 'self'`
   (no inline styles left) and cross-origin isolation headers. Details in `docs/security-audits.md`.
+
+## 25 Nov 2026: PostgreSQL for the live site (w408)
+- **Why:** Render's free web servers wipe their disk on every restart and deploy, so a SQLite file there would lose
+  every account and trade. With `DATABASE_URL` set, SGXray uses PostgreSQL; without it, the SQLite file as before
+  (your computer, the tests).
+- **One set of SQL:** written to work on both (`RETURNING id` instead of `lastrowid`, `ON CONFLICT DO NOTHING`
+  instead of `INSERT OR IGNORE`, `string_agg`, `COALESCE(SUM())` instead of `TOTAL()`, and "now" passed in from
+  Python as `db.utc_text()` instead of SQLite's `strftime('now')`). SQLite 3.50 understands all of it.
+- **`db.PgConnection`** makes psycopg 3.3.9 look like sqlite3: `?` placeholders (turned into `%s` outside quotes),
+  rows by name or position, `with conn:` as one transaction (savepoints when nested), statements on their own saved
+  at once (autocommit). Client-side binding, so `? IS NULL` works as in SQLite. `SUM()` of whole numbers comes back
+  as a float, not a Decimal. The schema swaps three words: the auto-numbered id, `REAL` (PostgreSQL's REAL keeps
+  only ~7 digits, so DOUBLE PRECISION) and the "now" defaults (same text format as SQLite wrote).
+- **Tests:** the whole suite runs on both. `SGXRAY_TEST_PG=postgresql://...` gives each test its own schema
+  (named from its temporary file path) and drops them all before and after. On PostgreSQL 17 (Docker): 635 passed, 1
+  skipped (it builds an old SQLite file by hand). The demo's figures are identical on both, holding by holding.
+- **Moving:** `src/move_to_postgres.py` copies the stock list, prices, dividends, splits, news and the demo (or every
+  account with `--accounts`), in one transaction, keeps ids, moves the id counters past them, never copies sessions,
+  failed log-ins, reset links or the security log, and refuses to run into a database that already has accounts.
+- **Where:** Neon's free plan (no expiry, about 0.5 GB; SGXray's data is well under 1 MB). Render's free PostgreSQL is
+  deleted 30 days after it's made, so it's only for trying things. Pick Singapore for both Neon and Render.
