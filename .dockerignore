@@ -1,0 +1,12 @@
+# Only these go into the image. Everything else stays out: the database (data/sgxray.db), the secret key
+# (instance/), .env, tests, docs, Git history and editor settings.
+*
+!app.py
+!gunicorn.conf.py
+!requirements.lock
+!src/
+!templates/
+!static/
+!data/demo_trades.csv
+**/__pycache__
+**/*.pyc

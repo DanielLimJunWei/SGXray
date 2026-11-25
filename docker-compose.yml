@@ -1,0 +1,36 @@
+# SGXray the way the live site runs it: the container plus a PostgreSQL database, on your own computer.
+#
+#   1. Put a secret key in .env (Git ignores it):   SGXRAY_SECRET_KEY=<a long random string>
+#      e.g.  python -c "import secrets; print('SGXRAY_SECRET_KEY=' + secrets.token_hex(32))" > .env
+#   2. docker compose up --build
+#   3. Open http://127.0.0.1:8000
+#   4. Copy the demo in once:  DATABASE_URL=postgresql://sgxray:localonly@127.0.0.1:54330/sgxray python src/move_to_postgres.py data/sgxray.db
+#
+# Both are reachable from this computer only (127.0.0.1). The password below is for this local copy, never the live one.
+services:
+  db:
+    image: postgres:17-alpine@sha256:f9cf3e1f0066f0eb0c48707d864f0ac5941e9ff454a072077d97a4d278d07d73
+    environment:
+      POSTGRES_USER: sgxray
+      POSTGRES_PASSWORD: localonly
+      POSTGRES_DB: sgxray
+    ports: ["127.0.0.1:54330:5432"]
+    volumes: [sgxray-db:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "sgxray"]
+      interval: 2s
+      retries: 30
+
+  web:
+    build: .
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      # sslmode=disable only because this database is on the same computer; the live address must use TLS
+      DATABASE_URL: postgresql://sgxray:localonly@db:5432/sgxray?sslmode=disable
+      SGXRAY_SECRET_KEY: ${SGXRAY_SECRET_KEY:?put SGXRAY_SECRET_KEY in .env first}
+      PORT: "8000"
+    ports: ["127.0.0.1:8000:8000"]
+
+volumes:
+  sgxray-db:

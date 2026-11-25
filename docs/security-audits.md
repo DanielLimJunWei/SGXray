@@ -188,8 +188,9 @@ feature. OPEN = still to do, with its task. LIVE = can only be proven on the dep
 | 83b | News publishers' terms | OPEN (w422), BLOCKS LAUNCH | Read 25 Nov: SPH (Straits Times, Business Times) forbids showing its content, RSS included, on another site, even by linking or scraping, without written permission, and bans bots; CNA's RSS is personal, non-commercial and may not be passed to third parties; The Edge allows no use without written permission. Ask each in writing, or launch without the News page |
 | 104 | Inline styles allowed by the CSP | FIXED (audit 4b) | `style-src 'self'`; no `style=""` or `<style>` in any template or script (`test_audit4.py`) |
 | 105 | Cross-origin isolation headers | FIXED (audit 4b) | COOP, CORP and COEP set on every response (`test_audit4.py`) |
-| 106 | Server software version shown | LIVE (Week 4) | Hide the `Server` header on Render (gunicorn) |
+| 106 | Server software version shown | FIXED (w403) | gunicorn's `Server` header now just says "SGXray" (`gunicorn.conf.py`) |
 | 107 | The live database (w408) | BUILT, LIVE (Week 4) | PostgreSQL via `DATABASE_URL`, kept only in Render's settings (never in code); the provider's URL must include `sslmode=require` so data is encrypted on the way. Same queries as SQLite, all with placeholders (client-side quoting by psycopg); the whole suite passes on PostgreSQL 17. psycopg 3.3.9 pinned; pip-audit clean. The copy script never moves sessions, failed log-ins, reset links or the security log |
+| 108 | The container (w403) | BUILT | Python 3.14.7 image pinned by digest; libraries from the lock file; runs as an ordinary user (uid 10001), never root; `.dockerignore` lets in only the code, templates, static files and the demo CSV (no database, secret key, `.env` or Git history: checked, all 404 from the running container); gunicorn with no access log (one-time reset links would be written out); the live site refuses to start without `SGXRAY_SECRET_KEY`; a remote database must use TLS (a local one only with an explicit `sslmode=disable`). gunicorn 26.2.0 pinned; pip-audit clean |
 
 ### Server and data
 | # | Check | Status | Evidence |

@@ -34,6 +34,9 @@ Copy an existing database across once with `python src/move_to_postgres.py data/
 data; add `--accounts` for every account). To run the tests on PostgreSQL too, set
 `SGXRAY_TEST_PG=postgresql://...` (each test gets its own schema there).
 
+**Docker** (how the live site runs): `docker compose up --build` starts SGXray behind gunicorn with its own
+PostgreSQL, at http://127.0.0.1:8000. Put `SGXRAY_SECRET_KEY=...` in `.env` first (see `docker-compose.yml`).
+
 ## How it's built
 
 Python, Flask, SQLite (PostgreSQL when hosted) and pandas, with plain HTML, CSS and JavaScript (no build step).

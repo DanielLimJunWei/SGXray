@@ -638,3 +638,20 @@ A portfolio with nothing in it (yours, practice, or the demo before it's loaded)
   failed log-ins, reset links or the security log, and refuses to run into a database that already has accounts.
 - **Where:** Neon's free plan (no expiry, about 0.5 GB; SGXray's data is well under 1 MB). Render's free PostgreSQL is
   deleted 30 days after it's made, so it's only for trying things. Pick Singapore for both Neon and Render.
+
+## 25 Nov 2026: Docker (w403)
+- **`Dockerfile`:** `python:3.14.7-slim` pinned by digest, libraries from `requirements.lock`, then only the code,
+  templates, static files and `data/demo_trades.csv` (`.dockerignore` is an allow-list). Runs as user `sgxray`
+  (uid 10001). Image: about 520 MB (pandas and numpy are most of it).
+- **`gunicorn.conf.py`:** binds to Render's `PORT`; 2 workers x 4 threads (fits 512 MB); workers renewed every ~1,000
+  requests; no access log (it would write out one-time reset links); `Server: SGXray` instead of gunicorn's name;
+  gunicorn 25+'s control socket switched off (it wants a home folder the user doesn't have). Each worker starts the
+  price checker; the `jobs` table lock keeps it to one download at a time.
+- **Fail closed:** with `DATABASE_URL` set and no `SGXRAY_SECRET_KEY`, the app refuses to start (a made-up key would
+  log everyone out on every restart, and two workers could make different ones).
+- **TLS:** a database on another host must use TLS; inside Docker the database is "another host" (`db`, `sgxray-pg`), so
+  local setups say `?sslmode=disable` explicitly. The live (Neon) address uses TLS.
+- **`docker-compose.yml`:** SGXray + PostgreSQL 17 on 127.0.0.1 only, for running it like the live site.
+- **Checked:** every page 200 from the container on PostgreSQL; the demo matches ($21,511.40 worth, +$10,503.78 profit);
+  `/data/sgxray.db`, `/.env`, `/app.py`, `/instance/secret_key`, `/gunicorn.conf.py` all 404; no console errors.
+

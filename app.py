@@ -1019,6 +1019,10 @@ def _secret_key(app):
     key = os.environ.get("SGXRAY_SECRET_KEY")
     if key:
         return key
+    if os.environ.get("DATABASE_URL"):
+        # The live site (PostgreSQL) never makes up its own key: a server's disk is wiped on restart, so a made-up
+        # key would log everyone out each time, and each worker could make a different one. Refuse to start instead.
+        raise RuntimeError("SGXRAY_SECRET_KEY must be set when DATABASE_URL is (the live site)")
     path = Path(app.instance_path) / "secret_key"
     if not path.exists():
         path.parent.mkdir(parents=True, exist_ok=True)

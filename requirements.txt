@@ -16,3 +16,5 @@ yfinance==1.8.0
 requests==2.34.2
 # PostgreSQL for the live site (w408): used only when DATABASE_URL is set. [binary] brings its own libpq.
 psycopg[binary]==3.3.9
+# The web server on the live site (w403); flask run is only for your own computer.
+gunicorn==26.2.0
