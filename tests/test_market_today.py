@@ -133,8 +133,8 @@ def test_market_today_is_open_to_everyone_as_one_feed(app, db_path):
     page, raw = text(r), r.get_data(as_text=True)
     assert r.status_code == 200 and "Market today" in page
     assert page.index("Singapore's exports rise") < page.index("DBS declares a dividend")     # newest first
-    assert "Other companies" in page and "Market & economy" in page
-    assert "Your stocks" not in page                                                 # logged out: nothing personal
+    assert "Other companies" not in page and "Market & economy" not in page          # two tabs only: All, Your stocks
+    assert "Your stocks" in page and 'class="chip mine"' not in raw                            # logged out: nothing personal
     assert "lesson 6, Dividends" in page and "A bigger payout." in page
     assert "3h ago" in page and 'class="story-tag"' in raw
     assert 'href="https://www.businesstimes.com.sg/1" target="_blank" rel="noopener noreferrer nofollow"' in raw
@@ -150,13 +150,14 @@ def test_tabs_filter_the_feed_and_ignore_anything_else(app, db_path):
                      item("Singapore's exports rise", "https://www.straitstimes.com/3", source="The Straits Times")])
     conn.close()
     feed = lambda r: r.get_data(as_text=True).split('class="market-feed"')[1].split('class="market-side"')[0]
-    mine, others, market = (feed(c.get(f"/news?show={k}")) for k in ("mine", "others", "market"))
+    mine = feed(c.get("/news?show=mine"))
     assert "DBS profit rises" in mine and "UOB opens" not in mine and "exports rise" not in mine
-    assert "UOB opens a branch" in others and "DBS profit" not in others
-    assert "exports rise" in market and "DBS profit" not in market
-    weird = feed(c.get("/news?show=<script>"))                                        # an unknown tab: everything
-    assert "DBS profit rises" in weird and "UOB opens a branch" in weird
-    assert "UOB opens a branch" in feed(app.test_client().get("/news?show=mine"))   # logged out: no "mine" tab
+    for old in ("others", "market", "<script>"):                                     # gone or unknown: everything
+        every = feed(c.get(f"/news?show={old}"))
+        assert "DBS profit rises" in every and "UOB opens a branch" in every and "exports rise" in every
+    logged_out = feed(app.test_client().get("/news?show=mine"))                      # logged out: asks you to log in
+    assert "UOB opens a branch" not in logged_out and "DBS profit" not in logged_out
+    assert "Log in" in logged_out and 'href="/login"' in logged_out
 
 
 def test_your_stocks_say_you_own_them_and_link_to_your_portfolio(app, db_path):
@@ -223,7 +224,7 @@ def test_empty_news_says_why(app):
     page = text(app.test_client().get("/news"))
     assert "No company has been named in a story yet" in page
     assert "No stories since " in page and " yet. They arrive with the next check." in page
-    assert "No market or economy stories" in text(app.test_client().get("/news?show=market"))
+    assert "stories about the stocks you hold show here" in text(app.test_client().get("/news?show=mine"))
 
 
 def test_ago_reads_like_a_news_app():

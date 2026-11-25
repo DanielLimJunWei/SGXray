@@ -146,18 +146,9 @@ def build(conn, items, owned, practice=None, now=None):
     return items
 
 
-def split(items, owned):
-    """(about yours, other companies, market and economy) for the Market today page. A headline that only
-    names the STI (tagged as the STI ETFs) is market news, unless you hold an STI ETF."""
-    mine, others, market = [], [], []
-    for it in items:
-        if any(t in owned for t in it["tickers"]):
-            mine.append(it)
-        elif any(t not in STI_ETFS for t in it["tickers"]):
-            others.append(it)
-        else:
-            market.append(it)
-    return mine, others, market
+def mine(items, owned):
+    """The stories that name a stock you hold, for the Market today page's "Your stocks" tab."""
+    return [it for it in items if any(t in owned for t in it["tickers"])]
 
 
 STI_ETFS = ("ES3.SI", "G3B.SI")

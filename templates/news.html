@@ -1,8 +1,8 @@
 {#
   Market today (/news): the day's Singapore business headlines as one feed, newest first, read like a news app.
   Only today's stories and the last trading day's (news.window_start): on a Monday, Friday's too.
-  Tabs pick which stories (All, Your stocks, Other companies, Market & economy); "Most in the news" and the topics
-  sits beside the feed (each story's own card links its topic to a lesson). Open to everyone; "Your stocks" only when logged in. Rows: templates/_news.html.
+  Two tabs: All, and Your stocks (the stories naming a stock you hold; logged out, it asks you to log in).
+  "Most in the news" sits beside the feed (each story's own card links its topic to a lesson). Open to everyone. Rows: templates/_news.html.
 #}
 {% extends "base.html" %}
 {% from "_term.html" import term, term_popups %}
@@ -17,7 +17,7 @@
     <h1>Market today</h1>
     <nav class="news-tabs" aria-label="Which stories">
       {% for key, label in tabs %}
-      <a href="{{ url_for('market_today', show=key) if key != 'all' else url_for('market_today') }}"{% if key == show %} aria-current="page"{% endif %}>{{ label }} <span class="tab-count">{{ counts[key] }}</span></a>
+      <a href="{{ url_for('market_today', show=key) if key != 'all' else url_for('market_today') }}"{% if key == show %} aria-current="page"{% endif %}>{{ label }}{% if key == "all" or current_user %} <span class="tab-count">{{ counts[key] }}</span>{% endif %}</a>
       {% endfor %}
     </nav>
   </header>
@@ -30,14 +30,12 @@
       {% else %}
       <div class="panel empty feed-empty-box">
       {{ empty_trace() }}
-      {% if show == "mine" and not owned %}
+      {% if show == "mine" and not current_user %}
+      <p class="muted feed-empty"><a href="{{ url_for('login') }}">Log in</a> and the stories about the stocks you hold show here. No account yet? <a href="{{ url_for('signup') }}">Create one</a>, or <a href="{{ url_for('demo') }}">try the demo</a> first.</p>
+      {% elif show == "mine" and not owned %}
       <p class="muted feed-empty">You don't hold any stocks yet, so there's nothing to match. <a href="{{ url_for('trades_page') }}">Add your trades</a> and the stories about them show here.</p>
       {% elif show == "mine" %}
       <p class="muted feed-empty">No story since {{ since }} names a stock you hold. Quiet news is normal: most days, most companies aren't in the papers.</p>
-      {% elif show == "others" %}
-      <p class="muted feed-empty">No other SGX company is named in the stories since {{ since }}.</p>
-      {% elif show == "market" %}
-      <p class="muted feed-empty">No market or economy stories since {{ since }} yet.</p>
       {% else %}
       <p class="muted feed-empty">No stories since {{ since }} yet. They arrive with the next check.</p>
       {% endif %}

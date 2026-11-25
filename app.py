@@ -190,10 +190,8 @@ def create_app(db_path=None):
         twin = conn.execute("SELECT id FROM users WHERE practice_of = ?", (uid,)).fetchone() if uid else None
         practice_owned = stories.holdings(conn, twin["id"]) if twin else {}
         items = stories.build(conn, news.recent(conn, limit=80), owned, practice_owned)
-        mine, others, market = stories.split(items, owned)
-        groups = {"all": items, "mine": mine, "others": others, "market": market}
-        tabs = ([("all", "All")] + ([("mine", "Your stocks")] if uid else [])
-                + [("others", "Other companies"), ("market", "Market & economy")])
+        groups = {"all": items, "mine": stories.mine(items, owned)}
+        tabs = [("all", "All"), ("mine", "Your stocks")]      # logged out, "Your stocks" asks you to log in
         show = request.args.get("show", "all")
         show = show if show in dict(tabs) else "all"       # only a known tab, whatever the address says
         day_ago = (_sgt_now() - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M")

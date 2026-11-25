@@ -545,7 +545,7 @@ A portfolio with nothing in it (yours, practice, or the demo before it's loaded)
 - **Phone top bar (settled):** at 720px and under, every link (Account included) is in the "Menu" panel (w307), so
   nothing is hidden any more.
 - **Market today redesign (17 Nov, his Longbridge screenshot as the reference):** one feed, newest first, tabs All /
-  Your stocks / Other companies / Market & economy (`?show=`, only known values), 10 rows a page. A row = topic tag +
+  Your stocks (`?show=`, only known values; 25 Nov: Other companies and Market & economy removed as repeats of All), 10 rows a page. A row = topic tag +
   headline, source, how long ago (`stories.ago`), ticker chips with the day's move, and a small chart of the stock's
   last 22 closes (`stories.sparkline`, SGXray's own prices; "1M" = its one-month change). "Most in the news" and Topics
   sit beside the feed; counts say "stories". "yours" and "You own ..." link to the portfolio. No "What does this
