@@ -58,9 +58,14 @@ def test_sign_up_says_what_you_agree_to(app):
     assert "terms of use" in page and 'href="/privacy"' in page
 
 
-def test_the_notice_names_the_contact_once_it_is_set(app, monkeypatch):
+def test_the_notice_names_sgxrays_contact_and_the_setting_can_change_it(app, monkeypatch):
+    monkeypatch.delenv("SGXRAY_CONTACT_EMAIL", raising=False)
+    c = app.test_client()
+    for path in ("/privacy", "/terms"):
+        assert "mailto:sgxray.app@gmail.com" in c.get(path).get_data(as_text=True), path
+    assert "added here before launch" not in c.get("/privacy").get_data(as_text=True)
     monkeypatch.setenv("SGXRAY_CONTACT_EMAIL", "privacy@example.com")
-    assert "mailto:privacy@example.com" in app.test_client().get("/privacy").get_data(as_text=True)
+    assert "mailto:privacy@example.com" in c.get("/privacy").get_data(as_text=True)
 
 
 def test_the_terms_say_education_not_advice(app):

@@ -201,7 +201,7 @@ feature. OPEN = still to do, with its task. LIVE = can only be proven on the dep
 | 42 | Audit trail | PASS | Sign-ups, log-ins, failures, pauses, log-outs, password changes, trades, plans (stopping too, since audit 4), data downloads, account deletions |
 | 37, 38, 62 | Libraries | PASS | 29 pinned (`requirements.lock`); pip-audit clean 25 Nov 2026 |
 | 97 | Privacy and deletion (PDPA) | FIXED | Download my data, Delete my account, privacy notice, terms. `test_legal.py` |
-| 72 | Privacy notice reviewed | OPEN | Drafted from the code (25 Nov); needs a lawyer's read and `SGXRAY_CONTACT_EMAIL` (the data protection contact) before launch |
+| 72 | Privacy notice reviewed | OPEN | Drafted from the code (25 Nov); contact set to sgxray.app@gmail.com (25 Nov; `SGXRAY_CONTACT_EMAIL` can override it); still needs a lawyer's read before launch |
 | 75 | Trade marks | OPEN (w419) | "SGX" is Singapore Exchange's; the footer says "not affiliated" and names belong to their owners; ask a lawyer about the name |
 | 77 | Advice wording | PASS | Re-read 25 Nov: lessons explain and warn, never recommend; terms say SGXray isn't MAS-licensed advice |
 | 43, 44, 48 | Monitoring, backups, encryption | LIVE (Week 4) | Alerts on failed-log-in bursts and errors; daily backups with a tested restore; HTTPS + provider encryption |
@@ -220,6 +220,6 @@ animation, view and lessons-read choices) and GraphQL/WebSockets (70).
 
 1. **Two-factor sign-in on GitHub:** github.com → your photo → Settings → Password and authentication. Save the recovery codes.
 2. **Two-factor on your Google account** (where reset emails will go): myaccount.google.com → Security → 2-Step Verification.
-3. **Week 4, on Render:** set `SGXRAY_SECRET_KEY`, `SGXRAY_HTTPS=1`, `SGXRAY_PROXIES=1` and `SGXRAY_CONTACT_EMAIL`; two-factor on Render and the database host; then recheck checks 43, 44, 46, 47, 48, 92 and 99 on the live site.
+3. **Week 4, on Render:** set `SGXRAY_SECRET_KEY`, `SGXRAY_HTTPS=1` and `SGXRAY_PROXIES=1` (the contact email is built in); two-factor on Render and the database host; then recheck checks 43, 44, 46, 47, 48, 92 and 99 on the live site.
 4. **Week 4, for "Forgot your password?":** pick an email service with SMTP (Resend, Brevo or Postmark), verify your domain, and set `SGXRAY_BASE_URL`, `SGXRAY_SMTP_HOST`, `SGXRAY_SMTP_USER`, `SGXRAY_SMTP_PASSWORD` and `SGXRAY_MAIL_FROM` in Render's settings (never in code). Then reset your own password once.
 5. **Before launch:** a lawyer's read of `/privacy`, `/terms` and the name (checks 72, 75); Yahoo's and the publishers' terms (74, 83b).

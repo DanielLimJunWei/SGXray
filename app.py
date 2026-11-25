@@ -758,11 +758,11 @@ def create_app(db_path=None):
 
     @app.get("/privacy")
     def privacy():
-        return render_template("privacy.html", contact=os.environ.get("SGXRAY_CONTACT_EMAIL", ""))
+        return render_template("privacy.html", contact=_contact_email())
 
     @app.get("/terms")
     def terms():
-        return render_template("terms.html", contact=os.environ.get("SGXRAY_CONTACT_EMAIL", ""))
+        return render_template("terms.html", contact=_contact_email())
 
     def _portfolio_page(uid, mode, **extra):
         """extra: anything else the page needs (the practice portfolio passes its pretend cash)."""
@@ -1106,6 +1106,15 @@ def _close_db(_error=None):
     conn = g.pop("conn", None)
     if conn is not None:
         conn.close()
+
+
+# SGXray's data protection contact, shown on /privacy and /terms. SGXRAY_CONTACT_EMAIL overrides it (for example a
+# domain address later); a blank setting falls back to this one.
+CONTACT_EMAIL = "sgxray.app@gmail.com"
+
+
+def _contact_email():
+    return os.environ.get("SGXRAY_CONTACT_EMAIL", "").strip() or CONTACT_EMAIL
 
 
 # ---------- Safety headers on every response ----------

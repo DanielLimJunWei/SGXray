@@ -353,7 +353,7 @@ lawyer's read. Every finding and its test is in docs/security-audits.md (checks 
   current password needed, the same 5-per-15-minutes limit as changing it; deletes the user and the practice
   twin, and ON DELETE CASCADE removes every per-person row; logged as "account_deleted" with no id or
   address). `/privacy` and `/terms` were written from what the code stores and are linked from the footer and at
-  sign-up. `SGXRAY_CONTACT_EMAIL` names the data protection contact. **They're drafts: a lawyer reads them before
+  sign-up. The data protection contact is sgxray.app@gmail.com (`app.CONTACT_EMAIL`; `SGXRAY_CONTACT_EMAIL` overrides it). **They're drafts: a lawyer reads them before
   launch.**
 - **Libraries served by SGXray** (25 Nov, his OK): Three.js and Lenis now come from `static/vendor/` (npm packages,
   registry sha512 checked, per-file sha256 in `static/vendor/README.md`, `.gitattributes` keeps their bytes exact).
