@@ -556,7 +556,28 @@
     {% if not forecast %}
     <p class="muted">Nothing you hold paid a dividend in the last 12 months, so none are expected.</p>
     {% else %}
-    <p class="muted lead">An estimate: last year's dividends, assumed to come again on the shares you hold now.</p>
+    <p class="muted lead">An estimate: last year's dividends, assumed to come again on the shares you hold now.
+      Dates a company has already announced replace the guess.</p>
+    {#- The calendar (s04): the same forecast, month by month. Every month is listed, even an empty one. -#}
+    <h3 class="cal-title">{{ term("dividend-calendar", "Month by month") }}</h3>
+    <ol class="div-cal" aria-label="Dividends expected, month by month">
+      {% for m in calendar %}
+      <li class="div-cal-month{{ ' has-payout' if m.payouts }}">
+        <span class="div-cal-name">{{ m.month }}{% if m.part %}<span class="sub">{{ m.part }}</span>{% endif %}</span>
+        {% if m.payouts %}
+        {% if m.payouts > m.unknown %}
+        <span class="div-cal-total">{{ m.total|money }}<span class="sub">about{% if m.unknown %}, plus {{ m.unknown }} {{ term("not-announced", "amount not announced yet") }}{% endif %}</span></span>
+        {% else %}
+        <span class="div-cal-total">{{ term("not-announced", "Amount not announced yet") }}</span>
+        {% endif %}
+        <span class="div-cal-stocks">{{ m.stocks|map("replace", ".SI", "")|join(", ") }}</span>
+        {% if m.announced %}<span class="div-cal-flag">{{ term("announced", (m.announced ~ " of " ~ m.payouts ~ " dates announced") if m.payouts > 1 else "date announced") }}</span>{% endif %}
+        {% else %}
+        <span class="div-cal-none">Nothing expected</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ol>
     <div class="panel table-wrap">
       <table class="data">
         <thead>
@@ -566,12 +587,18 @@
         <tbody>
           {% for r in forecast %}
           <tr>
-            <td>{{ r.expected|longdate }}</td>
+            <td>{{ r.expected|longdate }}<span class="sub">{{ term("announced", "announced") if r.status == "announced" else term("estimate", "estimate") }}</span></td>
             <td><b>{{ r.ticker }}</b></td>
             <td>{{ "{:,}".format(r.shares|int) }}</td>
+            {% if r.total == r.total %}
             <td>{{ r.amount|num(".4f") }}</td>
             <td>{{ r.total|money }}</td>
             <td>{{ r.based_on|longdate }}</td>
+            {% else %}
+            <td>{{ term("not-announced", "not announced yet") }}</td>
+            <td>{{ term("not-announced", "not announced yet") }}</td>
+            <td>{{ term("not-announced", "a new dividend") }}</td>
+            {% endif %}
           </tr>
           {% endfor %}
         </tbody>

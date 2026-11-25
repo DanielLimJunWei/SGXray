@@ -132,3 +132,11 @@ def test_several_workers_setting_up_a_new_database_at_once_all_succeed(tmp_path)
     conn = db.get_connection(path)
     assert "users" in db.tables(conn) and "approx" in db.columns(conn, "trades")
     conn.close()
+
+
+def test_every_table_is_either_moved_or_deliberately_left_behind():
+    """A new table (like announced_dividends, s04) must be added to the move script or to its NEVER list."""
+    import re
+    import move_to_postgres as m
+    tables = set(re.findall(r"CREATE TABLE IF NOT EXISTS (\w+)", db.SCHEMA))
+    assert tables <= set(m.SHARED) | set(m.ACCOUNTS) | m.NEVER

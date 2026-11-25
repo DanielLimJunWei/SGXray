@@ -162,6 +162,9 @@ def download_all(conn):
     actions = market.update_actions(conn, tickers)          # splits first: prices are un-adjusted with them
     prices = market.update_prices(conn, tickers)
     results = actions + prices + market.update_dividends(conn, tickers)
+    # Announced ex-dates (s04) only for stocks someone holds: that's who the calendar is for. A failed check
+    # isn't counted as a failed update (the forecast just keeps estimating that stock's dates).
+    market.update_announced(conn, sorted(set(db.get_traded_tickers(conn))))
     for r in prices:                         # to the server log (Render's Logs tab), for a person to check
         for day, old, new in r.held_back or []:
             print(f"SGXray prices: held back {r.ticker} {day}: saved {old:g}, Yahoo now says {new:g}",

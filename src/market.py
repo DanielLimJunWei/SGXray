@@ -203,6 +203,56 @@ def update_dividends(conn, tickers, now=None, download=download_dividends, pause
     return results
 
 
+# ---------- Announced ex-dates (s04) ----------
+
+@dataclass
+class AnnouncedUpdate:
+    ticker: str
+    dates: list = None      # announced ex-dates still to come, as saved
+    error: str = None
+
+
+def download_announced(ticker):
+    """The ex-dividend date(s) Yahoo lists in a ticker's calendar, as 'YYYY-MM-DD' strings. Yahoo shows the
+    next announced one, or the last one once it has passed (update_announced keeps only future dates). SGX
+    stocks get no payment date or amount here, so SGXray never claims one."""
+    cal = yf.Ticker(ticker).calendar or {}
+    value = cal.get("Ex-Dividend Date")
+    values = value if isinstance(value, (list, tuple)) else [value]
+    out = []
+    for v in values:
+        if hasattr(v, "isoformat"):
+            out.append(v.isoformat()[:10])
+        elif isinstance(v, str) and len(v) >= 10:
+            out.append(v[:10])
+    return [d for d in out if _is_date(d)]
+
+
+def _is_date(text):
+    try:
+        date.fromisoformat(text)
+        return True
+    except ValueError:
+        return False
+
+
+def update_announced(conn, tickers, now=None, download=download_announced, pause=PAUSE_SECONDS):
+    """Saves each ticker's announced ex-dates still to come. A failed check keeps what was saved before."""
+    today = (now or datetime.now(SGT)).date().isoformat()
+    results = []
+    for i, ticker in enumerate(tickers):
+        update = AnnouncedUpdate(ticker)
+        if i and pause:
+            time.sleep(pause)
+        try:
+            db.save_announced(conn, ticker, download(ticker), today)
+        except Exception as e:
+            update.error = f"download failed ({type(e).__name__}: {e})"
+        update.dates = db.get_announced(conn, ticker, today)
+        results.append(update)
+    return results
+
+
 # ---------- Corporate actions ----------
 
 @dataclass
@@ -269,6 +319,13 @@ def main():
             for day, old, new in r.held_back or []:
                 print(f"           held back: {day} saved {old:g}, Yahoo now says {new:g} (more than "
                       f"{MAX_CORRECTION:.0%} apart: check it before changing it by hand)")
+
+    print("Checking announced ex-dates")
+    for r in update_announced(conn, sorted(set(db.get_traded_tickers(conn)))):
+        if r.error:
+            print(f"  {r.ticker:<8} ERROR: {r.error}")
+        elif r.dates:
+            print(f"  {r.ticker:<8} next ex-date {', '.join(r.dates)} (announced)")
 
     print("Updating dividends")
     div_results = update_dividends(conn, tickers)

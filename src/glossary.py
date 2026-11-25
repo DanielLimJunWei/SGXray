@@ -90,9 +90,28 @@ TERMS = {
                  "An estimate, not a promise.",
                  "$0.75 x 210 shares = about $157.50."),
     "expected-date": ("Expected around",
-                      "A guess at the next ex-date: one year after the last one. The company announces the real "
-                      "date shortly before.",
+                      "The next ex-date. Until the company announces it, a guess: one year after the last one. Once "
+                      "it's announced (SGXray checks every evening), the real date is shown and marked announced.",
                       "Last ex-date 13 November 2025, so expected around 13 November 2026."),
+    "announced": ("Announced",
+                  "The company has published this ex-date, so the date is real, not a guess. The amount is still "
+                  "last year's until the dividend is paid: SGXray's price source gives SGX stocks the date but "
+                  "not the amount.",
+                  "Singtel announced an ex-date of 30 November: that row shows the real date."),
+    "estimate": ("Estimate",
+                 "Not announced yet: last year's ex-date moved on a year, and last year's amount. Companies "
+                 "usually announce the real date a few weeks before.",
+                 "DBS paid in May last year, so a payout is expected around May again."),
+    "not-announced": ("Amount not announced yet",
+                      "The company has announced an ex-date that doesn't match any dividend it paid in the last "
+                      "12 months (a new or special dividend), and SGXray's price source doesn't give the amount. "
+                      "It's added to your income once it's paid.",
+                      "A one-off special dividend announced for March: the date shows, the amount waits."),
+    "dividend-calendar": ("Dividend calendar",
+                          "The next 12 months, month by month: which stocks you hold are expected to go ex-dividend "
+                          "and about how much that's worth to you. The cash usually arrives a few weeks after "
+                          "the ex-date.",
+                          "March: DBS and CICT, about $210."),
     "your-profit": ("Your profit (one stock)",
                     "Everything that stock has given you: what it's worth now + money from selling it + its "
                     "dividends - what you paid for it.",

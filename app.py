@@ -40,6 +40,7 @@ from history import period_returns, time_weighted, value_history  # noqa: E402
 import insights  # noqa: E402
 from importer import DEMO_EMAIL  # noqa: E402
 from income import by_year, forecast, portfolio_yield, yields  # noqa: E402
+from income import calendar as income_calendar  # noqa: E402
 import lessons  # noqa: E402
 import news  # noqa: E402
 import plans  # noqa: E402
@@ -826,6 +827,7 @@ def create_app(db_path=None):
             yields_ex=explain_yields(conn, uid),
             forecast=_records(f, names),
             forecast_total=f["total"].sum(),
+            calendar=income_calendar(f, s["prices_as_of"]),
             forecast_ex=explain_forecast(conn, uid),
             chart=_monthly_chart(h),
             years=_bar_layout(by_year(conn, uid)),

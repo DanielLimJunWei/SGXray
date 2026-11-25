@@ -337,28 +337,43 @@ def explain_forecast(conn, user_id, as_of=None):
         return Explanation(["No dividends are expected: either you hold nothing, or nothing you hold "
                             "paid a dividend in the last 12 months."])
 
-    by_month = f.groupby(f["expected"].dt.to_period("M"))["total"].sum()
-    best = by_month.idxmax()
+    known = f[f["total"].notna()]
     out = [
         "This is an estimate of the dividends you'll receive over the next 12 months. "
         "It takes every dividend each stock paid in the last 12 months and assumes it comes again "
         "about a year later, on the number of shares you hold now.",
-        f"For example: {f.iloc[0].ticker} paid ${f.iloc[0].amount:g} a share on "
-        f"{_day(pd.Timestamp(f.iloc[0].based_on))}. You hold {f.iloc[0].shares:,} shares, so around "
-        f"{_day(f.iloc[0].expected)} you can expect about {f.iloc[0].shares:,} x ${f.iloc[0].amount:g} = {money(f.iloc[0].total)}.",
-        f"In total, about {money(f['total'].sum())} over {len(by_month)} months with payouts. "
-        f"The biggest month is {best:%B %Y}, at about {money(by_month[best])}.",
-        "You get a dividend only if you own the shares before the ex-date. The cash usually reaches "
-        "your bank a few weeks after that.",
     ]
+    if not known.empty:
+        ex = known.iloc[0]
+        by_month = known.groupby(known["expected"].dt.to_period("M"))["total"].sum()
+        best = by_month.idxmax()
+        out += [
+            f"For example: {ex.ticker} paid ${ex.amount:g} a share on {_day(pd.Timestamp(ex.based_on))}. You hold "
+            f"{ex.shares:,} shares, so around {_day(ex.expected)} you can expect about {ex.shares:,} x "
+            f"${ex.amount:g} = {money(ex.total)}.",
+            f"In total, about {money(known['total'].sum())} over {len(by_month)} months with payouts. "
+            f"The biggest month is {best:%B %Y}, at about {money(by_month[best])}.",
+        ]
+    announced = f[f["status"] == "announced"]
+    if not announced.empty:
+        first = announced.iloc[0]
+        out.append(f"{len(announced)} of these date{'s are' if len(announced) != 1 else ' is'} already announced by the "
+                   f"company, like {first.ticker} on {_day(first.expected)}: those dates are real, not guesses. "
+                   "The amounts stay estimates until they're paid.")
+    unknown = f[f["total"].isna()]
+    if not unknown.empty:
+        out.append(f"{', '.join(sorted(unknown['ticker'].unique()))} announced an ex-date that doesn't match a dividend "
+                   "from the last 12 months, so its amount isn't known yet and isn't in the total.")
+    out.append("You get a dividend only if you own the shares before the ex-date. The cash usually reaches "
+               "your bank a few weeks after that.")
     watch = [
         "It's only an estimate: companies can raise, cut or skip a dividend; one-off payouts (like a "
         "REIT's advanced distribution before it raises money) may not happen again; and the dates are "
         "guesses until the company announces the real ex-date. Don't count on this money before it arrives.",
     ]
-    by_stock = f.groupby("ticker")["total"].sum()
-    top = by_stock.idxmax()
-    share = by_stock[top] / by_stock.sum()
+    by_stock = known.groupby("ticker")["total"].sum()
+    top = by_stock.idxmax() if not by_stock.empty else None
+    share = by_stock[top] / by_stock.sum() if top is not None and by_stock.sum() else 0
     if len(by_stock) > 1 and share > ONE_STOCK_SHARE:
         watch.append(f"{share:.0%} of your expected dividends ({money(by_stock[top])}) come from one stock, {top}. "
                      f"If it cuts its dividend, your income drops a lot. Spreading across more stocks "

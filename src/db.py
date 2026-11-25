@@ -136,6 +136,16 @@ CREATE TABLE IF NOT EXISTS corporate_actions (
     PRIMARY KEY (ticker, ex_date)
 );
 
+-- Ex-dividend dates a company has announced that haven't happened yet (s04), checked daily for every stock
+-- anyone holds. The dividend itself is saved in `dividends` once it's paid; until then the forecast uses these
+-- dates instead of guessing from last year. Shared by all users.
+CREATE TABLE IF NOT EXISTS announced_dividends (
+    ticker     TEXT NOT NULL REFERENCES instruments(ticker),
+    ex_date    TEXT NOT NULL,             -- 'YYYY-MM-DD', always after the day it was checked
+    checked_at TEXT NOT NULL,             -- 'YYYY-MM-DD' Singapore date of the last check that saw it
+    PRIMARY KEY (ticker, ex_date)
+);
+
 -- Regular savings plans (w314): "I invest $X in this stock every month, on this day". SGXray records each
 -- month's purchase itself (src/plans.py). Stopping a plan sets end_month; deleting it deletes its trades.
 CREATE TABLE IF NOT EXISTS plans (
@@ -1011,6 +1021,23 @@ def get_dividends(conn, ticker, include_ignored=True):
         """,
         (ticker, include_ignored),
     ).fetchall()
+
+
+def save_announced(conn, ticker, ex_dates, today):
+    """Replaces one ticker's announced ex-dates still to come with what the latest check found (s04). A date
+    the company has moved or dropped disappears; past ones are left for the dividends table to take over."""
+    with conn:
+        conn.execute("DELETE FROM announced_dividends WHERE ticker = ? AND ex_date > ?", (ticker, today))
+        conn.executemany("INSERT INTO announced_dividends (ticker, ex_date, checked_at) VALUES (?, ?, ?) "
+                         "ON CONFLICT (ticker, ex_date) DO NOTHING",
+                         [(ticker, d, today) for d in sorted(set(ex_dates)) if d > today])
+
+
+def get_announced(conn, ticker, after):
+    """One ticker's announced ex-dates after `after` ('YYYY-MM-DD'), earliest first."""
+    return [r["ex_date"] for r in conn.execute(
+        "SELECT ex_date FROM announced_dividends WHERE ticker = ? AND ex_date > ? ORDER BY ex_date",
+        (ticker, after)).fetchall()]
 
 
 # ---------- Corporate actions ----------

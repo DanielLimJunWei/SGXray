@@ -1035,3 +1035,21 @@ details[open]::details-content { block-size: auto; }
 @keyframes field-no { 0%, 100% { translate: 0; } 17% { translate: -8px; } 33% { translate: 8px; } 50% { translate: -5px; }
   67% { translate: 5px; } 83% { translate: -2px; } }
 @media (prefers-reduced-motion: reduce) { .field-wrong { animation: none; } }
+
+/* Dividend calendar (s04): the 12-month forecast as a strip of months. Months with a payout are lifted a little;
+   empty ones stay quiet but are still there, saying so. 4 across on wide screens, 3 on tablets, 2 on phones. */
+.cal-title { font-size: var(--text-base); margin: var(--space-6) 0 var(--space-3); color: var(--color-text-muted); font-weight: 500; }
+.div-cal { list-style: none; margin: 0 0 var(--space-6); padding: 0; display: grid; gap: var(--space-2);
+  grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.div-cal-month { display: grid; align-content: start; gap: var(--space-1); padding: var(--space-3);
+  border: 1px solid var(--color-line); border-radius: var(--radius-md); min-height: 6.5rem; }
+.div-cal-month.has-payout { background: var(--color-surface); border-color: var(--color-line-strong); }
+.div-cal-name { font-size: var(--text-sm); color: var(--color-text-muted); }
+.div-cal-name .sub, .div-cal-total .sub { display: block; font-size: var(--text-xs); color: var(--color-text-faint); }
+.div-cal-total { font-size: var(--text-lg); color: var(--color-text); font-variant-numeric: tabular-nums; }
+.div-cal-total > .term { font-size: var(--text-sm); text-align: left; padding: 0; color: var(--color-text-muted); }
+.div-cal-stocks { font-size: var(--text-xs); color: var(--color-text-muted); overflow-wrap: anywhere; }
+.div-cal-flag { font-size: var(--text-xs); color: var(--color-lamp); }
+.div-cal-none { font-size: var(--text-sm); color: var(--color-text-faint); }
+@media (max-width: 900px) { .div-cal { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .div-cal { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

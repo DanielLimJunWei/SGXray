@@ -5,7 +5,9 @@ over the last 12 months, around the same dates, on the shares you hold now. That
 trackers do it, and it's a fair guess for steady payers like the banks, but:
 - dividends can be cut or raised (DBS raised its dividend every year from 2024 to 2026);
 - one-off payouts, like a REIT's "advanced distribution" before raising money, may not repeat;
-- dates are estimates: the company announces the real ex-date shortly before.
+- dates are estimates until the company announces the real ex-date shortly before. Once it has (SGXray checks
+  daily, s04), that date replaces the guess and the row says "announced". The amount stays an estimate until the
+  dividend is paid: Yahoo gives SGX stocks an announced date but not the amount or the payment date.
 
 DIVIDEND YIELD = a year's dividends per share / today's price. "Trailing" means it uses the
 LAST 12 months of actual payouts, not a guess about the future.
@@ -22,7 +24,8 @@ import db
 from fmt import money, num, pct
 from portfolio import positions, summary
 
-FORECAST_COLUMNS = ["expected", "ticker", "shares", "amount", "total", "based_on"]
+FORECAST_COLUMNS = ["expected", "ticker", "shares", "amount", "total", "based_on", "status"]
+MATCH_DAYS = 45            # an announced ex-date this close to last year's date is taken to be the same payout
 
 
 def _window(as_of):
@@ -72,19 +75,72 @@ def forecast(conn, user_id, as_of=None):
     held = held[held["shares"] > 0]
 
     rows = []
+    end = pd.Timestamp(as_of) + pd.DateOffset(years=1)
     for p in held.itertuples():
+        mine = []
         for d in trailing_dividends(conn, p.ticker, as_of):
             last_time = pd.Timestamp(d["ex_date"])
-            rows.append({
+            mine.append({
                 "expected": last_time + pd.DateOffset(years=1),   # same date next year (29 Feb -> 28 Feb)
                 "ticker": p.ticker,
                 "shares": p.shares,
                 "amount": d["amount"],
                 "total": p.shares * d["amount"],
                 "based_on": d["ex_date"],
+                "status": "estimate",
             })
+        # Announced ex-dates (s04): each takes the place of the nearest estimate within MATCH_DAYS. One that
+        # matches nothing (a new or special dividend) is listed with its amount "not announced yet" (NaN).
+        for announced in db.get_announced(conn, p.ticker, as_of):
+            day = pd.Timestamp(announced)
+            if day > end:
+                continue
+            free = [r for r in mine if r["status"] == "estimate"
+                    and abs((r["expected"] - day).days) <= MATCH_DAYS]
+            if free:
+                nearest = min(free, key=lambda r: abs((r["expected"] - day).days))
+                nearest.update(expected=day, status="announced")
+            else:
+                mine.append({"expected": day, "ticker": p.ticker, "shares": p.shares, "amount": float("nan"),
+                             "total": float("nan"), "based_on": None, "status": "announced"})
+        rows += mine
     df = pd.DataFrame(rows, columns=FORECAST_COLUMNS)
     return df.sort_values(["expected", "ticker"], ignore_index=True)
+
+
+def _ordinal(n):
+    return f"{n}{'th' if 11 <= n % 100 <= 13 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
+
+
+def calendar(f, as_of):
+    """The forecast month by month (s04): every month the next 12 months touch, in order, each with its expected
+    total, its stocks, and whether any of its dates are announced. Usually 13 months: the rest of this month,
+    11 whole months, and the start of the same month next year, each labelled so. A month with nothing expected
+    is still listed, saying so. Built from forecast(), so the calendar and the table always agree."""
+    if not as_of:
+        return []
+    first = pd.Timestamp(as_of) + pd.Timedelta(days=1)          # the forecast starts the day after as_of
+    end = pd.Timestamp(as_of) + pd.DateOffset(years=1)
+    months = pd.period_range(first.to_period("M"), end.to_period("M"), freq="M")
+    out = []
+    for m in months:
+        rows = f[f["expected"].dt.to_period("M") == m] if not f.empty else f
+        known = rows[rows["total"].notna()] if not rows.empty else rows
+        part = None                                              # a whole month
+        if m == first.to_period("M") and first.day > 1:
+            part = f"from the {_ordinal(first.day)}"
+        elif m == end.to_period("M") and end.day < m.days_in_month:
+            part = f"to the {_ordinal(end.day)}"
+        out.append({
+            "month": m.strftime("%b %Y"),
+            "part": part,                                       # "from the 26th" / "to the 25th" / None
+            "total": float(known["total"].sum()) if not known.empty else 0.0,
+            "stocks": sorted(rows["ticker"].unique()) if not rows.empty else [],
+            "payouts": len(rows),
+            "unknown": int(rows["total"].isna().sum()) if not rows.empty else 0,   # amount not announced yet
+            "announced": int((rows["status"] == "announced").sum()) if not rows.empty else 0,   # how many dates
+        })
+    return out
 
 
 def yields(conn, user_id, as_of=None):
