@@ -10,7 +10,7 @@ from markupsafe import Markup
 TERMS = {
     "worth": ("Worth now",
               "What everything you hold would sell for at the latest closing prices.",
-              "200 DBS shares at a $69.72 close = $13,944."),
+              "210 DBS shares at a $69.72 close = $14,641.20."),
     "closing-price": ("Closing price",
                       "The last traded price at the end of a trading day. SGXray uses closing prices, so numbers "
                       "change once a day, not every second.",
@@ -152,8 +152,8 @@ TERMS = {
                "DBS: low $53.38, high $78.65, today $69.72, in the middle of its range."),
     # The reason words: what a cell says instead of a number (the page rule in docs/notes.md).
     "pending": ("Pending",
-                "Waiting for tonight's closing price. You bought a stock today, and SGX publishes its first "
-                "closing price at about 5:45pm, so numbers that need that price fill in then.",
+                "Waiting for tonight's closing price. You bought a stock today; SGX closes at 5pm and SGXray "
+                "saves the closing price at about 5:45pm, so numbers that need that price fill in then.",
                 "Bought OCBC this morning: worth and profit say pending until the evening price update."),
     "too-soon": ("Too soon",
                  "Not enough history yet to work this out fairly. Comparing returns needs at least a month, and "
@@ -166,18 +166,18 @@ TERMS = {
     "no-price": ("No price yet",
                  "SGXray hasn't saved a closing price for this stock yet, so numbers that need it (its worth, "
                  "profit and weight, and your totals) wait for it. Prices are saved by the daily price update, "
-                 "after SGX closes at about 5:45pm.",
+                 "at about 5:45pm, after SGX closes at 5pm.",
                  "Added Singapore Airlines this afternoon: its price comes with this evening's price update."),
     "no-chart": ("No price chart yet",
                  "A price chart is drawn from the closing prices SGXray has saved for a stock. This one has "
-                 "none saved yet, so there's nothing to draw. The daily price update saves them after SGX "
-                 "closes at about 5:45pm, and the chart appears after that.",
+                 "none saved yet, so there's nothing to draw. The daily price update saves them at about 5:45pm, "
+                 "after SGX closes at 5pm, and the chart appears after that.",
                  "Added Singapore Airlines this afternoon: its chart is ready after this evening's price update."),
     # ---- Learn page (w313) ----
     "emergency-fund": ("Emergency fund",
                        "Cash kept aside for surprises like losing your job or a big medical bill, so you never have "
-                       "to sell investments at a bad time. MoneySense suggests 3 to 6 months of expenses (12 if "
-                       "your income is irregular), in a savings account or Singapore Savings Bonds.",
+                       "to sell investments at a bad time. MoneySense suggests 3 to 6 months of expenses, in a savings "
+                       "account or Singapore Savings Bonds; with an income that goes up and down, more is safer.",
                        "Spending $1,500 a month: an emergency fund of $4,500 to $9,000."),
     "expensive-debt": ("Expensive debt",
                        "Borrowing that charges a high interest rate, like an unpaid credit card bill. Paying it off "

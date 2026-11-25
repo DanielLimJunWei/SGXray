@@ -100,10 +100,11 @@ BY_KEY = {q.key: q for q in QUESTIONS}
 LESSON_SPOTS = {"fund": "cushion", "debt": "debt", "when": "time", "goal": "time", "fall": "falls-easier",
                 "costs": "small-trades", "scam": "check"}
 
-# With income that goes up and down (freelance, commission, gig work), MoneySense suggests 12 months, not 3 to 6.
+# With income that goes up and down (freelance, commission, gig work), a bigger cushion: about a year. MoneySense
+# itself says 3 to 6 months; the year is SGXray's own suggestion (audit 4b: it used to be credited to MoneySense).
 IRREGULAR_GOOD = frozenset({"over12"})
-IRREGULAR_NO = ("Your income goes up and down, so MoneySense suggests about 12 months of expenses in cash "
-                "before investing.")
+IRREGULAR_NO = ("Your income goes up and down, so aim above MoneySense's usual 3 to 6 months: about a year of "
+                "expenses in cash covers lean months as well as emergencies.")
 IRREGULAR_YES = "You have about a year's cushion, which suits an income that goes up and down."
 
 

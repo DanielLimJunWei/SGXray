@@ -214,8 +214,8 @@ def explain_month(conn, user_id, month, history=None):
         watch.append("One month's move tells you very little. Prices swing month to month; "
                      "judge your investments over years, not weeks.")
     if gap < 0:
-        watch.append("You're behind the STI ETF here. If that keeps happening over years, simply "
-                     "buying the STI ETF may suit you better than picking stocks.")
+        watch.append("You're behind the STI ETF here. If that keeps happening over years, it's worth asking "
+                     "whether picking stocks is adding anything: that's what this comparison is for.")
     return Explanation(out, watch)
 
 
@@ -408,14 +408,24 @@ def explain_holdings(conn, user_id, as_of=None):
             watch.append(f"{share:.0%} of your portfolio's value is in one stock, {top['ticker']}. If that one "
                          f"company has a bad year, your whole portfolio feels it. Spreading across more "
                          f"stocks, or an ETF, lowers that risk.")
+    first_buy = {}
+    for t in db.get_trades(conn, user_id):
+        first_buy.setdefault(t["ticker"], t["trade_date"])
     for ticker in held["ticker"]:
         actions = db.get_actions(conn, ticker)
         if actions:
             a = actions[-1]
-            watch.append(f"{ticker} had a {'bonus issue' if a['factor'] > 1 else 'consolidation'} on "
-                         f"{_day(pd.Timestamp(a['ex_date']))} (x{a['factor']:g}). Bonus shares aren't free money: "
-                         f"the price drops to match, so your holding is worth about the same on the day. "
-                         f"Your average cost per share goes down because the same cost is spread over more shares.")
+            if a["ex_date"] <= first_buy.get(ticker, ""):
+                continue                    # it happened before you owned the stock, so it never touched yours
+            if a["factor"] > 1:
+                watch.append(f"{ticker} had a bonus issue or split on {_day(pd.Timestamp(a['ex_date']))} "
+                             f"(x{a['factor']:g}). New shares from one aren't free money: the price drops to match, so "
+                             f"your holding is worth about the same on the day. Your average cost per share goes down "
+                             f"because the same cost is spread over more shares.")
+            else:
+                watch.append(f"{ticker} had a share consolidation on {_day(pd.Timestamp(a['ex_date']))} "
+                             f"(x{a['factor']:g}): fewer shares at a higher price, worth about the same on the day. "
+                             f"Your average cost per share goes up to match.")
     if s["missing_prices"]:
         watch.append(f"No closing price is saved yet for {', '.join(s['missing_prices'])}, so the totals "
                      f"fill in after the next price update.")
@@ -512,11 +522,13 @@ def explain_dividends_received(conn, user_id):
     out = [f"'Dividends received' is the cash companies have paid you for holding their shares: "
            f"{money(total)} from {len(paid)} payout{'s' if len(paid) != 1 else ''} so far.",
            f"The most came from {top}: {money(top_amount)}. The latest was {last['ticker']} on "
-           f"{_day(pd.Timestamp(last['ex_date']))}: {last['shares']:,.0f} shares x ${last['amount']:.4f} = "
+           f"{_day(pd.Timestamp(last['ex_date']))}: {last['shares']:,.0f} shares x ${last['amount']:g} = "
            f"{money(last['total'])}."]
     watch = ["SGXray counts a dividend from its ex-date, the day you must already own the shares by. The cash "
              "itself usually reaches your account a few weeks later.",
-             "Singapore dividends and REIT payouts are tax-free for individuals, so what's shown is what you get."]
+             "Dividends from Singapore companies and Singapore REITs are tax-free for individuals, so for those "
+             "what's shown is what you get. A few SGX-listed companies are based abroad (Thai Beverage, for "
+             "example), and their home country may take tax off before paying you."]
     return Explanation(out, watch)
 
 
@@ -581,7 +593,7 @@ def explain_sold(rows):
              "recover: neither means the sale was wrong, but it's worth asking 'would I buy it again today?'"]
     if any(x["realised"] < 0 for x in rows):
         watch.append("Some of these were sold at a loss. Many beginners sell after a fall and miss the recovery; "
-                     "only sell when your reason for owning it has changed.")
+                     "a question worth asking before selling is whether your reason for owning it has changed.")
     return Explanation(out, watch)
 
 
@@ -734,8 +746,11 @@ def explain_stock_chart(conn, user_id, ticker, history=None, as_of=None):
                          f"It only becomes a real loss if you sell at this price.")
     for a in h["actions"]:
         watch.append(f"The price drops on {_day(pd.Timestamp(a['date']))} because of a "
-                     f"{'bonus issue' if a['factor'] > 1 else 'consolidation'} (x{a['factor']:g}), not a fall in value: "
-                     f"you got more shares, so your average cost dropped with it.")
+                     f"{'bonus issue or split' if a['factor'] > 1 else 'consolidation'} (x{a['factor']:g}), not a fall "
+                     f"in value: you got more shares, so your average cost dropped with it."
+                     if a["factor"] > 1 else
+                     f"The price jumps on {_day(pd.Timestamp(a['date']))} because of a share consolidation "
+                     f"(x{a['factor']:g}), not a rise in value: you hold fewer shares, so your average cost rose with it.")
     for t in h["trades"]:
         earlier = [s for s in h["avg_steps"] if s["date"] < t["date"] and s["avg"]]
         previous = earlier[-1]["avg"] if earlier else None
@@ -781,7 +796,7 @@ def explain_performance(conn, user_id, as_of=None):
              "Check back after a few months."])
     if c["you"] != c["you"]:
         return Explanation(["A stock you hold has no saved price yet, so your return can't be worked out. "
-                            "Run the price update first."])
+                            "It fills in after the next price update."])
     if c["benchmark"] != c["benchmark"]:
         return Explanation(
             [f"Your portfolio made {_rate(c['you'], c['you_period'], c['days'])} (money-weighted, XIRR).",
@@ -792,7 +807,7 @@ def explain_performance(conn, user_id, as_of=None):
             ["One or two big winners can produce results like this. Past results don't predict the future."])
     yearly = c["yearly"]
     gap = c["you"] - c["benchmark"] if yearly else c["you_period"] - c["benchmark_period"]
-    gap_words = f"{abs(gap):.2%} a year" if yearly else f"{abs(gap):.2%} points over {_span(c['days'])}"
+    gap_words = f"{abs(gap):.2%} a year" if yearly else f"{abs(gap) * 100:.2f} percentage points over {_span(c['days'])}"
     out = [
         f"Your portfolio made {_rate(c['you'], c['you_period'], c['days'])}. That's the money-weighted return (XIRR): it counts "
         f"when each dollar went in or came out, so money you added recently isn't treated as if it had "
@@ -829,7 +844,7 @@ def explain_performance(conn, user_id, as_of=None):
                      "did far better than the index), so the STI comparison is rough from then on.")
     if c["stale_benchmark"]:
         watch.append("The STI ETF's newest saved price is older than yours, so the comparison may be out of "
-                     "date. Run the price update.")
+                     "date until the next price update.")
     if c["days"] < 365:
         watch.append(f"Only {_span(c['days'])} of history, so these are totals for that time, not yearly rates. "
                      f"Stretching them into a 'per year' number assumes the same luck repeats all year: +10% in 2 "

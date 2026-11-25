@@ -374,11 +374,11 @@ SPOTS = {
              "text": "Every fee the demo paid is already taken out of Total profit. Open its \u24d8 to see the fees as a "
                      "share of what it bought."},
     "dividends": {"page": "demo", "target": "yields-title", "label": "Dividend yields",
-                  "text": "Yield is a year's dividends divided by today's price. On cost is the same dividends divided by "
-                          "what the demo paid, so it grows as the price rises."},
+                  "text": "Yield is a year's dividends divided by today's price, so it falls when the price rises. On cost "
+                          "is the same dividends divided by what the demo paid, so price moves don't change it: only "
+                          "the dividend does."},
     "risk-and-time": {"page": "demo", "target": "xray-title", "band": True, "label": "The fall and the recovery",
-                      "text": "The shaded stretch is the demo's biggest fall: {fall} in {days} days. {back} Holding on, "
-                              "not selling at the low, is what got it back."},
+                      "text": "The shaded stretch is the demo's biggest fall: {fall} in {days} days. {back}"},
     "stocks-vs-market": {"page": "demo", "target": "vs-title", "label": "Each stock vs the STI ETF",
                          "text": "Each row puts a stock's money into the STI ETF on the same days instead. Difference "
                                  "shows whether picking that stock beat simply buying the market."},
@@ -407,7 +407,9 @@ def spot(conn, slug, page, logged_in=False):
     if dip:
         words = {"fall": f"{-dip['fall_pct']:.0%}", "days": dip["days"], "peak_day": _day(dip["peak_day"]),
                  "low_day": _day(dip["low_day"]),
-                 "back": f"It was back by {_day(dip['back_day'])}." if dip.get("back_day") else "It hasn't climbed back yet."}
+                 "back": (f"It was back by {_day(dip['back_day'])}: holding on, not selling at the low, is what got it "
+                          f"back." if dip.get("back_day") else "It hasn't climbed back yet: holding on through a fall like "
+                          "this is the hard part.")}
     try:
         text = s["text"].format(**words)
     except KeyError:                                      # no demo history: say what to look at, without numbers

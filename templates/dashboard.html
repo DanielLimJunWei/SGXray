@@ -85,9 +85,10 @@
   <div class="panel empty">
     {{ empty_trace() }}
     {% if mode == "demo" %}
-    <h2>The demo portfolio isn't loaded yet</h2>
-    <p class="muted">Load the sample trades, then download their prices:</p>
-    <p><code>python src/importer.py data/demo_trades.csv</code><br><code>python src/market.py</code></p>
+    {#- For whoever runs the server: python src/importer.py data/demo_trades.csv, then python src/market.py. -#}
+    <h2>The demo portfolio isn't ready yet</h2>
+    <p class="muted">Its sample trades and prices haven't been set up on this server yet. In the meantime, the lessons explain everything the demo shows.</p>
+    <p><a class="btn btn-primary" href="{{ url_for('learn') }}">See the lessons</a></p>
     {% elif mode == "practice" %}
     <h2>No practice trades yet</h2>
     <p class="muted">You have {{ cash|money }} of pretend cash. Buy any SGX stock, REIT or ETF at its latest closing price, with real fees, and this page fills in exactly like a real portfolio. Nothing here is real money.</p>
@@ -438,7 +439,7 @@
       {% if vs_ex %}{{ explain_buttons(vs_ex, "vs", "You vs the STI ETF") }}{% endif %}
     </div>
     {% if stocks is none %}
-    <p class="muted">No STI ETF prices saved yet, so there's nothing to compare with. Run <code>python src/market.py</code>.</p>
+    <p class="muted">No STI ETF prices saved yet, so there's nothing to compare with. They come with the next price update.</p>
     {% else %}
     <p class="muted lead">Each stock's own money in and out, replayed into the STI ETF on the same days with the same fees. What happened before doesn't tell you what happens next.</p>
     <div class="panel table-wrap">

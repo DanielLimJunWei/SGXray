@@ -160,3 +160,45 @@ def test_xirr_matches_excels_own_documented_example():
     flows = [(date(2008, 1, 1), -10000), (date(2008, 3, 1), 2750), (date(2008, 10, 30), 4250),
              (date(2009, 2, 15), 3250), (date(2009, 4, 1), 2750)]
     assert abs(performance.xirr(flows) - 0.373362535) < 1e-8       # Microsoft's XIRR help page: 37.34%
+
+
+# ---------- Audit 4b (25 Nov 2026): wording, read line by line ----------
+
+def test_the_dividends_spotlight_says_price_moves_dont_change_yield_on_cost():
+    import lessons
+    text = lessons.SPOTS["dividends"]["text"]
+    assert "price moves don't change it" in text and "grows as the price rises" not in text
+
+
+def test_no_page_tells_a_visitor_to_run_a_command(app):
+    c = signed_up(app)                      # a portfolio with no STI ETF prices: the "nothing to compare" message
+    add(c)
+    for path in ("/portfolio", "/demo"):
+        page = c.get(path).get_data(as_text=True)
+        assert "python src/" not in page and "Run the price update" not in page, path
+
+
+def test_a_split_before_you_owned_the_stock_isnt_a_watch_out(db_path):
+    import explain
+    conn = db.get_connection(db_path)
+    uid = db.create_user(conn, "split@example.com", "!x")
+    db.save_actions(conn, "D05.SI", [("2024-04-22", 1.1)])
+    db.save_prices(conn, "D05.SI", [("2025-03-03", 35.0)])
+    db.add_trade(conn, uid, "D05.SI", "2025-03-03", "BUY", 100, 35.0, 0)      # bought after the bonus issue
+    watch = " ".join(explain.explain_holdings(conn, uid).watch_out)
+    assert "bonus issue" not in watch
+    conn.close()
+
+
+def test_the_tax_line_doesnt_promise_every_sgx_dividend_is_tax_free():
+    import inspect
+    import explain
+    src = inspect.getsource(explain.explain_dividends_received)
+    assert "Singapore REITs are tax-free" in src and "based abroad" in src
+
+
+def test_moneysense_is_only_credited_with_what_it_says():
+    import glossary
+    import readiness
+    assert "12 if" not in glossary.TERMS["emergency-fund"][1]
+    assert "MoneySense suggests about 12" not in readiness.IRREGULAR_NO

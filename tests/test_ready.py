@@ -52,7 +52,7 @@ def test_irregular_income_needs_twelve_months(app):
     c = app.test_client()
     page = send(c, {**ALL_GOOD, "fund": "3to6", "irregular": "yes"}).get_data(as_text=True)
     assert "7 of 8 in place" in text(send(c, {**ALL_GOOD, "fund": "3to6", "irregular": "yes"}))
-    assert "about 12 months" in page
+    assert "about a year of expenses" in page and "MoneySense suggests about 12" not in page
     assert "8 of 8 in place" in text(send(c, {**ALL_GOOD, "fund": "over12", "irregular": "yes"}))
 
 

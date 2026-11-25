@@ -50,10 +50,11 @@ def test_home_page_loads(client):
     assert b'href="/demo"' in r.data
 
 
-def test_demo_without_data_explains_how_to_load_it(client):
+def test_demo_without_data_says_so_calmly_and_points_to_the_lessons(client):
     r = client.get("/demo")
     assert r.status_code == 200
-    assert b"isn't loaded yet" in r.data
+    assert b"isn't ready yet" in r.data and b'href="/learn"' in r.data
+    assert b"python src/" not in r.data                 # setup commands are for whoever runs the server
 
 
 def test_demo_shows_holdings_and_totals(client, db_path):

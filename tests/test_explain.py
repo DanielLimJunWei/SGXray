@@ -104,7 +104,7 @@ def test_holdings_explained_with_bonus_and_unrealised_warnings(conn, user_id):
 
     assert "you own 220 shares. They cost you $8,000.00 in total" in e.text
     watch = " ".join(e.watch_out)
-    assert "Bonus shares aren't free money" in watch
+    assert "New shares from one aren't free money" in watch
     assert "isn't money in your bank until you sell" in watch
 
 

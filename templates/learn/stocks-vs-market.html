@@ -30,7 +30,8 @@
   {% endfor %}
 </ul>
 {% set best = returns.stocks|sort(attribute="difference", reverse=True)|first %}
-{% if best and best.difference > (returns.your_profit - returns.sti_profit) %}
+{% set lead = returns.your_profit - returns.sti_profit %}
+{% if best and lead > 0 and best.difference > lead %}
 <p>{{ best.name }} alone beat the market by {{ best.difference|money }}, more than the whole portfolio's lead of {{ (returns.your_profit - returns.sti_profit)|money }}. Without that one pick, the demo would have trailed the STI ETF.</p>
 {% endif %}
 <a class="demo-link" href="{{ url_for('demo', lesson='stocks-vs-market') }}#vs-title">See each stock vs the STI ETF</a>

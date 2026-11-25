@@ -808,7 +808,7 @@ def create_app(db_path=None):
             twr=_or_none(time_weighted, conn, uid, None, h),     # the history worked out above, not again
             # Every figure gets a "What does this mean?" box, whatever state it's in (the page rule).
             twr_ex=_or_none(explain_two_returns, conn, uid) or Explanation(
-                ["There's nothing to compare with yet: no STI ETF prices are saved. Run the price update."]),
+                ["There's nothing to compare with yet: no STI ETF prices are saved. They come with the next price update."]),
             divs_ex=explain_dividends_received(conn, uid),
             holdings=holdings,
             holdings_ex=_notes_good(explain_holdings(conn, uid), why := _why_notes(conn, uid, holdings), holdings),
