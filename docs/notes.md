@@ -358,6 +358,12 @@ lawyer's read. Every finding and its test is in docs/security-audits.md (checks 
 - **Libraries served by SGXray** (25 Nov, his OK): Three.js and Lenis now come from `static/vendor/` (npm packages,
   registry sha512 checked, per-file sha256 in `static/vendor/README.md`, `.gitattributes` keeps their bytes exact).
   jsDelivr is gone from the pages and the CSP.
+- **From two reels (25 Nov, his links):** rate limits scoped per person / per network address (`src/ratelimit.py`:
+  120 pages a minute, 60 for the logged-out demo, 300 saved changes an hour; logins, sign-ups and lookups keep
+  their own), no more polling for nothing (`/prices/latest` says how long to wait: until about 5:45pm on the next
+  trading day, or 2 minutes while a close is due; live.js follows it and a hidden tab asks nothing), and dead code
+  removed after a Vulture scan (`auth.too_many_attempts`, `db.get_holdings`, `news.for_tickers`,
+  `updater.newest_saved`, `stocks.price_on`/`to_frame`, `importer.OPTIONAL_COLUMNS`, `news.SOURCES`).
 - Still open: OWASP ZAP
   against the live site (Docker wouldn't start), a demo page cache, and the licences (Yahoo, publishers, the name).
 

@@ -46,6 +46,7 @@ import news  # noqa: E402
 import plans  # noqa: E402
 import practice  # noqa: E402
 import readiness  # noqa: E402
+import ratelimit  # noqa: E402
 import risk  # noqa: E402
 import sgtime  # noqa: E402
 import stories  # noqa: E402
@@ -847,7 +848,7 @@ def create_app(db_path=None):
         404: "There's nothing at this address.",
         405: "That page can't be used that way.",
         413: "That file is too big.",
-        429: "Too many tries. Please wait a few minutes.",
+        429: "That's a lot of pages in a short time. Please wait a minute, then carry on.",
         500: "Something went wrong on our side. It's been noted; please try again later.",
     }
     for code, text in messages.items():
@@ -1056,6 +1057,34 @@ def _load_user_and_check_csrf():
     if request.method not in ("GET", "HEAD", "OPTIONS"):
         if not auth.csrf_ok(session.get("csrf"), request.form.get("csrf")):
             abort(400, "This form has expired. Go back, refresh the page and try again.")
+    _rate_limit()
+
+
+# Saved changes counted against ratelimit.CHANGES_PER_HOUR (logins, sign-ups and lookups have their own limits).
+CHANGE_ENDPOINTS = {"trades_page", "add_existing", "edit_trade", "delete_trade", "add_plan", "stop_plan", "delete_plan",
+                    "trade_note", "practice_note", "practice_trades", "practice_undo", "practice_fees", "practice_reset",
+                    "lesson_done"}
+
+
+def _rate_limit():
+    """Page views per minute (per person, or per network address when logged out) and saved changes per hour per
+    person: see src/ratelimit.py. Static files and the live-prices check don't count."""
+    if request.endpoint in ("static", "prices_latest"):
+        return
+    user = g.get("user")
+    who = f"user:{user['id']}" if user else f"ip:{request.remote_addr or '?'}"
+    pages = current_app.extensions.setdefault("sgxray_pages", ratelimit.Window(60))
+    if not user and request.endpoint == "demo":
+        allowed = pages.allow(who + ":demo", ratelimit.DEMO_PER_MINUTE)
+    else:
+        allowed = pages.allow(who, ratelimit.PAGES_PER_MINUTE)
+    if not allowed:
+        abort(429)
+    if user and request.method == "POST" and request.endpoint in CHANGE_ENDPOINTS:
+        conn, key = get_db(), f"changes:{user['id']}"
+        if auth.limited(conn, key, ratelimit.CHANGES_PER_HOUR, 60):
+            abort(429)
+        auth.count(conn, key)
 
 
 def login_required(view):

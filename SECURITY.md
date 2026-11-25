@@ -12,6 +12,8 @@ be fixed before anyone else sees it. You'll get a reply within a week.
 - **Passwords** are stored only as salted scrypt hashes, 12 to 128 characters, with the most common ones refused.
 - **Guessing is slowed down.** After 5 wrong passwords for one email (or 20 from one network address) within
   15 minutes, log-ins pause for 15 minutes, then 30, then 60 if it keeps happening that day.
+- **Floods are slowed down too.** Page views and saved changes are limited per person (or per network
+  address when logged out), well above what anyone reading or typing can reach.
 - **Sessions are kept on the server**, so logging out, changing your password or deleting your account really
   ends them. The cookie is HttpOnly, SameSite and Secure on the live site.
 - **Your data is yours alone.** Every query is limited to the logged-in person, and another person's trade or

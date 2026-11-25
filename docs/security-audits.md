@@ -17,6 +17,8 @@ evidence (a test, a file or a setting). Every number here is the one in the code
 | Logged-in session | 7 days | Log in again. Logging out or changing your password ends it on the server, so a copied cookie stops working |
 | One request | 2 MB | Refused (413) |
 | Password length | 12 to 128 characters | Refused, with the reason |
+| Page views | 120 a minute per person (per network address when logged out); the open demo page 60 a minute | Wait a minute (in-memory count per server process) |
+| Saved changes (trades, plans, notes, practice) | 300 an hour per person | Wait an hour |
 
 **Why the log once seemed to say 5 when 10 worked (fixed 25 Nov 2026).** Until 17 Nov the log-in limit really
 was 10 per email (the database shows a 12 Nov test with 20 failures across two emails). This page's old check 28
@@ -171,6 +173,9 @@ feature. OPEN = still to do, with its task. LIVE = can only be proven on the dep
 | 77 | Advice wording | PASS | Re-read 25 Nov: lessons explain and warn, never recommend; terms say SGXray isn't MAS-licensed advice |
 | 43, 44, 48 | Monitoring, backups, encryption | LIVE (Week 4) | Alerts on failed-log-in bursts and errors; daily backups with a tested restore; HTTPS + provider encryption |
 | 99 | Automated scan of the live site | LIVE (Week 4) | Run OWASP ZAP against the deployed site; recheck the demo page's speed under real load |
+| 101 | Rate limits at the right level (two reels, 25 Nov) | FIXED | Logged out: per network address, plus a lower limit on the open demo; logged in: per person, pages and saved changes (`src/ratelimit.py`, `test_ratelimit.py`) |
+| 102 | Polling for nothing | FIXED | Open pages asked for new prices every 2 minutes all day; now they wait until a close is due (about 5:45pm on trading days), and the answer is reused for 30 seconds (`updater.seconds_to_next_close`, `test_updater.py`) |
+| 103 | Dead code | FIXED | Vulture scan: 8 functions and constants nothing used (some only by their own tests) removed, including leftovers of the removed portfolio news |
 
 Not applicable now (no such feature): NoSQL (18), file uploads (21: the CSV upload will cap size and never use
 the file's name), JWT (26), CORS (27: no CORS headers at all), staging (29), webhooks (31, 59), payments (32),
