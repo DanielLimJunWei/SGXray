@@ -88,16 +88,26 @@ def dividends_received(conn, user_id, as_of=None):
 
     rows = []
     for ticker, group in trades.groupby("ticker", sort=True):
-        actions = db.get_actions(conn, ticker)
+        # One walk through the dates (audit 4: it used to recount every trade for every dividend, 38 times per
+        # page). On each ex-date: shares held = every trade BEFORE that day, and every split or bonus before it,
+        # in date order with a day's split or bonus before that day's trades, exactly as _average_cost counts.
+        events = sorted([(a["ex_date"], 0, "ACTION", a["factor"]) for a in db.get_actions(conn, ticker)]
+                        + [(t.trade_date, 1, t.side, t.quantity) for t in group.itertuples()],
+                        key=lambda e: (e[0], e[1]))
+        shares, i, traded = 0, 0, False
         for d in db.get_dividends(conn, ticker, include_ignored=False):
             day = d["ex_date"]
             if as_of and day > as_of:
                 continue
-            before = group[group["trade_date"] < day]
-            if before.empty:
-                continue
-            shares = _average_cost(before, [a for a in actions if a["ex_date"] < day])["shares"]
-            if shares > 0:
+            while i < len(events) and events[i][0] < day:
+                _, _, kind, x = events[i]
+                if kind == "ACTION":
+                    shares = shares_after(shares, x)
+                else:
+                    traded = True
+                    shares = shares + x if kind == "BUY" else max(0, shares - x)
+                i += 1
+            if traded and shares > 0:
                 rows.append({"ticker": ticker, "ex_date": day, "shares": shares, "amount": d["amount"]})
 
     df = pd.DataFrame(rows, columns=DIVIDEND_COLUMNS)

@@ -741,7 +741,7 @@ def create_app(db_path=None):
             waiting=waiting,
             no_price=no_price,
             vs=vs,
-            twr=_or_none(time_weighted, conn, uid),
+            twr=_or_none(time_weighted, conn, uid, None, h),     # the history worked out above, not again
             # Every figure gets a "What does this mean?" box, whatever state it's in (the page rule).
             twr_ex=_or_none(explain_two_returns, conn, uid) or Explanation(
                 ["There's nothing to compare with yet: no STI ETF prices are saved. Run the price update."]),
