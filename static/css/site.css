@@ -178,8 +178,9 @@ nav.site ul a:hover, nav.site ul a[aria-current="page"] { color: var(--color-tex
     scale var(--duration-press) ease-out; }
 /* Pressed: the button gives a little under your finger (it never shrinks further than 97%). */
 .btn:active, .icon-btn:active { scale: 0.97; }
-.btn-primary { color: var(--color-night); background: var(--color-accent); border: 0; font-weight: 600; }
-.btn-primary:hover { background: var(--color-accent-hover); }
+.btn-primary { color: var(--color-night); background: var(--accent-light); border: 0; font-weight: 600;
+  box-shadow: var(--accent-glow); }
+.btn-primary:hover { background: var(--accent-light-hover); }
 .btn-ghost { color: var(--color-text); background: transparent; border: 1px solid var(--color-line-strong); }
 /* A box set into the page: darker than the panels and tables around it, with a hairline edge. */
 .btn-well { color: var(--color-text); background: var(--color-well); border: 1px solid var(--color-line-strong); }
@@ -919,16 +920,12 @@ a.chip:hover { border-color: var(--color-glow-soft); }
    that fly out and fall, and one amber ember. (Each clip's ::before is the specks, ::after the flash.) */
 .lightbox.burst .clip::before, .lightbox.burst .clip::after { content: ""; position: absolute; left: 50%; top: 50%;
   pointer-events: none; opacity: 0; z-index: 3; }
-.lightbox.burst .clip::before { width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px; border-radius: 50%;
-  box-shadow: -10px -6px 0 rgba(226, 238, 255, 0.95), 9px -8px 0 rgba(226, 238, 255, 0.9), -16px 2px 0 rgba(226, 238, 255, 0.8),
-              15px 1px 0 rgba(226, 238, 255, 0.8), -4px -12px 0 rgba(227, 163, 94, 0.95), 5px 6px 0 rgba(226, 238, 255, 0.7),
-              -8px 9px 0 rgba(227, 163, 94, 0.8), 12px 10px 0 rgba(226, 238, 255, 0.6);
-  animation: clip-sparks 1600ms ease-out forwards; }
-.lightbox.burst .clip-right::before { animation-delay: 70ms; }            /* the two clips go a split second apart */
+/* Each clip's flash differs a little (lightbox.js sets --flash-scale and --flash-delay per clip, at random). */
 .lightbox.burst .clip::after { width: 70px; height: 40px; margin: -20px 0 0 -35px; border-radius: 50%;
   background: radial-gradient(rgba(255, 255, 255, 0.9), rgba(206, 226, 255, 0.4) 35%, transparent 70%);
-  animation: clip-flash 1600ms ease-out forwards; }
-.lightbox.burst .clip-right::after { animation-delay: 70ms; }
+  scale: var(--flash-scale, 1); animation: clip-flash 1600ms ease-out var(--flash-delay, 0ms) forwards; }
+/* The specks: made by lightbox.js, a different handful from each clip every time, flying out in arcs and falling. */
+.spark { position: absolute; left: 50%; top: 50%; border-radius: 50%; pointer-events: none; z-index: 3; opacity: 0; }
 .lightbox.burst { animation: shake 180ms ease-out 60ms; }                   /* the frame twitches once as it goes */
 @keyframes bulb-burst {
   0% { opacity: 1; filter: brightness(1); } 5% { opacity: 1; filter: brightness(3.2); } 10% { opacity: 0.1; filter: brightness(1); }
@@ -936,15 +933,13 @@ a.chip:hover { border-color: var(--color-glow-soft); }
   45%, 100% { opacity: 0.03; }
 }
 @keyframes shake { 33% { transform: translateX(-1px); } 66% { transform: translateX(1px); } }
-@keyframes clip-sparks { 0% { opacity: 0; transform: scale(0.3) translateY(0); } 6% { opacity: 1; transform: scale(1) translateY(0); }
-  45% { opacity: 0.85; transform: scale(1.6) translateY(6px); } 100% { opacity: 0; transform: scale(1.9) translateY(30px); } }
 @keyframes clip-flash { 0% { opacity: 0; transform: scale(0.4); } 5% { opacity: 1; transform: scale(1); } 25% { opacity: 0; transform: scale(1.3); } 100% { opacity: 0; } }
 @keyframes bulb-relight {
   0% { opacity: 0.04; } 18% { opacity: 0.55; } 26% { opacity: 0.1; } 44% { opacity: 0.85; } 54% { opacity: 0.35; } 100% { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
   .lightbox.burst::before { animation: none; opacity: 0.04; }
-  .lightbox.relight::before, .lightbox.burst .clip::before, .lightbox.burst .clip::after, .lightbox.burst { animation: none; }
+  .lightbox.relight::before, .lightbox.burst .clip::after, .lightbox.burst { animation: none; }
 }
 
 /* ---------- "See it in the demo" from a lesson (spotlight.js) ----------

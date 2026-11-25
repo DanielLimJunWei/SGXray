@@ -36,8 +36,12 @@
   --color-lamp-wash: rgba(227, 163, 94, 0.13);  /* the lamp's glow on the wall */
   /* The lamp at full brightness: the one accent, kept for the main button on each screen (the design laws' "one thing
      stands out"). Warm against the cold navy, 82% as vivid as this amber can get; dark text on it reads at 9.3 : 1. */
-  --color-accent: #F3A44B;
-  --color-accent-hover: #F7B56A;
+  --color-accent: #FDC26A;
+  --color-accent-low: #FB9F6A;
+  /* Golden hour: warm gold at the top fading to a sunset apricot, lit along its top edge (dark text reads at 10 : 1+). */
+  --accent-light: linear-gradient(170deg, var(--color-accent), var(--color-accent-low));
+  --accent-light-hover: linear-gradient(170deg, #FDCF88, #FCB384);
+  --accent-glow: inset 0 1px 0 rgba(255, 243, 220, 0.65), 0 2px 14px rgba(251, 170, 100, 0.18);
 
   /* ---- Colour: text (never pure white: easier on the eyes) ---- */
   --color-text: #EEE7DC;             /* warm off-white, like paper under a lamp */

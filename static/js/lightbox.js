@@ -49,6 +49,38 @@
       });
     });
   });
+  // The bulb blowing (log-in just locked): sparks fly from both clips, but never the same twice. Each clip throws
+  // its own handful (a different number, size, colour, direction, speed and moment), and each one arcs out and falls
+  // under gravity like a real spark, fading as it cools. Transform and opacity only. "Reduce motion": no sparks.
+  if (box.classList.contains("burst") && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const rand = (a, b) => a + Math.random() * (b - a);
+    box.querySelectorAll(".clip").forEach((clip, i) => {
+      const start = i * rand(40, 140);                          // the second clip goes a split second later
+      clip.style.setProperty("--flash-scale", rand(0.75, 1.25).toFixed(2));
+      clip.style.setProperty("--flash-delay", `${Math.round(start)}ms`);
+      const count = Math.round(rand(5, 12));
+      for (let n = 0; n < count; n++) {
+        const s = document.createElement("span");
+        s.className = "spark";
+        const size = rand(1.4, 3.2);
+        s.style.width = s.style.height = `${size}px`;
+        s.style.marginLeft = s.style.marginTop = `${-size / 2}px`;
+        s.style.background = Math.random() < 0.25 ? "rgba(239, 193, 141, 0.95)" : `rgba(226, 238, 255, ${rand(0.6, 0.95).toFixed(2)})`;
+        clip.append(s);
+        // Out at an angle (mostly sideways and up), then gravity pulls it down: x = vx t, y = vy t + g t² / 2.
+        const angle = rand(-165, -15) * Math.PI / 180, speed = rand(22, 60), g = rand(70, 120);
+        const vx = Math.cos(angle) * speed, vy = Math.sin(angle) * speed, life = rand(0.55, 1.3);
+        const frames = [];
+        for (let k = 0; k <= 8; k++) {
+          const t = life * k / 8;
+          frames.push({ transform: `translate(${(vx * t).toFixed(1)}px, ${(vy * t + g * t * t / 2).toFixed(1)}px)`,
+                        opacity: k === 0 ? 1 : Math.max(0, 1 - (k / 8) ** 1.5) });
+        }
+        s.animate(frames, { duration: life * 1000, delay: start + rand(0, 160), easing: "linear", fill: "forwards" })
+          .finished.then(() => s.remove(), () => s.remove());
+      }
+    });
+  }
   // The patient stays "unidentified" while you type: the film only gets your name once you've logged in
   // (the account pages show it then).
   // Too many wrong passwords: count down to when logging in opens again. At 0:00 the form comes back, the
