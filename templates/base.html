@@ -41,7 +41,8 @@
     <a class="nav-link" href="{{ url_for('learn') }}">Learn</a>
     <a class="nav-link" href="{{ url_for('market_today') }}">News</a>
     <a class="nav-link" href="{{ url_for('login') }}">Log in</a>
-    <a class="btn btn-primary" href="{{ url_for('demo') }}">Try the demo</a>
+    {#- Quiet here, so each page's own main button is the one thing that stands out; not shown on the demo itself. -#}
+    {% if request.endpoint != "demo" %}<a class="btn btn-ghost" href="{{ url_for('demo') }}">Try the demo</a>{% endif %}
     {% endif %}
   </div>
   {% endblock %}

@@ -82,7 +82,7 @@ def test_a_trade_can_be_added_and_is_listed(app, db_path):
     assert (t["ticker"], t["trade_date"], t["side"], t["quantity"], t["price"], t["fees"]) == \
         ("D05.SI", MONDAY, "BUY", 100, 35.2, 10.5)
     page = c.get(r.headers["Location"]).get_data(as_text=True)
-    assert "Trade saved" in page and "DBS Group Holdings" in page and "3,530.50" in page
+    assert "Saved: bought 100 DBS Group Holdings at $35.200 on" in page and "3,530.50" in page
 
 
 def test_broker_style_numbers_are_accepted(app, db_path):
