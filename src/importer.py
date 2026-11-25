@@ -146,13 +146,18 @@ def _check_sells(existing, new_trades, actions=(), form=False):
     """Goes through every trade in date order and reports any SELL of more shares than held.
 
     Splits and bonus issues (actions) change holdings on their ex-date, before that day's trades.
-    Saved trades come next on the same day; new trades keep their order in the file.
+    Within a day, trades go in the order they were saved (their id), exactly the order portfolio.positions
+    adds them up in: an edited trade keeps its own id and place, and a new one (no id yet) comes after the
+    saved ones, in file order. (Audit 4: an edit used to be checked as if it came last that day, so a sale
+    moved onto the same day as a later-saved buy passed the check, then broke the portfolio page.)
     form=True words the problems for the add/edit/delete trade pages instead of a CSV file.
     """
-    events = [(a["ex_date"], -1, a, False) for a in actions]
-    events += [(t["trade_date"], 0, t, False) for t in existing]
-    events += [(t["trade_date"], 1, t, True) for t in new_trades]
-    events.sort(key=lambda e: (e[0], e[1]))    # sort is stable, so file order is kept
+    last = float("inf")
+    events = [(a["ex_date"], -1, -1, a, False) for a in actions]
+    events += [(t["trade_date"], 0, t.get("id", last), t, False) for t in existing]
+    events += [(t["trade_date"], 0, t.get("id") or last, t, True) for t in new_trades]
+    events.sort(key=lambda e: (e[0], e[1], e[2]))    # sort is stable, so file order is kept
+    events = [(day, kind, t, is_new) for day, kind, _, t, is_new in events]
 
     held = {}
     errors = []

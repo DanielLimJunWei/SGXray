@@ -77,6 +77,8 @@ def check(conn, user_id, values, today=None, replacing=None):
     trade["note"] = note or None
 
     others = [dict(t) for t in db.get_trades(conn, user_id) if t["id"] != replacing]
+    if replacing is not None:
+        trade["id"] = replacing              # an edit keeps its place among that day's trades (see _check_sells)
     if replacing is None and len(others) >= MAX_TRADES:
         return None, [f"You've reached the limit of {MAX_TRADES:,} trades."]
     tickers = {t["ticker"] for t in others} | {trade["ticker"]}
