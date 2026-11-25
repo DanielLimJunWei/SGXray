@@ -77,7 +77,7 @@
 <footer class="site">
   <div class="wrap">
     {% block footer_extra %}{% endblock %}
-    <p>Prices and dividends from Yahoo Finance: end-of-day closes, not live.</p>
+    <p>SGX closing prices and dividends from {{ price_source }}, checked after each day's close and re-checked for a week. End of day, not live.</p>
     <p>SGXray is educational, not financial advice. Past returns don't predict future ones. Not affiliated with Singapore Exchange Limited; company, fund and index names belong to their owners.</p>
     <p><a href="{{ url_for('privacy') }}">Privacy</a> · <a href="{{ url_for('terms') }}">Terms</a></p>
   </div>

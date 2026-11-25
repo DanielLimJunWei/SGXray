@@ -1015,6 +1015,7 @@ svg.spot-line #xray-top { animation: spot-line 2.4s ease-in-out 3; }
 .legal section { margin-top: var(--space-8); }
 .legal h2 { font-size: var(--text-lg); margin: 0 0 var(--space-3); }
 .legal p, .legal li, .legal dd { color: var(--color-text-muted); line-height: 1.65; }
+.legal p + p { margin-top: var(--space-3); }      /* two paragraphs in one section stay apart */
 .legal b, .legal dt { color: var(--color-text); font-weight: 500; }
 .legal ul { padding-left: var(--space-5); display: grid; gap: var(--space-2); }
 .legal-list { display: grid; gap: var(--space-4); margin: 0 0 var(--space-4); }

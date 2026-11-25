@@ -9,7 +9,7 @@
 {% block content %}
 <div class="page wrap legal">
   <header class="page-head">
-    <p class="eyebrow">Terms of use · last changed 25 November 2026</p>
+    <p class="eyebrow">Terms of use · last changed 26 November 2026</p>
     <h1>The ground rules</h1>
     <p class="muted">Using SGXray means you agree to these. They're short, and in plain English on purpose.</p>
   </header>
@@ -23,11 +23,17 @@
   </section>
 
   <section aria-labelledby="t-numbers">
-    <h2 id="t-numbers">The numbers are estimates</h2>
-    <p>Prices and dividends come from Yahoo Finance as end-of-day closes, not live prices, and can be late,
-      missing or wrong. Your figures are only as accurate as the trades you enter. Forecasts assume the past repeats,
-      which it often doesn't. For anything that matters (taxes, legal records, selling), use your broker's and
-      CDP's own statements. The practice portfolio uses pretend money: no real trade ever happens on SGXray.</p>
+    <h2 id="t-numbers">How the numbers are made</h2>
+    <p>Prices are each stock's closing price on SGX, with dividends, from {{ price_source }}. SGXray fetches the
+      close once the market has shut, never a price still moving during the day, and every trading day it re-checks the
+      past week's closes, so a correction made after the fact is picked up. Splits and bonus issues are allowed
+      for, so a price from years ago compares fairly with today's. If a change ever looks too big to be a correction,
+      SGXray keeps the figure it had until a person has checked it, rather than letting a glitch move your numbers.
+      Money is worked out to the cent, with half a cent rounded up.</p>
+    <p>Prices are end of day, not live: during trading hours you see the last close. Your figures are only as
+      accurate as the trades you enter, and forecasts assume the past repeats, which it often doesn't. For tax,
+      legal records or a sale, your broker's and CDP's statements are the official record. The practice portfolio
+      uses pretend money: no real trade ever happens on SGXray.</p>
   </section>
 
   <section aria-labelledby="t-you">

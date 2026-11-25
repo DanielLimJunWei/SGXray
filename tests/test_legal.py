@@ -73,6 +73,32 @@ def test_the_terms_say_education_not_advice(app):
     assert "financial advice" in page and "Monetary Authority of Singapore" in page
 
 
+
+def test_every_page_names_the_real_price_source_from_one_setting(app, monkeypatch):
+    """The footer, terms and privacy notice all name whoever really supplies the prices (app.PRICE_SOURCE), so
+    moving to a licensed provider (w418) can't leave one page saying the old name."""
+    import app as app_module
+    c = app.test_client()
+    for path in ("/", "/terms", "/privacy", "/learn"):
+        assert app_module.PRICE_SOURCE in c.get(path).get_data(as_text=True), path
+    monkeypatch.setattr(app_module, "PRICE_SOURCE", "Example Data Ltd")
+    for path in ("/", "/terms", "/privacy"):
+        page = c.get(path).get_data(as_text=True)
+        assert "Example Data Ltd" in page and "Yahoo" not in page, path
+
+
+def test_the_terms_promise_only_what_the_code_does(app):
+    """Each promise in "How the numbers are made" is tied to the code that keeps it."""
+    import market
+    page = " ".join(app.test_client().get("/terms").get_data(as_text=True).split())   # wrapped lines joined
+    assert "re-checks the past week's closes" in page
+    assert market.RECHECK_DAYS == 7                                     # "the past week"
+    assert "too big to be a correction" in page and 0 < market.MAX_CORRECTION <= 0.5
+    assert market.MARKET_CLOSE.hour >= 17                               # "once the market has shut" (5pm)
+    assert "half a cent rounded up" in page
+    import fmt
+    assert fmt.cents(2.675) == 2.68
+
 # ---------- Download my data ----------
 
 def test_download_needs_a_login(app):

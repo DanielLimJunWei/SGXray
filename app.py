@@ -98,7 +98,7 @@ def create_app(db_path=None):
     app.context_processor(_lesson_spot)             # "See it in the demo" from a lesson: the highlight and its panel
     app.context_processor(lambda: {"current_user": g.get("user"), "csrf_token": _csrf_token,
                                    "csp_nonce": g.get("csp_nonce", ""), "today": sgtime.today().isoformat(),
-                                   "minutes": auth.RESET_MINUTES})
+                                   "minutes": auth.RESET_MINUTES, "price_source": PRICE_SOURCE})
 
     if updater.enabled():
         updater.start(db_path)          # new closing prices arrive by themselves after about 5:45pm (w410)
@@ -1110,6 +1110,10 @@ def _close_db(_error=None):
     if conn is not None:
         conn.close()
 
+
+# Who supplies SGXray's prices and dividends, named on every page's footer, the terms and the privacy policy.
+# One setting, so the day SGXray moves to a licensed provider (w418), every page says so at once and truthfully.
+PRICE_SOURCE = "Yahoo Finance"
 
 # SGXray's data protection contact, shown on /privacy and /terms. SGXRAY_CONTACT_EMAIL overrides it (for example a
 # domain address later); a blank setting falls back to this one.
