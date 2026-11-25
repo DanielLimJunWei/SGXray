@@ -24,7 +24,6 @@ from checks import check_trades, print_warnings
 from instruments import seed_instruments
 
 REQUIRED_COLUMNS = ["ticker", "date", "side", "quantity", "price"]
-OPTIONAL_COLUMNS = ["fees"]
 DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # Upper limits, far above anything real (SGX's priciest share is under S$100), so a slip like
 # an extra row of zeros, or a number made to break the sums, is refused instead of saved.

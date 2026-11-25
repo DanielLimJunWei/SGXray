@@ -144,10 +144,6 @@ def utc_now():
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def too_many_attempts(conn, email, ip):
-    return login_state(conn, email, ip)["until"] is not None
-
-
 def record_failure(conn, email, ip):
     db.add_login_attempt(conn, "email:" + email.lower())
     db.add_login_attempt(conn, "ip:" + (ip or "?"))

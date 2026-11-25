@@ -491,23 +491,6 @@ def count_trades(conn, user_id):
     return conn.execute("SELECT COUNT(*) AS n FROM trades WHERE user_id = ?", (user_id,)).fetchone()["n"]
 
 
-def get_holdings(conn, user_id):
-    """Buys minus sells per ticker, in plain SQL. It doesn't include splits or bonus issues:
-    for real holdings use portfolio.positions()."""
-    return conn.execute(
-        """
-        SELECT ticker,
-               SUM(CASE WHEN side = 'BUY' THEN quantity ELSE -quantity END) AS shares
-        FROM trades
-        WHERE user_id = ?
-        GROUP BY ticker
-        HAVING SUM(CASE WHEN side = 'BUY' THEN quantity ELSE -quantity END) > 0
-        ORDER BY ticker
-        """,
-        (user_id,),
-    ).fetchall()
-
-
 def get_traded_tickers(conn):
     """Every ticker anyone has traded. These are the ones that need prices."""
     rows = conn.execute("SELECT DISTINCT ticker FROM trades ORDER BY ticker").fetchall()

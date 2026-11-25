@@ -22,7 +22,8 @@ def test_good_file_is_imported(conn, user_id, tmp_path):
 
     assert result.ok
     assert result.imported == 2
-    assert [dict(h) for h in db.get_holdings(conn, user_id)] == [{"ticker": "D05.SI", "shares": 60}]
+    trades = [(t["ticker"], t["side"], t["quantity"]) for t in db.get_trades(conn, user_id)]
+    assert trades == [("D05.SI", "BUY", 100), ("D05.SI", "SELL", 40)]          # 60 held
 
 
 def test_every_bad_row_is_reported_and_nothing_saved(conn, user_id, tmp_path):

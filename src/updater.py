@@ -67,12 +67,6 @@ def next_update(now=None):
     return f"about 5:45pm {when}"
 
 
-def newest_saved(conn):
-    """The newest closing price saved for any stock, as 'YYYY-MM-DD', or None."""
-    row = conn.execute("SELECT MAX(price_date) AS d FROM prices").fetchone()
-    return row["d"]
-
-
 def prices_version(conn):
     """A short label that changes whenever ANY closing price is saved or corrected, like
     "2026-11-12/6043/91234.5600": the newest date, how many prices there are, and their total. (The date

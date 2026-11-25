@@ -45,7 +45,7 @@ def test_a_new_close_is_downloaded_once_then_its_done(db_path):
     assert updater.run_once(conn, FRI_7PM, update=fake) == "updated"
     assert updater.run_once(conn, FRI_7PM, update=fake) == "not due"            # it has the close now
     assert calls == [1]
-    assert updater.newest_saved(conn) == "2026-11-13"
+    assert db.get_latest_price_date(conn, BENCHMARK) == "2026-11-13"
     conn.close()
 
 

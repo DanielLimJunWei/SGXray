@@ -75,18 +75,6 @@ def test_only_headlines_about_known_stocks_are_kept_once_each(db_path):
     conn.close()
 
 
-def test_recent_headlines_come_newest_first_and_old_ones_are_left_out(db_path):
-    conn = db.get_connection(db_path)
-    fresh = datetime.now(SGT)
-    stamp = lambda days: (fresh - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M")
-    news.save(conn, [{"title": "DBS one", "url": "https://x.cna.com/1", "source": "CNA", "published": stamp(2)},
-                     {"title": "DBS two", "url": "https://x.cna.com/2", "source": "CNA", "published": stamp(1)},
-                     {"title": "DBS old", "url": "https://x.cna.com/3", "source": "CNA", "published": stamp(40)}])
-    assert [h["title"] for h in news.for_tickers(conn, ["D05.SI"])] == ["DBS two", "DBS one"]   # 30 days
-    assert news.for_tickers(conn, ["O39.SI"]) == []
-    conn.close()
-
-
 def test_the_news_check_runs_every_3_hours_and_only_then(db_path):
     conn = db.get_connection(db_path)
     calls = []

@@ -6,7 +6,6 @@ split (more shares for the same total cost, so each share cost you less). Prices
 (un-adjusted), so on a bonus issue the price drops on the ex-date and the average cost drops too.
 """
 
-import pandas as pd
 
 import db
 from performance import valuation_date
@@ -66,16 +65,5 @@ def _thin(prices, keep):
     return [[prices[i][0], round(prices[i][1], 4)] for i in sorted(picked)]
 
 
-def price_on(history, day):
-    """The closing price on a day, or the last one before it (for markers on non-trading days)."""
-    before = [c for d, c in history["prices"] if d <= day]
-    return before[-1] if before else None
-
-
 def last_avg(history):
     return history["avg_steps"][-1]["avg"] if history["avg_steps"] else None
-
-
-def to_frame(history):
-    """The prices as a pandas Series indexed by date (handy for tests and explanations)."""
-    return pd.Series({pd.Timestamp(d): c for d, c in history["prices"]}, dtype=float)

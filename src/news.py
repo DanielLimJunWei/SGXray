@@ -40,7 +40,6 @@ FEEDS = [
     ("The Straits Times", "https://www.straitstimes.com/news/business/rss.xml", "straitstimes.com"),
     ("The Edge Singapore", "https://www.theedgesingapore.com/rss.xml", "theedgesingapore.com"),
 ]
-SOURCES = [f[0] for f in FEEDS]
 MAX_BYTES = 2 * 1024 * 1024
 TIMEOUT = 10
 KEEP_DAYS = 60
@@ -434,17 +433,6 @@ def _rows(conn, where, args, limit):
     for item in out:
         item["topics"] = topics_in(f"{item['title']} {item['summary']}")
     return out[:limit]
-
-
-def for_tickers(conn, tickers, days=30, limit=8):
-    """Recent headlines about these stocks, newest first: [{"title", "summary", "url", "source", "published",
-    "tickers", "topics"}]. "tickers" lists every stock the headline names, not only these."""
-    tickers = sorted(set(tickers))
-    if not tickers:
-        return []
-    marks = ",".join("?" * len(tickers))
-    return _rows(conn, f"n.published >= ? AND n.id IN (SELECT news_id FROM news_tickers WHERE ticker IN ({marks}))",
-                 (_since(days), *tickers), limit)
 
 
 def window_start(now=None):
