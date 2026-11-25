@@ -1073,24 +1073,21 @@ def _close_db(_error=None):
 
 # ---------- Safety headers on every response ----------
 
-CDN = "https://cdn.jsdelivr.net"
-
-
 def _security_headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"        # browsers must trust our file types
     response.headers["X-Frame-Options"] = "DENY"                  # no one can show SGXray inside their own page
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()"
-    # Content Security Policy: the browser only runs scripts from SGXray itself, the one code CDN it uses,
+    # Content Security Policy: the browser only runs scripts from SGXray itself (every library is served from static/),
     # or an inline script carrying this page's random nonce. An injected <script> has no nonce, so it won't run.
     nonce = g.get("csp_nonce", "")
     response.headers["Content-Security-Policy"] = "; ".join([
         "default-src 'self'",
-        f"script-src 'self' {CDN} 'nonce-{nonce}'",
-        f"style-src 'self' 'unsafe-inline' {CDN}",
+        f"script-src 'self' 'nonce-{nonce}'",
+        "style-src 'self' 'unsafe-inline'",
         "font-src 'self'",                        # fonts are served by SGXray itself: no visitor data goes to Google
         "img-src 'self' data: blob:",
-        f"connect-src 'self' {CDN}",
+        "connect-src 'self'",
         "object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'",
     ])
     if os.environ.get("SGXRAY_HTTPS") == "1":                    # the live site: always HTTPS from now on

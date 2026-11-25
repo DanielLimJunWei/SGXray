@@ -224,7 +224,7 @@ Built with the security-and-hardening skill. No new libraries: Werkzeug (comes w
 | CSRF tokens | A random token in the session and in every form, compared in constant time; logout is POST-only | Other websites submitting forms as you |
 | Ownership | The user id comes only from the signed session, never the URL; every query filters by it | Reading or changing someone else's portfolio (IDOR) |
 | Safe redirects | `next=` must be a path inside SGXray | Login links that bounce you to a fake site |
-| Security headers | CSP (scripts only from SGXray, the jsDelivr CDN, or an inline script with this page's random nonce), X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, HSTS on the live site, no-store on private pages | Injected scripts, clickjacking, downgrade to HTTP, private pages left in the browser cache |
+| Security headers | CSP (scripts only from SGXray, or an inline script with this page's random nonce; since 25 Nov no outside code site), X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, HSTS on the live site, no-store on private pages | Injected scripts, clickjacking, downgrade to HTTP, private pages left in the browser cache |
 | Security log | `security_log` table: signup, login, login_failed, login_blocked, logout, password_changed, with time and network address. Never passwords | Spotting attacks; an audit trail |
 | Data minimisation | Only email + password hash are stored | Holding personal data with no purpose (PDPA) |
 
@@ -355,7 +355,10 @@ lawyer's read. Every finding and its test is in docs/security-audits.md (checks 
   address). `/privacy` and `/terms` were written from what the code stores and are linked from the footer and at
   sign-up. `SGXRAY_CONTACT_EMAIL` names the data protection contact. **They're drafts: a lawyer reads them before
   launch.**
-- Still open: serve Three.js and Lenis from SGXray instead of jsDelivr (no integrity check today), OWASP ZAP
+- **Libraries served by SGXray** (25 Nov, his OK): Three.js and Lenis now come from `static/vendor/` (npm packages,
+  registry sha512 checked, per-file sha256 in `static/vendor/README.md`, `.gitattributes` keeps their bytes exact).
+  jsDelivr is gone from the pages and the CSP.
+- Still open: OWASP ZAP
   against the live site (Docker wouldn't start), a demo page cache, and the licences (Yahoo, publishers, the name).
 
 ## Audit 3 (9 Nov 2026): property-based testing

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}SGXray: see inside your portfolio{% endblock %}
-{% block head %}<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.css">{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='vendor/lenis-1.3.26/lenis.css') }}">{% endblock %}
 {% block backdrop %}<canvas id="scene" aria-hidden="true"></canvas>{% endblock %}
 {% block navlinks %}
   <ul>
@@ -66,7 +66,10 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.min.js"></script>
-<script type="importmap" nonce="{{ csp_nonce }}">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/" } }</script>
+{#- Three.js and Lenis are served by SGXray itself (audit 4): copied from their official npm packages, whose sha512
+    fingerprints were checked against the npm registry (static/vendor/README.md). No outside site gets visitors'
+    addresses or can change the code. -#}
+<script src="{{ url_for('static', filename='vendor/lenis-1.3.26/lenis.min.js') }}"></script>
+<script type="importmap" nonce="{{ csp_nonce }}">{ "imports": { "three": "{{ url_for('static', filename='vendor/three-0.186.1/build/three.module.js') }}", "three/addons/": "{{ url_for('static', filename='vendor/three-0.186.1/examples/jsm/') }}" } }</script>
 <script type="module" src="{{ url_for('static', filename='js/home-scene.js') }}"></script>
 {% endblock %}

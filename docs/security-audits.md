@@ -150,8 +150,8 @@ feature. OPEN = still to do, with its task. LIVE = can only be proven on the dep
 | 23 | SSRF | PASS / FIXED | Yahoo gets only SGX-shaped codes; news only from 4 fixed feeds; redirects checked (89) |
 | 81 | Background price updates | PASS | Yahoo only, listed stocks only, one at a time under a lock |
 | 83, 84 | News feeds and Market today | PASS / FIXED | DTDs refused, 2 MB and 600 KB caps, 10-second time-outs, plain-text titles; link hosts tightened (89) |
-| 71 | Visitor data sent elsewhere | FIXED / OPEN | Fonts served by SGXray. jsDelivr still serves the home page's 3D scene: see 98 |
-| 98 | Outside scripts without a fingerprint | OPEN | Three.js and Lenis load from jsDelivr with no integrity check. Fix: serve them from SGXray (needs your OK to download them) |
+| 71 | Visitor data sent elsewhere | FIXED | Fonts and every code library are served by SGXray: a visitor's browser contacts no other site unless they open a news article |
+| 98 | Outside scripts without a fingerprint | FIXED (25 Nov) | Three.js 0.186.1 and Lenis 1.3.26 copied from their npm packages (sha512 checked against the registry) into `static/vendor/`; each file's sha256 is tested (`test_vendor.py`); the CSP now allows scripts from SGXray only |
 | 74 | Licence for price data | OPEN (w418) | Yahoo's data is for personal use; confirm or switch provider before launch |
 | 83b | News publishers' terms | OPEN (w422) | Confirm each publisher allows headlines + summaries with links |
 

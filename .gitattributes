@@ -1,0 +1,2 @@
+# Libraries copied from npm stay byte-for-byte as published, so their fingerprints keep matching (static/vendor/README.md).
+static/vendor/** -text
