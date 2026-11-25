@@ -604,3 +604,16 @@ A portfolio with nothing in it (yours, practice, or the demo before it's loaded)
   an empty portfolio, Market today with no stories, and the trades and practice trades lists before the first trade.
   Ticking sample numbers stay out on purpose (on a finance site they could pass for real prices).
 
+
+## 25 Nov 2026: licences checked before launch (w418, w422)
+- **Prices:** Yahoo's terms forbid redistributing its data and automated access, so yfinance can't feed the public
+  site. EODData: personal use only. Marketstack covers SGX with the same tickers (`D05.SI`) and its $9.99 Basic plan
+  says "Commercial Use", with splits and dividends; its agreement doesn't say whether showing prices publicly is
+  allowed, so that (and whether SGX needs its own licence) is being asked in writing. Swapping is contained: prices,
+  dividends and splits all come in through `src/market.py`.
+- **News:** SPH (Straits Times, Business Times) forbids showing its content, RSS feeds included, on another site
+  without written permission, even by linking or scraping, and bans bots. CNA's RSS is for personal, non-commercial
+  use and may not be passed to third parties. The Edge allows no use without written permission. So Market today
+  needs each publisher's written OK, or launches switched off.
+- **Second audit (4b):** 16 wording/logic fixes; ZAP found no real issue, but its notes led to `style-src 'self'`
+  (no inline styles left) and cross-origin isolation headers. Details in `docs/security-audits.md`.

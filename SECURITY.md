@@ -36,5 +36,6 @@ The exact limits are in the [full audit record](docs/security-audits.md#the-limi
 | 10 Nov 2026 | 70-point launch checklist (OWASP ASVS, API Top 10, LLM Top 10) | 7 fixes |
 | 11 Nov 2026 | Pre-launch checklist and legal risks (Singapore's PDPA) | 2 fixes, launch tasks listed |
 | 25 Nov 2026 | Full audit: dependency, code and secret scanners; 125 attacks on a running copy; a 20-attack checklist; every calculation against outside references; a legal read | 11 fixes, each with a test |
+| 25 Nov 2026 | Second pass: every page's wording re-read, OWASP ZAP scans logged out and in, gitleaks over the history | 16 wording fixes; stricter style policy and cross-origin headers; no real ZAP findings |
 
 Every check, its evidence and what's still open before launch: [docs/security-audits.md](docs/security-audits.md).

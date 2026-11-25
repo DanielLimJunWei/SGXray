@@ -35,6 +35,36 @@ and a faked network address are all refused while paused.
 | 11 Nov 2026 | Pre-launch checklist and "ways to get sued" (US law + Singapore's PDPA) | 2 fixes, 4 launch tasks (checks 71-79) |
 | 12-17 Nov 2026 | Each new feature checked as it was built | Checks 80-86 |
 | **25 Nov 2026** | **Audit 4: full audit.** Automated scanners, black-box attacks on a running copy, the "20 pen-test attacks on vibe-coded apps" list, every calculation against outside references, and a lawyer's read | **11 problems fixed, each with a test that fails on the old code (except the double-click guard, checked in a browser, and the speed-up, timed)**; checks 87-100 |
+| **25 Nov 2026** | **Audit 4b: second pass.** Every explanation, lesson, glossary entry, template and script re-read line by line; every worked number recalculated; gitleaks over all 93 commits; OWASP ZAP full scans, logged out and logged in | **Wording and logic: 16 fixes. ZAP: 0 real high alerts; inline styles removed, so the CSP no longer allows them; cross-origin isolation headers added**; checks 104-106 |
+
+### Audit 4b, 25 November 2026
+
+**Wording and logic (16 fixes, tests in `test_audit4.py`, `test_explain.py`, `test_ready.py`, `test_web.py`)**
+- Facts: yield on cost does not grow with the price; not every SGX-listed company's dividends are tax-free
+  (foreign-based ones, e.g. Thai Beverage, may have tax taken off); MoneySense says 3 to 6 months, so
+  "about a year" for an irregular income is now SGXray's own suggestion; SGX closes at 5pm (5:45pm is
+  SGXray's update); the fees quiz answer is $11.34; "1.23 percentage points", not "1.23% points".
+- Logic: a split is no longer called a bonus issue, and a consolidation's price jump is no longer called a drop;
+  a bonus issue from before you owned the stock is no longer a permanent "Watch out"; the Risk lesson no longer
+  says "hasn't climbed back yet" and then "holding on is what got it back"; the Stocks-vs-market lesson no
+  longer praises a "lead" when the portfolio is behind.
+- Wording that edged toward advice ("may suit you better", "only sell when...") is now phrased as questions;
+  instructions meant for the server's owner ("Run python src/market.py", "Run the price update") are no longer
+  shown to visitors; the Detailed-view note no longer promises the removed portfolio news.
+
+**Leaked secrets:** gitleaks (Docker `zricethezav/gitleaks`) over all 93 commits: none.
+
+**OWASP ZAP 2.x full scans** (Docker `ghcr.io/zaproxy/zaproxy:stable`, `zap-full-scan.py`) against a running
+copy on a scratch database, first logged out (137 rules passed), then logged in as a throwaway account (138 passed):
+| Alert | Verdict |
+|---|---|
+| SQL injection (High) on `/login`'s `next` | False positive: `next` never reaches the database (`auth.safe_next` only); the page differed because each failed try lowers "tries left". Every query uses `?` placeholders; the one built from text (`PRAGMA table_info`) takes fixed table names from the code |
+| CSP allows inline styles (Medium) | FIXED (check 104): the 5 inline `style=""` attributes became classes (the 52-week dot is an SVG `cx` attribute), so `style-src 'self'` |
+| Cross-origin headers missing (Low) | FIXED (check 105): `Cross-Origin-Opener-Policy`, `-Resource-Policy` and `-Embedder-Policy` set; everything SGXray loads is its own |
+| HTTP only site (Medium) | Local scan only; the live site sends HSTS with `SGXRAY_HTTPS=1` |
+| Server version in the `Server` header (Low) | Werkzeug's development server; hide gunicorn's on Render (check 106) |
+| "Potential XSS" in `next` and a `class` | False positives: Jinja escapes every value; the `class` was SGXray's own |
+| Suspicious comments, cookie slack, cacheable public pages, user-agent fuzzer | Informational: comments are plain explanations, no secrets; private pages are already `no-store` |
 
 ### Audit 4, 25 November 2026
 
@@ -154,8 +184,11 @@ feature. OPEN = still to do, with its task. LIVE = can only be proven on the dep
 | 83, 84 | News feeds and Market today | PASS / FIXED | DTDs refused, 2 MB and 600 KB caps, 10-second time-outs, plain-text titles; link hosts tightened (89) |
 | 71 | Visitor data sent elsewhere | FIXED | Fonts and every code library are served by SGXray: a visitor's browser contacts no other site unless they open a news article |
 | 98 | Outside scripts without a fingerprint | FIXED (25 Nov) | Three.js 0.186.1 and Lenis 1.3.26 copied from their npm packages (sha512 checked against the registry) into `static/vendor/`; each file's sha256 is tested (`test_vendor.py`); the CSP now allows scripts from SGXray only |
-| 74 | Licence for price data | OPEN (w418) | Yahoo's data is for personal use; confirm or switch provider before launch |
-| 83b | News publishers' terms | OPEN (w422) | Confirm each publisher allows headlines + summaries with links |
+| 74 | Licence for price data | OPEN (w418), BLOCKS LAUNCH | Read 25 Nov: Yahoo's terms forbid redistributing its data and automated access, so it can't feed a public site. EODData is personal use only. Marketstack covers SGX (`D05.SI`) and its $9.99 plan says "Commercial Use", but its agreement doesn't say whether showing prices publicly is allowed: get that in writing, and whether SGX needs its own licence |
+| 83b | News publishers' terms | OPEN (w422), BLOCKS LAUNCH | Read 25 Nov: SPH (Straits Times, Business Times) forbids showing its content, RSS included, on another site, even by linking or scraping, without written permission, and bans bots; CNA's RSS is personal, non-commercial and may not be passed to third parties; The Edge allows no use without written permission. Ask each in writing, or launch without the News page |
+| 104 | Inline styles allowed by the CSP | FIXED (audit 4b) | `style-src 'self'`; no `style=""` or `<style>` in any template or script (`test_audit4.py`) |
+| 105 | Cross-origin isolation headers | FIXED (audit 4b) | COOP, CORP and COEP set on every response (`test_audit4.py`) |
+| 106 | Server software version shown | LIVE (Week 4) | Hide the `Server` header on Render (gunicorn) |
 
 ### Server and data
 | # | Check | Status | Evidence |
