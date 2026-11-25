@@ -18,6 +18,7 @@ from datetime import date
 import pandas as pd
 
 import db
+import sgtime
 from adjust import shares_after
 from checks import check_trades, print_warnings
 from instruments import seed_instruments
@@ -30,6 +31,9 @@ DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 MAX_QUANTITY = 100_000_000
 MAX_PRICE = 100_000
 MAX_FEES = 100_000
+# Yahoo's SGX prices start around 2000 (the STI ETF in 2002), so older trades can't be valued. Before audit 4 a
+# trade dated 1900 was accepted, and SGXray then asked Yahoo for 126 years of prices.
+EARLIEST_DATE = date(1990, 1, 1)
 
 
 @dataclass
@@ -99,6 +103,8 @@ def check_fields(row, known_tickers, today):
         else:
             if trade_date > today:
                 errors.append(f"date {date_text} is in the future")
+            elif trade_date < EARLIEST_DATE:
+                errors.append(f"date {date_text} is before {EARLIEST_DATE.year}, earlier than SGXray's price data")
             elif trade_date.weekday() >= 5:
                 errors.append(f"date {date_text} is a {trade_date.strftime('%A')}, when SGX is closed")
 
@@ -197,7 +203,7 @@ def import_trades_csv(conn, user_id, source, today=None):
     source is a file path, or an uploaded file object (the web app will pass one).
     Returns an ImportResult. If result.errors isn't empty, nothing was saved.
     """
-    today = today or date.today()
+    today = today or sgtime.today()
     result = ImportResult()
 
     # dtype=str: read every value as text, so we check it ourselves instead of pandas guessing.

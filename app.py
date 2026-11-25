@@ -47,6 +47,7 @@ import plans  # noqa: E402
 import practice  # noqa: E402
 import readiness  # noqa: E402
 import risk  # noqa: E402
+import sgtime  # noqa: E402
 import stories  # noqa: E402
 import lookup  # noqa: E402
 import mailer  # noqa: E402
@@ -87,7 +88,7 @@ def create_app(db_path=None):
     app.after_request(_security_headers)
     app.context_processor(_lesson_spot)             # "See it in the demo" from a lesson: the highlight and its panel
     app.context_processor(lambda: {"current_user": g.get("user"), "csrf_token": _csrf_token,
-                                   "csp_nonce": g.get("csp_nonce", ""), "today": date.today().isoformat(),
+                                   "csp_nonce": g.get("csp_nonce", ""), "today": sgtime.today().isoformat(),
                                    "minutes": auth.RESET_MINUTES})
 
     if updater.enabled():
@@ -313,7 +314,7 @@ def create_app(db_path=None):
     def trades_page():
         conn, uid = get_db(), g.user["id"]
         if request.method == "GET":
-            return _trades_page(conn, uid, values={"side": "BUY", "date": date.today().isoformat()})
+            return _trades_page(conn, uid, values={"side": "BUY", "date": sgtime.today().isoformat()})
         values = trades.form_values(request.form)
         trade, problems = trades.check(conn, uid, values)
         if problems:
@@ -333,7 +334,7 @@ def create_app(db_path=None):
         if not problems:
             trade, problems = trades.check(conn, uid, values)
         if problems:
-            return _trades_page(conn, uid, values={"side": "BUY", "date": date.today().isoformat()},
+            return _trades_page(conn, uid, values={"side": "BUY", "date": sgtime.today().isoformat()},
                                 existing_problems=problems, existing_values=request.form), 422
         tid = db.add_trade(conn, uid, trade["ticker"], trade["trade_date"], "BUY", trade["quantity"], trade["price"],
                            0.0, trade["note"])
@@ -384,7 +385,7 @@ def create_app(db_path=None):
         conn, uid = get_db(), g.user["id"]
         v, problems = plans.from_form(conn, request.form)
         if problems:
-            return _trades_page(conn, uid, values={"side": "BUY", "date": date.today().isoformat()},
+            return _trades_page(conn, uid, values={"side": "BUY", "date": sgtime.today().isoformat()},
                                 plan_problems=problems, plan_values=request.form), 422
         needed = trades.needs_market_data(conn, v["ticker"], v["start_month"] + "-01")
         if needed:
@@ -448,7 +449,7 @@ def create_app(db_path=None):
         if request.form.get("then") == "practice":
             return _practice_trades_page(conn, _twin(), {"side": "BUY"}, None, lookup_error=message,
                                          lookup_code=typed), status
-        return _trades_page(conn, uid, values={"side": "BUY", "date": date.today().isoformat()},
+        return _trades_page(conn, uid, values={"side": "BUY", "date": sgtime.today().isoformat()},
                             lookup_error=message, lookup_code=typed), status
 
     def _market_note(conn, trade):
@@ -477,7 +478,7 @@ def create_app(db_path=None):
             correction = _correction(conn, uid, request.args["stock"], request.args.get("hold", ""), names)
             if correction and correction.get("side"):
                 values = {**values, "ticker": correction["ticker"], "side": correction["side"],
-                          "quantity": str(correction["qty"]), "date": date.today().isoformat(),
+                          "quantity": str(correction["qty"]), "date": sgtime.today().isoformat(),
                           "price": "", "fees": "", "note": correction["note"]}
         saved = request.args.get("saved", type=int)
         added = request.args.get("added", "")
@@ -495,7 +496,7 @@ def create_app(db_path=None):
                                plan_added=request.args.get("plan_added", type=int),
                                plan_stopped=request.args.get("plan_stopped") == "1",
                                plan_deleted=request.args.get("plan_deleted") == "1",
-                               this_month=date.today().strftime("%Y-%m"),
+                               this_month=sgtime.today().strftime("%Y-%m"),
                                existing_problems=existing_problems, existing_values=existing_values or {},
                                existing_saved=request.args.get("existing") == "1",
                                note_flash=request.args.get("note", ""), correction=correction,

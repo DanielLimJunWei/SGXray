@@ -16,13 +16,14 @@ import sys
 from datetime import date
 
 import db
+import sgtime
 from checks import check_manual_dividends, print_warnings
 from instruments import seed_instruments
 
 
 def add_manual_dividend(conn, ticker, ex_date, amount, today=None):
     """Checks and saves one dividend typed in by hand. Returns a list of problems; empty means saved."""
-    today = today or date.today()
+    today = today or sgtime.today()
     errors = []
 
     ticker = ticker.strip().upper()

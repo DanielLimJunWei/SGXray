@@ -23,6 +23,7 @@ import sys
 from datetime import date
 
 import db
+import sgtime
 from instruments import seed_instruments
 
 
@@ -48,7 +49,7 @@ def yahoo_actions(conn, ticker):
 
 def add_manual_action(conn, ticker, ex_date, factor, today=None):
     """Checks and saves one action typed in by hand. Returns a list of problems; empty means saved."""
-    today = today or date.today()
+    today = today or sgtime.today()
     errors = []
     ticker = ticker.strip().upper()
     if ticker not in {i["ticker"] for i in db.get_instruments(conn)}:

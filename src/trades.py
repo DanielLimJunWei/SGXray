@@ -9,6 +9,7 @@ import re
 from datetime import date
 
 import db
+import sgtime
 from importer import _check_sells, check_fields
 
 FIELDS = ("ticker", "date", "side", "quantity", "price", "fees")
@@ -66,7 +67,7 @@ def check(conn, user_id, values, today=None, replacing=None):
 
     Returns (trade, problems): trade is None if anything is wrong.
     """
-    today = today or date.today()
+    today = today or sgtime.today()
     known = {i["ticker"] for i in db.get_instruments(conn)}
     trade, problems = check_fields(values, known, today)
     note = values.get("note", "")
@@ -108,7 +109,7 @@ MAX_AVG_COST = 100_000
 def existing_values(form, today=None):
     """The form's fields as trade values for check(), or problems. Returns (values, problems)."""
     from datetime import timedelta
-    today = today or date.today()
+    today = today or sgtime.today()
     ticker = str(form.get("ticker", "")).strip()[:MAX_FIELD_LENGTH]
     shares = str(form.get("quantity", "")).replace(",", "").strip()[:MAX_FIELD_LENGTH]
     cost = str(form.get("avg_cost", "")).replace("$", "").replace(",", "").strip()[:MAX_FIELD_LENGTH]

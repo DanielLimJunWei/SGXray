@@ -19,8 +19,10 @@ import math
 from datetime import date
 
 import db
+import sgtime
 
 MIN_AMOUNT, MAX_AMOUNT = 1, 100_000
+MAX_DELAY_DAYS = 7          # a month's buy must happen within a week of the plan's day
 
 
 def fee(amount, rate, minimum):
@@ -49,7 +51,15 @@ def _buy_day(conn, ticker, month, day):
     target = f"{month}-{day:02d}"
     row = conn.execute("SELECT price_date, close FROM prices WHERE ticker = ? AND price_date >= ? "
                        "ORDER BY price_date LIMIT 1", (ticker, target)).fetchone()
-    return (row["price_date"], row["close"]) if row else None
+    if row is None:
+        return None
+    # Audit 4: only a close within a week of the plan's day counts. Before, a stock suspended for months took
+    # the first close after it returned for EVERY missed month, so several months' buys landed on one day.
+    # Banks skip a month they can't buy in; so does SGXray.
+    from datetime import date as _date
+    if (_date.fromisoformat(row["price_date"]) - _date.fromisoformat(target)).days > MAX_DELAY_DAYS:
+        return "skip"
+    return row["price_date"], row["close"]
 
 
 def catch_up(conn, plan):
@@ -67,6 +77,8 @@ def catch_up(conn, plan):
         found = _buy_day(conn, plan["ticker"], month, plan["day"])
         if found is None:
             continue                                # that day's close isn't in yet: next time
+        if found == "skip":
+            continue                                # no trading within a week of the plan's day: no buy that month
         day, price = found
         shares, f = buy(plan["amount"], price, plan["fee_rate"], plan["fee_min"])
         if shares == 0:
@@ -91,7 +103,7 @@ def _ordinal(n):
 
 def from_form(conn, form, today=None):
     """A new plan from the form: (values, problems). The fee rate is typed as a percentage."""
-    today = today or date.today()
+    today = today or sgtime.today()
     problems = []
     ticker = str(form.get("ticker", "")).strip()[:16]
     if ticker not in {i["ticker"] for i in db.get_instruments(conn)}:
