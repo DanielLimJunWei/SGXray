@@ -24,7 +24,7 @@
     if (section.dataset.drawn) return;
     section.dataset.drawn = "1";
     const D = JSON.parse(section.querySelector(".stock-data").textContent);
-    const svg = section.querySelector("svg"), card = svg.closest(".chart-card"), tip = card.querySelector(".chart-tip");
+    const svg = section.querySelector("svg.stock-svg"), card = svg.closest(".chart-card"), tip = card.querySelector(".chart-tip");
     const P = D.prices, t0 = day(P[0][0]), t1 = day(P[P.length - 1][0]) || t0 + 1;
     const avgs = D.avg_steps.filter(s => s.avg !== null).map(s => s.avg);
     let lo = Math.min(...P.map(p => p[1]), ...avgs), hi = Math.max(...P.map(p => p[1]), ...avgs);

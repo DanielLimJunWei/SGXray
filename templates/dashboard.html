@@ -150,7 +150,7 @@
   </section>
 
   {% if s.missing_prices or s.stale_prices %}
-  <p class="muted" role="status" style="margin-bottom: var(--space-6)">
+  <p class="muted gap-below" role="status">
     {% for tk, name in waiting.items() %}{{ name }} ({{ tk }}) was bought today. Its first closing price comes after SGX closes, at about 5:45pm, and your worth and profit fill in then. {% endfor %}
     {% for tk, name in no_price.items() %}No closing price is saved yet for {{ name }} ({{ tk }}). Its worth and profit, and your totals, fill in after the next price update. {% endfor %}
     {% if s.stale_prices %}Older prices for {{ s.stale_prices|join(', ') }}: their value may be out of date.{% endif %}
@@ -203,8 +203,8 @@
     </div>
     <ol class="steps" id="xray-steps">
       <li class="step" data-at="0"><b><span class="key key-line"></span>{{ term("all-together", "Your total") }}</b><span class="muted">The light-blue line: shares + dividends, {{ (last.money + last.gains + last.divs)|money }}. On its own it doesn't say why.</span></li>
-      <li class="step" data-at="0.2"><b><span class="key" style="background:#4A5B82"></span>{{ term("money-in", "Your own money") }}</b><span class="muted">{{ last.money|money }} put in. Not profit.</span></li>
-      <li class="step" data-at="0.45"><b><span class="key" style="background:#3A73FF"></span>{{ term("price-gains", "Price gains") }} · <span class="key" style="background:#E3A35E"></span>{{ term("dividend", "dividends") }}</b><span class="muted">{{ last.gains|money(signed=True) }} from prices, {{ last.divs|money }} paid in cash.</span></li>
+      <li class="step" data-at="0.2"><b><span class="key key-money"></span>{{ term("money-in", "Your own money") }}</b><span class="muted">{{ last.money|money }} put in. Not profit.</span></li>
+      <li class="step" data-at="0.45"><b><span class="key key-gains"></span>{{ term("price-gains", "Price gains") }} · <span class="key key-divs"></span>{{ term("dividend", "dividends") }}</b><span class="muted">{{ last.gains|money(signed=True) }} from prices, {{ last.divs|money }} paid in cash.</span></li>
       {% if last.sti is not none %}<li class="step" data-at="0.8"><b><span class="key key-dash"></span>The market: {{ term("sti-etf", "STI ETF") }}</b><span class="muted">Same money in the STI ETF: {{ last.sti|money }}.</span></li>{% endif %}
     </ol>
     {% if periods %}
@@ -286,7 +286,7 @@
     {% if sold %}
     <details class="as-table sold" data-detail>
       <summary>{{ term("sold", "Sold") }}: {{ sold|length }} stock{{ "s" if sold|length != 1 }} you no longer hold</summary>
-      <div class="section-head" style="margin-top: var(--space-3)">{{ explain_buttons(sold_ex, "sold", "Sold", compact=True) }}</div>
+      <div class="section-head gap-above">{{ explain_buttons(sold_ex, "sold", "Sold", compact=True) }}</div>
       <div class="panel table-wrap">
         <table class="data">
           <thead><tr><th scope="col">{{ term("ticker", "Stock") }}</th><th scope="col">Held</th><th scope="col">{{ term("cost", "Put in") }}</th>
@@ -318,7 +318,7 @@
       <div class="range52">
         <span class="range-label">{{ term("week52", "52-week range") }}</span>
         <span class="range-end">{{ "$%.2f"|format(c.w52.low) }}</span>
-        <span class="range-bar" role="img" aria-label="Today's {{ '$%.2f'|format(c.w52.now) }} is {{ (c.w52.position * 100)|round|int }}% of the way from the 52-week low to the high"><span class="range-dot" style="left: {{ (c.w52.position * 100)|round(1) }}%"></span></span>
+        <span class="range-bar" role="img" aria-label="Today's {{ '$%.2f'|format(c.w52.now) }} is {{ (c.w52.position * 100)|round|int }}% of the way from the 52-week low to the high"><svg class="range-mark" aria-hidden="true" focusable="false"><circle cx="{{ (c.w52.position * 100)|round(1) }}%" cy="50%" r="4"/></svg></span>
         <span class="range-end">{{ "$%.2f"|format(c.w52.high) }}</span>
         <span class="range-now">today {{ "$%.2f"|format(c.w52.now) }}</span>
       </div>

@@ -1115,13 +1115,18 @@ def _security_headers(response):
     response.headers["X-Frame-Options"] = "DENY"                  # no one can show SGXray inside their own page
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()"
+    # Cross-origin isolation (ZAP, audit 4b): other sites' windows can't reach into ours, and our files can't be
+    # pulled into other sites' pages. Everything SGXray loads is its own, so nothing breaks.
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+    response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
     # Content Security Policy: the browser only runs scripts from SGXray itself (every library is served from static/),
     # or an inline script carrying this page's random nonce. An injected <script> has no nonce, so it won't run.
     nonce = g.get("csp_nonce", "")
     response.headers["Content-Security-Policy"] = "; ".join([
         "default-src 'self'",
         f"script-src 'self' 'nonce-{nonce}'",
-        "style-src 'self' 'unsafe-inline'",
+        "style-src 'self'",                       # no inline style="" or <style> either (ZAP, audit 4b)
         "font-src 'self'",                        # fonts are served by SGXray itself: no visitor data goes to Google
         "img-src 'self' data: blob:",
         "connect-src 'self'",

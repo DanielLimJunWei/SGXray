@@ -202,3 +202,30 @@ def test_moneysense_is_only_credited_with_what_it_says():
     import readiness
     assert "12 if" not in glossary.TERMS["emergency-fund"][1]
     assert "MoneySense suggests about 12" not in readiness.IRREGULAR_NO
+
+
+# ---------- Audit 4b, ZAP: stricter headers ----------
+
+def test_styles_come_only_from_sgxrays_own_files(app):
+    from pathlib import Path
+    r = app.test_client().get("/demo")
+    csp = r.headers["Content-Security-Policy"]
+    assert "style-src 'self';" in csp + ";" and "unsafe-inline" not in csp
+    # ...so no page may carry an inline style="" or a <style> block (the browser would ignore it)
+    root = Path(__file__).resolve().parent.parent
+    for f in list((root / "templates").rglob("*.html")) + list((root / "static" / "js").glob("*.js")):
+        text = f.read_text(encoding="utf-8")
+        assert 'style="' not in text and "<style" not in text, f.name
+
+
+def test_cross_origin_isolation_headers(app):
+    r = app.test_client().get("/")
+    assert r.headers["Cross-Origin-Opener-Policy"] == "same-origin"
+    assert r.headers["Cross-Origin-Resource-Policy"] == "same-origin"
+    assert r.headers["Cross-Origin-Embedder-Policy"] == "require-corp"
+
+
+def test_the_price_chart_draws_in_its_own_svg_not_the_range_dot():
+    from pathlib import Path
+    js = (Path(__file__).resolve().parent.parent / "static" / "js" / "stock-chart.js").read_text(encoding="utf-8")
+    assert 'section.querySelector("svg.stock-svg")' in js

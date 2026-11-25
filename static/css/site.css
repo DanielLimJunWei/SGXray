@@ -272,8 +272,10 @@ footer.site p + p { margin-top: var(--space-2); }
 .range-label { font-family: var(--font-sans); font-size: var(--text-sm); margin-right: var(--space-1); }
 .range-bar { position: relative; flex: 0 1 12rem; min-width: 6rem; height: 4px; border-radius: 2px;
   background: linear-gradient(90deg, rgba(217, 130, 130, 0.5), var(--color-line-strong) 50%, rgba(123, 196, 160, 0.5)); }
-.range-dot { position: absolute; top: 50%; width: 10px; height: 10px; border-radius: 50%; transform: translate(-50%, -50%);
-  background: var(--color-glow-soft); border: 2px solid var(--color-night); }
+/* Today's place in the range: a dot drawn in SVG at cx = its percentage (an attribute, not a style, so the strict
+   Content-Security-Policy needs no 'unsafe-inline'). */
+.range-mark { position: absolute; left: 0; top: 50%; width: 100%; height: 10px; transform: translateY(-50%); overflow: visible; }
+.range-mark circle { fill: var(--color-glow-soft); stroke: var(--color-night); stroke-width: 2; }
 .range-now { color: var(--color-text); }
 
 /* ---------- "Sold" (folded under the holdings table) ---------- */
@@ -358,6 +360,8 @@ footer.site p + p { margin-top: var(--space-2); }
 .step.on { opacity: 1; }
 .step b { display: block; font-weight: 500; margin-bottom: var(--space-1); }
 .key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: var(--space-2); }
+.key-money { background: var(--chart-money-in); } .key-gains { background: var(--chart-gains); } .key-divs { background: var(--chart-dividends); }
+.gap-below { margin-bottom: var(--space-6); } .gap-above { margin-top: var(--space-3); }
 .key-line { width: 14px; height: 0; border-top: 2px solid #9CC4FF; border-radius: 0; vertical-align: middle; }
 .key-dash { width: 14px; height: 0; border-top: 2px dashed var(--color-text); border-radius: 0; vertical-align: middle; }
 .as-table { margin-top: var(--space-6); }
