@@ -1,5 +1,6 @@
 """Tests for dividends received (portfolio.py), ignoring wrong dividends, and the migration."""
 
+import os
 import sqlite3
 
 import pytest
@@ -67,6 +68,7 @@ def test_ignoring_a_missing_dividend_says_so(conn):
     assert db.set_dividend_ignored(conn, "D05.SI", "2024-01-01") is False
 
 
+@pytest.mark.skipif(bool(os.environ.get("SGXRAY_TEST_PG")), reason="builds an old SQLite file by hand")
 def test_old_databases_get_the_new_column(tmp_path):
     path = tmp_path / "old.db"
     old = sqlite3.connect(path)

@@ -14,7 +14,6 @@ then open http://127.0.0.1:5000
 
 import os
 import secrets
-import sqlite3
 import sys
 from datetime import date, timedelta
 from functools import wraps
@@ -562,7 +561,7 @@ def create_app(db_path=None):
             return render_template("signup.html", error=taken, email=email), 422
         try:
             uid = db.create_user(conn, email, hashed)
-        except sqlite3.IntegrityError:                 # the same email signed up a split second earlier
+        except db.IntegrityError:                 # the same email signed up a split second earlier
             return render_template("signup.html", error=taken, email=email), 422
         db.log_security_event(conn, "signup", uid, request.remote_addr)
         _start_session(db.get_user(conn, uid))

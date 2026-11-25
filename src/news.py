@@ -280,17 +280,18 @@ def save(conn, items):
             tickers = tickers_in(it["title"], instruments)        # the headline only: a name in passing isn't the story
             if not relevant(it["title"], summary, tickers):
                 continue
-            cur = conn.execute("INSERT OR IGNORE INTO news (url, title, summary, source, published) "
-                               "VALUES (?, ?, ?, ?, ?)",
-                               (it["url"], it["title"], summary or None, it["source"], it["published"]))
-            if cur.rowcount:
-                nid = cur.lastrowid
+            new = conn.execute("INSERT INTO news (url, title, summary, source, published) "
+                               "VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING RETURNING id",
+                               (it["url"], it["title"], summary or None, it["source"], it["published"])).fetchone()
+            if new:                                    # None when the link was already saved
+                nid = new[0]
                 for t in sorted(tickers - listed):
                     if t in extra:
-                        conn.execute("INSERT OR IGNORE INTO instruments (ticker, name, type, sector) VALUES (?, ?, ?, ?)",
+                        conn.execute("INSERT INTO instruments (ticker, name, type, sector) VALUES (?, ?, ?, ?) "
+                                     "ON CONFLICT DO NOTHING",
                                      (t, *extra[t]))
                         listed.add(t)
-                conn.executemany("INSERT OR IGNORE INTO news_tickers (news_id, ticker) VALUES (?, ?)",
+                conn.executemany("INSERT INTO news_tickers (news_id, ticker) VALUES (?, ?) ON CONFLICT DO NOTHING",
                                  [(nid, t) for t in sorted(tickers)])
                 added += 1
         conn.execute("DELETE FROM news WHERE published < ?",
@@ -412,7 +413,7 @@ def _same(title):
 
 def _rows(conn, where, args, limit):
     rows = conn.execute(
-        "SELECT n.id, n.title, n.summary, n.url, n.source, n.published, GROUP_CONCAT(t.ticker) AS tickers "
+        "SELECT n.id, n.title, n.summary, n.url, n.source, n.published, string_agg(t.ticker, ',') AS tickers "
         "FROM news n LEFT JOIN news_tickers t ON t.news_id = n.id "
         f"WHERE {where} GROUP BY n.id ORDER BY n.published DESC, n.id DESC LIMIT ?", (*args, limit * 2)).fetchall()
     out, seen = [], {}

@@ -72,7 +72,7 @@ def prices_version(conn):
     "2026-11-12/6043/91234.5600": the newest date, how many prices there are, and their total. (The date
     alone isn't enough: one stock can already have today's close while the others catch up, and Yahoo
     sometimes corrects a past close.) Pages compare it with what they showed."""
-    row = conn.execute("SELECT MAX(price_date) AS d, COUNT(*) AS n, TOTAL(close) AS t FROM prices").fetchone()
+    row = conn.execute("SELECT MAX(price_date) AS d, COUNT(*) AS n, COALESCE(SUM(close), 0) AS t FROM prices").fetchone()
     return f"{row['d']}/{row['n']}/{row['t']:.4f}" if row["d"] else ""
 
 
@@ -117,7 +117,7 @@ def _take_lock(conn, now):
     conn.execute(JOB_SQL)
     stamp, until = now.isoformat(timespec="seconds"), (now + timedelta(minutes=LOCK_MINUTES)).isoformat(timespec="seconds")
     with conn:
-        conn.execute("INSERT OR IGNORE INTO jobs (name) VALUES ('prices')")
+        conn.execute("INSERT INTO jobs (name) VALUES ('prices') ON CONFLICT DO NOTHING")
         cur = conn.execute("UPDATE jobs SET running_until = ? WHERE name = 'prices' "
                            "AND (running_until IS NULL OR running_until < ?)", (until, stamp))
     return cur.rowcount == 1
@@ -175,7 +175,7 @@ def news_once(conn, now=None, update=None):
     now = now or singapore_now()
     conn.execute(JOB_SQL)
     with conn:
-        conn.execute("INSERT OR IGNORE INTO jobs (name) VALUES ('news')")
+        conn.execute("INSERT INTO jobs (name) VALUES ('news') ON CONFLICT DO NOTHING")
     job = conn.execute("SELECT last_try FROM jobs WHERE name = 'news'").fetchone()
     if job["last_try"] and datetime.fromisoformat(job["last_try"]) > now - NEWS_EVERY:
         return "not due"

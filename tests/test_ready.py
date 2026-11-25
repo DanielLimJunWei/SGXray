@@ -72,7 +72,7 @@ def test_nothing_anyone_answers_is_saved(app, db_path):
     """Count every row in every table before and after: answering changes nothing, logged in or not."""
     def counts():
         conn = db.get_connection(db_path)
-        names = [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")]
+        names = db.tables(conn)
         out = {n: conn.execute(f'SELECT COUNT(*) FROM "{n}"').fetchone()[0] for n in names}
         conn.close()
         return out

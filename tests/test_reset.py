@@ -141,7 +141,7 @@ def test_an_old_link_expires(app, inbox, db_path):
     c = account_holder(app)
     ask(c)
     conn = db.get_connection(db_path)
-    conn.execute("UPDATE password_resets SET expires_at = strftime('%Y-%m-%dT%H:%M:%S', 'now', '-1 minute')")
+    conn.execute("UPDATE password_resets SET expires_at = ?", (db.utc_text(minutes=-1),))
     conn.commit()
     conn.close()
     c.get(path_of(link_in(inbox)))

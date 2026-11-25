@@ -1,7 +1,5 @@
 """'Why I bought' notes on trades (w317): saved with the trade, shown again on the portfolio, safe as text."""
 
-import sqlite3
-
 import pytest
 
 import db
@@ -63,7 +61,7 @@ def test_the_database_refuses_an_over_long_note_too(db_path):
     """The form checks the length, and the table's CHECK rule backs it up."""
     conn = db.get_connection(db_path)
     uid = db.create_user(conn, "zed@example.com", "x")
-    with pytest.raises(sqlite3.IntegrityError):
+    with pytest.raises(db.IntegrityError):
         db.add_trade(conn, uid, "D05.SI", MONDAY, "BUY", 1, 30.0, note="x" * (NOTE_MAX + 1))
     conn.close()
 
@@ -74,9 +72,9 @@ def test_an_old_database_gets_the_note_column(tmp_path):
     conn = db.get_connection(path)
     db.init_db(conn)
     conn.execute("ALTER TABLE trades DROP COLUMN note")
-    assert "note" not in {r["name"] for r in conn.execute("PRAGMA table_info(trades)")}
+    assert "note" not in db.columns(conn, "trades")
     db.init_db(conn)
-    assert "note" in {r["name"] for r in conn.execute("PRAGMA table_info(trades)")}
+    assert "note" in db.columns(conn, "trades")
     conn.close()
 
 

@@ -140,9 +140,9 @@ def from_form(conn, form, today=None):
 def add(conn, user_id, v):
     with conn:
         cur = conn.execute("INSERT INTO plans (user_id, ticker, amount, day, start_month, fee_rate, fee_min) "
-                           "VALUES (?, ?, ?, ?, ?, ?, ?)", (user_id, v["ticker"], v["amount"], v["day"],
-                                                            v["start_month"], v["fee_rate"], v["fee_min"]))
-    return cur.lastrowid
+                           "VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id", (user_id, v["ticker"], v["amount"], v["day"],
+                                                                         v["start_month"], v["fee_rate"], v["fee_min"]))
+        return cur.fetchone()[0]
 
 
 def get(conn, user_id, plan_id):
