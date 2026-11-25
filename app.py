@@ -74,6 +74,15 @@ def create_app(db_path=None):
         SEND_EMAIL=mailer.send,                       # tests swap in a fake inbox
         EMAIL_IN_BACKGROUND=True,                     # so a real account doesn't answer slower than a made-up one
     )
+    # Behind a hosting proxy (Render), every request arrives FROM the proxy, so without this every visitor would
+    # share one network address: 20 wrong logins by anyone would lock everyone out, and 5 sign-ups an hour would
+    # be the whole site's limit (audit 4). SGXRAY_PROXIES = how many proxies sit in front (1 on Render). Only that
+    # many hops of X-Forwarded-For are trusted, so a visitor can't type in a fake address to dodge the limits; off
+    # (0) on your own computer, where the header is ignored completely. The Host header is never trusted.
+    hops = int(os.environ.get("SGXRAY_PROXIES", "0") or 0)
+    if hops > 0:
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=hops, x_proto=hops, x_host=0, x_port=0, x_prefix=0)
 
     conn = db.get_connection(db_path)       # make sure the tables exist once, at start-up
     db.init_db(conn)
@@ -401,6 +410,7 @@ def create_app(db_path=None):
         conn, uid = get_db(), g.user["id"]
         plans.get(conn, uid, plan_id) or abort(404)
         plans.stop(conn, uid, plan_id)
+        db.log_security_event(conn, "plan_stopped", uid, request.remote_addr)
         return redirect(url_for("trades_page", plan_stopped=1) + "#plans")
 
     @app.route("/plans/<int:plan_id>/delete", methods=["GET", "POST"])
@@ -1043,11 +1053,11 @@ def _security_headers(response):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     if request.endpoint in ("reset_link", "reset_password", "forgot"):
         response.headers["Referrer-Policy"] = "no-referrer"       # the reset link's secret is never passed on
-    if request.endpoint in ("login", "signup", "account", "account_password", "forgot", "reset_link",
-                            "reset_password", "portfolio", "trades_page", "edit_trade", "delete_trade", "lookup_ticker",
-                            "ready", "practice_page", "practice_trades", "practice_fees", "practice_reset",
-                            "market_today"):
-        response.headers["Cache-Control"] = "no-store"            # private pages aren't kept in the browser cache
+    if g.get("user") or request.endpoint in ("login", "signup", "account", "account_password", "forgot",
+                                             "reset_link", "reset_password", "ready", "market_today"):
+        # Private pages aren't kept in the browser cache. Logged in, that's EVERY page (audit 4: Learn shows your
+        # progress and the top bar is yours, so someone opening the same browser later mustn't see them).
+        response.headers["Cache-Control"] = "no-store"
     return response
 
 

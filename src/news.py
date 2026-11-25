@@ -213,8 +213,7 @@ def parse(xml_bytes, source, domain, now=None):
     for item in root.iter("item"):
         title = _clean(item.findtext("title"))
         url = (item.findtext("link") or "").strip()
-        host = re.match(r"^https://([^/?#]+)", url)
-        if not title or not host or not (host.group(1) == domain or host.group(1).endswith("." + domain)):
+        if not title or not _on_site(url, domain):
             continue                                           # only https links to the publisher's own site
         summary = tidy_summary(item.findtext("description"))
         out.append({"title": title, "summary": "" if summary == title else summary, "url": url[:500],
@@ -222,11 +221,40 @@ def parse(xml_bytes, source, domain, now=None):
     return out
 
 
+# A link's address: https, then a plain host name (letters, digits, dots, hyphens), then a path. Audit 4: a
+# backslash in the host ("https://evil.example\.straitstimes.com/") ended in the publisher's name, so it passed,
+# yet a browser reads the backslash as a slash and goes to evil.example. Only plain host names pass now.
+_LINK = re.compile(r"^https://([a-z0-9.-]+)(?::443)?(?:[/?#]|$)", re.I)
+
+
+def _on_site(url, domain):
+    """True for an https link on `domain` or one of its subdomains, with a plain host name."""
+    m = _LINK.match(url or "")
+    if not m:
+        return False
+    host = m.group(1).lower().rstrip(".")
+    return host == domain or host.endswith("." + domain)
+
+
+class _SameSiteRedirects(urllib.request.HTTPRedirectHandler):
+    """Follows a redirect only to an https address on a publisher's own site. Python's default follows any
+    redirect, even to http, ftp or an address inside the server's own network, BEFORE SGXray could check where
+    it went (audit 4); this checks every hop first."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not _publisher_link(newurl):
+            return None                              # not followed: the fetch just fails
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_opener = urllib.request.build_opener(_SameSiteRedirects())
+
+
 def fetch(url):
     """One feed's bytes, at most MAX_BYTES, or None. Only ever called with the fixed FEEDS addresses."""
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+        with _opener.open(req, timeout=TIMEOUT) as r:
             return r.read(MAX_BYTES + 1)
     except Exception:
         return None
@@ -320,8 +348,7 @@ def summary_from_page(page):
 
 
 def _publisher_link(url):
-    host = re.match(r"^https://([^/?#]+)/", url or "")
-    return bool(host) and any(host.group(1) == d or host.group(1).endswith("." + d) for _, _, d in FEEDS)
+    return any(_on_site(url, d) for _, _, d in FEEDS)
 
 
 def fetch_page(url):
@@ -330,7 +357,7 @@ def fetch_page(url):
         return None
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+        with _opener.open(req, timeout=TIMEOUT) as r:
             if not _publisher_link(r.geturl()):           # redirected somewhere else: not used
                 return None
             return r.read(PAGE_MAX).decode("utf-8", "replace")
