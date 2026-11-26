@@ -354,7 +354,7 @@ if (finePointer) {
     turn.toPitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, turn.toPitch + dy * speed()));
     samples.push({ t: e.timeStamp, yaw: turn.toYaw, pitch: turn.toPitch });
     while (samples.length > 2 && e.timeStamp - samples[0].t > 100) samples.shift();   // keep the last 0.1 s
-    if (reduceMotion) requestAnimationFrame(frame);
+    if (reduceMotion) drawSoon();
   });
   const stop = e => {
     if (!turn.dragging) return;
@@ -373,7 +373,7 @@ if (finePointer) {
     } else {
       turn.vYaw = turn.vPitch = 0;
     }
-    if (reduceMotion) requestAnimationFrame(frame);
+    if (reduceMotion) drawSoon();
   };
   addEventListener("pointerup", stop);
   addEventListener("pointercancel", stop);
@@ -384,7 +384,7 @@ if (finePointer) {
     const full = Math.PI * 2;
     turn.yaw -= Math.round(turn.yaw / full) * full;
     turn.toYaw = turn.toPitch = turn.vYaw = turn.vPitch = 0;
-    if (reduceMotion) { turn.yaw = turn.pitch = 0; requestAnimationFrame(frame); }
+    if (reduceMotion) { turn.yaw = turn.pitch = 0; drawSoon(); }
   });
 }
 
@@ -403,7 +403,13 @@ addEventListener("resize", resize);
 resize();
 
 let pe = scrollProgress();                                      // eased scroll, so the camera glides
+// One drawing loop, ever. Every "draw again" asks drawSoon(), which does nothing if a frame is already booked.
+// (Before 26 Nov 2026 each return to the tab started another loop on top of the one still waiting, since the
+// browser keeps a hidden tab's booked frame: after a few tab switches the scene was drawn 2 or 3 times a frame.)
+let booked = 0;
+function drawSoon() { if (!booked) booked = requestAnimationFrame(frame); }
 function frame(now) {
+  booked = 0;
   const t = reduceMotion ? 0 : now / 1000;
   const p = scrollProgress();
   pe += (p - pe) * (reduceMotion ? 1 : 0.07);
@@ -461,11 +467,11 @@ function frame(now) {
   }
 
   renderer.render(scene, camera);
-  if (!reduceMotion && !document.hidden) requestAnimationFrame(frame);
+  if (!reduceMotion && !document.hidden) drawSoon();
 }
-requestAnimationFrame(frame);
-document.addEventListener("visibilitychange", () => { if (!document.hidden && !reduceMotion) requestAnimationFrame(frame); });
+drawSoon();
+document.addEventListener("visibilitychange", () => { if (!document.hidden && !reduceMotion) drawSoon(); });
 if (reduceMotion) {
-  addEventListener("scroll", () => requestAnimationFrame(frame), { passive: true });
-  document.fonts.ready.then(() => requestAnimationFrame(frame));
+  addEventListener("scroll", () => drawSoon(), { passive: true });
+  document.fonts.ready.then(() => drawSoon());
 }
