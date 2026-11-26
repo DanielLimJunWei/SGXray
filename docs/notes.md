@@ -733,3 +733,27 @@ A portfolio with nothing in it (yours, practice, or the demo before it's loaded)
   removed (the real database had none). Checked on a scratch copy of `data/sgxray.db`: it switched on start-up, and a
   scratch account showed $4,265.00 put in (= $3,310 + $1,910 - $955 by hand), 42% of $10,000, about $441.15 a month
   for 13 months.
+
+## 26 Nov 2026: REIT health (s17)
+
+- **Where the numbers come from:** each REIT's own results, copied by hand into `FIGURES` in `src/reits.py` with the
+  period, the announcement date, the document's title and its link. Yahoo was checked first and rejected: its debt ÷
+  assets for CICT is 35.3% where CICT reports 37.4% (MAS's aggregate leverage includes the REIT's share of
+  joint-venture debt), and its EBIT includes property revaluations (CapitaLand Ascendas 2023: $416m against about
+  $1,000m in other years). A beginner checking the REIT's own report should see the same number.
+- **MAS's rules** (Code on Collective Investment Schemes, revised 28 Nov 2024): aggregate leverage at most 50%;
+  interest coverage at least 1.5 times; below 1.8 times the manager must say how it will improve it. "Watch out"
+  fires at 45% or more, below 1.8 or 1.5 times, and a payout a unit down 10% or more on the year before.
+- **On the dashboard (Detailed):** one card per REIT you hold: borrowed (a bar from 0 to 60% with the 50% limit marked),
+  interest cover, payouts a unit over 12 months against the 12 before (from saved distributions, restated for any
+  splits), and "As at ..., from <document> (date)". A REIT with no figures entered says so in words; its payouts
+  still show. Figures older than 200 days add "Newer results are probably out".
+- **Entered so far** (read from the documents, 26 Nov 2026): CICT 37.4% and 3.9 times at 30 Jun 2026 (38.6%, 3.7 at
+  31 Dec 2025), announced 12 Aug 2026; CapitaLand Ascendas 39.7% and 3.5 times (39.0%, 3.6), announced 5 Aug 2026.
+  Mapletree Logistics 37.5% and 2.9 times at 30 Sep 2026 (40.6%, 2.9 at 31 Mar 2026), announced 28 Oct 2026, with
+  its own note that the 37.5% is temporarily low (pro forma 40.4%), shown on the card; Mapletree Pan Asia Commercial
+  38.1% and 3.3 times (36.5%, 3.2), announced 30 Oct 2026. The Mapletree documents came from each trust's own
+  investor site (SGX serves them only as downloads).
+- **Keeping it up to date:** `python src/reits.py` lists every REIT, how old its figures are, and which are DUE.
+  Checked: CICT's 12-month payouts on the demo, 4.61 + 3.98 + 2.04 = 10.63 cents; the last two are its official
+  1H 2026 DPU of 6.02 cents. Tests: `tests/test_reits.py`.

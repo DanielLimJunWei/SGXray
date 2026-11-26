@@ -415,6 +415,58 @@
   </section>
   {% endif %}
 
+  {#- REIT health (s17): each REIT's own borrowing and interest figures, copied by hand from its results with the
+      date and a link (src/reits.py), and its payouts a unit from the saved distributions. Detailed only. -#}
+  {% if reit_rows %}
+  <section class="block" aria-labelledby="reits-title" data-detail>
+    <div class="section-head">
+      <h2 id="reits-title">REIT health</h2>
+      {{ explain_buttons(reits_ex, "reits", "REIT health") }}
+    </div>
+    <p class="muted section-lede">How much each {{ term("reit", "REIT") }} you hold has borrowed, and how easily it pays its interest, from its own latest results.</p>
+    <div class="reit-grid">
+      {% for r in reit_rows %}{% set f = r.figures %}
+      <article class="panel reit-card" aria-labelledby="reit-{{ loop.index }}">
+        <h3 id="reit-{{ loop.index }}">{{ r.name }} <span class="muted reit-code">{{ r.ticker }}</span></h3>
+        {% if f %}
+        <div class="reit-measure">
+          <p class="reit-label">{{ term("aggregate-leverage", "Borrowed") }}</p>
+          <p class="reit-value"><b>{{ "%.1f%%"|format(f.leverage) }}</b> <span class="muted">of what it owns</span></p>
+          <svg class="reit-bar" viewBox="0 0 120 8" preserveAspectRatio="none" role="img" aria-label="{{ '%.1f'|format(f.leverage) }}% borrowed; the limit is 50%">
+            <rect class="reit-track" width="120" height="8" rx="4"/>
+            <rect class="reit-near" x="90" width="10" height="8"/>
+            <rect class="reit-fill{{ ' near' if 'near-limit' in r.flags }}" width="{{ '%.1f'|format([f.leverage, 60]|min * 2) }}" height="8" rx="4"/>
+            <line class="reit-limit" x1="100" x2="100" y1="0" y2="8"/>
+          </svg>
+          <p class="reit-note">{{ "%.1f"|format(r.leverage_room) }} points under MAS's 50% limit{% if r.before %} · {{ "up from" if f.leverage > r.before.leverage else ("down from" if f.leverage < r.before.leverage else "unchanged from") }} {{ "%.1f%%"|format(r.before.leverage) }} at {{ r.before.period_end|longdate }}{% endif %}</p>
+        </div>
+        {% if f.note %}<p class="reit-flag">{{ f.note }}</p>{% endif %}
+        <div class="reit-measure">
+          <p class="reit-label">{{ term("interest-cover", "Interest cover") }}</p>
+          <p class="reit-value"><b>{{ "%.1f"|format(f.icr) }} times</b> <span class="muted">its interest</span></p>
+          <p class="reit-note">MAS minimum 1.5 times{% if r.before %} · {{ "up from" if f.icr > r.before.icr else ("down from" if f.icr < r.before.icr else "unchanged from") }} {{ "%.1f"|format(r.before.icr) }}{% endif %}</p>
+        </div>
+        {% else %}
+        <p class="reit-missing">SGXray hasn't entered this REIT's own borrowing and interest figures yet, so they aren't shown. Its payouts are below.</p>
+        {% endif %}
+        <div class="reit-measure">
+          <p class="reit-label">{{ term("dpu", "Payouts a unit, 12 months") }}</p>
+          {% if r.dpu_12m %}
+          <p class="reit-value"><b>{{ "%.2f"|format(r.dpu_12m * 100) }} cents</b></p>
+          <p class="reit-note">{% if r.dpu_change is not none %}<span class="{{ r.dpu_change|trend }}">{{ "%+.1f%%"|format(r.dpu_change * 100) }}</span> on the 12 months before ({{ "%.2f"|format(r.dpu_prior * 100) }} cents){% else %}No earlier year to compare with yet.{% endif %}</p>
+          {% else %}
+          <p class="reit-note">{% if r.dpu_saved %}No payouts in the last 12 months.{% else %}Its payouts appear after the next evening price update, at about 5:45pm.{% endif %}</p>
+          {% endif %}
+        </div>
+        {% if f %}
+        <p class="reit-source">As at {{ f.period_end|longdate }}, from <a href="{{ f.url }}" target="_blank" rel="noopener noreferrer">{{ f.source }}</a> ({{ f.announced|longdate }}).{% if r.stale %} Newer results are probably out; these will be updated.{% endif %}</p>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
   {#- Ups and downs (w305): the biggest fall and how bumpy, from day-by-day growth with deposits removed. -#}
   <section class="block" aria-labelledby="risk-title" data-detail>
     <div class="section-head">

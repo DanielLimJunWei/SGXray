@@ -59,6 +59,7 @@ import trades  # noqa: E402
 import checkin  # noqa: E402
 import feedback as feedback_mod  # noqa: E402
 import goals as goals_mod  # noqa: E402
+import reits  # noqa: E402
 import updater  # noqa: E402
 import whatif  # noqa: E402
 
@@ -948,6 +949,8 @@ def create_app(db_path=None):
             periods=periods, periods_ex=explain_periods(periods) if periods else None,
             sold=sold, sold_ex=explain_sold(sold) if sold else None,
             chart_ex=explain_value_chart(conn, uid, h) if h is not None else None,
+            reit_rows=(reit_rows := reits.health(conn, uid)),
+            reits_ex=reits.explain(reit_rows) if reit_rows else None,
             goals=(my_goals := goals_mod.progress(conn, uid) if mode == "own" else []),
             goals_ex=goals_mod.explain(my_goals) if my_goals else None,
             **extra,

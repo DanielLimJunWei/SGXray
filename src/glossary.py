@@ -215,6 +215,18 @@ TERMS = {
              "out most of the rent. To avoid tax at the trust level it must pay out at least 90% of its taxable "
              "income.",
              "CapitaLand Integrated Commercial Trust owns malls and offices like Raffles City."),
+    "aggregate-leverage": ("Aggregate leverage (gearing)",
+                           "What a REIT has borrowed, as a share of everything it owns, counted the way MAS's rules "
+                           "say (including its share of joint ventures' debt). MAS allows at most 50%.",
+                           "Borrowed $10 billion against $27 billion of property and other assets: about 37%."),
+    "interest-cover": ("Interest cover (ICR)",
+                       "How many times a REIT's earnings over the last 12 months would pay its interest over the same "
+                       "12 months. MAS requires at least 1.5 times; below 1.8 the manager must say how it will improve.",
+                       "Earnings of $1,100 million and interest of $280 million: about 3.9 times."),
+    "dpu": ("Payout a unit (DPU)",
+            "Distribution per unit: the cash a REIT paid for each unit you own. Here, all of them over 12 months, "
+            "added up.",
+            "Four payouts of 1.82 cents = 7.28 cents a unit over the year."),
     "etf": ("ETF",
             "An exchange-traded fund: one fund that holds many companies, bought and sold like a single share.",
             "One STI ETF unit holds a slice of all 30 companies in the Straits Times Index."),
