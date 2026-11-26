@@ -989,10 +989,18 @@ def get_next_close(conn, ticker, day):
     return (row["price_date"], row["close"]) if row else None
 
 
-def get_trading_days(conn):
-    """Every day SGX traded, as far as our saved prices know: any day with a price for any ticker."""
-    rows = conn.execute("SELECT DISTINCT price_date FROM prices ORDER BY price_date").fetchall()
+def get_trading_days(conn, start=None, end=None):
+    """Every day SGX traded, as far as our saved prices know: any day with a price for any ticker. Optionally only
+    from `start` to `end` ('YYYY-MM-DD', both included): portfolio pages need only their own dates, and a stock with
+    years of saved prices (the "what if" calculator) would otherwise make every page read them all."""
+    rows = conn.execute("SELECT DISTINCT price_date FROM prices WHERE price_date >= COALESCE(?, '0000-00-00') "
+                        "AND price_date <= COALESCE(?, '9999-99-99') ORDER BY price_date", (start, end)).fetchall()
     return [r["price_date"] for r in rows]
+
+
+def get_newest_trading_day(conn):
+    """The newest day with any saved price, or None."""
+    return conn.execute("SELECT MAX(price_date) FROM prices").fetchone()[0]
 
 
 def get_close(conn, ticker, day):

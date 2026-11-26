@@ -110,9 +110,8 @@ def valuation_date(conn, trades, as_of=None):
     """
     if as_of:
         return date.fromisoformat(as_of)
-    days = db.get_trading_days(conn)
     last_trade = trades["trade_date"].max()
-    newest = days[-1] if days else last_trade
+    newest = db.get_newest_trading_day(conn) or last_trade
     return date.fromisoformat(max(newest, last_trade))
 
 

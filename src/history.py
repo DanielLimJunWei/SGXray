@@ -34,8 +34,15 @@ def _price_table(conn, tickers, days, trades=None):
     time-weighted return). Saved closes always win over trade prices.
     """
     columns = {}
+    first = pd.Timestamp(min(days)).date().isoformat() if len(days) else None
     for ticker in tickers:
-        rows = db.get_prices(conn, ticker)
+        # Only from the last close on or before the first day: that one is all the forward fill needs. Before
+        # 26 Nov 2026 every saved close was read, and a stock tried in the "what if" calculator has years of them.
+        start = None
+        if first:
+            start = conn.execute("SELECT MAX(price_date) FROM prices WHERE ticker = ? AND price_date <= ?",
+                                 (ticker, first)).fetchone()[0] or first
+        rows = db.get_prices(conn, ticker, start=start)
         series = pd.Series({pd.Timestamp(r["price_date"]): r["close"] for r in rows}, dtype=float)
         if trades is not None and not series.empty:
             # Only fills gaps in a stock that HAS saved prices. With no saved prices at all, the value
@@ -113,7 +120,8 @@ def _value_history(conn, user_id, as_of=None):
     tickers = sorted(trades["ticker"].unique())
     first = pd.Timestamp(trades["trade_date"].min())
     end = pd.Timestamp(valuation_date(conn, trades, as_of))     # the same end date as the comparisons
-    all_days = sorted({pd.Timestamp(d) for d in db.get_trading_days(conn)})
+    all_days = sorted({pd.Timestamp(d) for d in db.get_trading_days(conn, first.date().isoformat(),
+                                                                       end.date().isoformat())})
     days = pd.DatetimeIndex([d for d in all_days if first <= d <= end])
     if days.empty:
         return pd.DataFrame(columns=COLUMNS)
