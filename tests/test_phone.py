@@ -13,7 +13,7 @@ def menu(page):
 
 def test_every_page_has_a_menu_button_that_opens_the_menu(app):
     c = app.test_client()
-    for path in ("/", "/demo", "/learn", "/learn/first-dollar", "/learn/ready", "/login", "/signup", "/forgot"):
+    for path in ("/", "/demo", "/learn", "/learn/first-dollar", "/learn/ready", "/login", "/signup", "/forgot", "/what-if"):
         page = c.get(path).get_data(as_text=True)
         assert '<button class="nav-menu-btn" type="button" popovertarget="nav-menu">Menu</button>' in page, path
         menu(page)

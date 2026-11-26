@@ -475,7 +475,7 @@ table.data .sub { display: block; font-size: var(--text-xs); }
 .trade-form legend { float: left; width: 100%; }   /* a legend otherwise sits lower than the labels beside it */
 .trade-form legend + * { clear: both; }
 .trade-form .optional { color: var(--color-text-faint); font-size: var(--text-xs); }
-.trade-form input[type="text"], .trade-form input[type="date"], .trade-form select {
+.trade-form input[type="text"], .trade-form input[type="date"], .trade-form input[type="month"], .trade-form select {
   width: 100%; font: var(--text-base)/1.4 var(--font-sans); color: var(--color-text); color-scheme: dark;
   background: rgba(5, 8, 16, 0.72); border: 1px solid rgba(156, 196, 255, 0.18); border-radius: 4px; padding: var(--space-3); }
 .trade-form input[inputmode] { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
@@ -1091,3 +1091,24 @@ details[open]::details-content { block-size: auto; }
 .explain-hint { font-size: var(--text-sm); color: var(--color-text-muted); margin-top: var(--space-3); }
 .explain-hint-icon { display: inline-grid; place-items: center; width: 1.4rem; height: 1.4rem; border: 1px solid var(--color-line-strong);
   border-radius: 999px; font-size: var(--text-xs); color: var(--color-text); vertical-align: 0.05em; }
+
+/* ---------- What if (s12) ---------- */
+.whatif .trade-add { margin-bottom: var(--space-8); }
+.whatif-form .field { grid-column: span 2; }
+.whatif-form .field-stock { grid-column: span 4; }
+@media (max-width: 860px) { .whatif-form .field { grid-column: span 6; } .whatif-form .field-stock { grid-column: span 12; } }
+@media (max-width: 560px) { .whatif-form .field { grid-column: span 12; } }
+.whatif-form input[type="month"] { min-width: 0; }
+.whatif-fee-note { margin: var(--space-4) 0 0; max-width: 46rem; font-size: var(--text-sm); color: var(--color-text-faint); }
+.whatif-chart { display: block; width: 100%; height: auto; }
+.whatif-chart.wi-phone { display: none; }
+@media (max-width: 560px) { .whatif-chart.wi-wide { display: none; } .whatif-chart.wi-phone { display: block; } }
+.wi-money { fill: none; stroke: #7F93C4; stroke-width: 1.5; }                    /* your money: quiet steps */
+.wi-worth { fill: none; stroke: #9CC4FF; stroke-width: 2; stroke-linejoin: round; filter: drop-shadow(0 0 1px rgba(120, 170, 255, 0.22)); }
+.wi-end { fill: #9CC4FF; }
+.wi-mk-money { width: 18px; border-top: 2px solid #7F93C4; }
+.wi-mk-worth { width: 18px; border-top: 2px solid #9CC4FF; }
+.wi-buys { padding: var(--space-4) var(--space-6); }
+.wi-buys summary { cursor: pointer; font-size: var(--text-sm); color: var(--color-glow-soft); width: fit-content; }
+.wi-buys[open] summary { margin-bottom: var(--space-4); }
+.whatif-note { margin-top: var(--space-12); font-size: var(--text-sm); }

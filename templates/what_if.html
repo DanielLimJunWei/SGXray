@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% from "_explain.html" import explain_buttons, explain_hint %}
+{% from "_term.html" import term, term_popups %}
+{% block title %}What if · SGXray{% endblock %}
+
+{#- The "what if" calculator (s12): a monthly plan replayed over real closing prices. Facts about the past, never a
+    prediction or advice. Every figure is a number or a reason in words (the page rule). -#}
+{% macro price(x) %}{{ ("$%.3f" if x < 1 else "$%.2f")|format(x) }}{% endmacro %}
+{% macro month(m) %}{{ (m ~ "-01")|shortdate|replace("1 ", "", 1) }}{% endmacro %}
+{% macro wi_chart(c, cls, title_id) %}
+<svg class="bars-chart whatif-chart {{ cls }}" viewBox="0 0 {{ c.w }} {{ c.h }}" role="img" aria-labelledby="{{ title_id }}">
+  <title id="{{ title_id }}">Money in grew to {{ r.money_in|money }}; worth plus dividends ended at {{ (r.worth + r.dividends_total)|money }} on {{ r.end_date|shortdate }}.</title>
+  {% for gy, label in c.grid %}
+  <line class="sc-grid" x1="{{ c.left }}" x2="{{ c.right }}" y1="{{ gy }}" y2="{{ gy }}"/>
+  <text x="{{ c.left - 8 }}" y="{{ gy + 4 }}" text-anchor="end">{{ label }}</text>
+  {% endfor %}
+  {% for gx, label in c.years %}<text x="{{ gx }}" y="{{ c.bottom + 22 }}" text-anchor="middle">{{ label }}</text>{% endfor %}
+  <path class="wi-money" d="{{ c.money }}"/>
+  <path class="wi-worth" d="{{ c.worth }}"/>
+  <circle class="wi-end" cx="{{ c.end[0] }}" cy="{{ c.end[1] }}" r="4"/>
+</svg>
+{% endmacro %}
+{% block content %}
+<div class="page wrap whatif">
+  <header class="page-head">
+    <p class="eyebrow">What if</p>
+    <h1>What if you'd invested every month?</h1>
+    <p class="muted">Pick a stock, REIT or ETF, an amount and a start month. SGXray replays a monthly plan over the real
+      closing prices since then, the way banks' plans buy, and shows what it would be worth today. It's the past, not
+      a forecast.</p>
+    {{ explain_hint() }}
+  </header>
+
+  <section class="panel trade-add" aria-labelledby="wi-form-title">
+    <h2 id="wi-form-title">Your plan</h2>
+    {% if problems %}<div class="form-error" role="alert">{% for p in problems %}<p>{{ p }}</p>{% endfor %}</div>{% endif %}
+    <form method="get" action="{{ url_for('what_if') }}" class="trade-form whatif-form" novalidate>
+      <div class="field field-stock">
+        <label for="wi-ticker">Stock, REIT or ETF</label>
+        <select id="wi-ticker" name="ticker">
+          {% for group, label in [("etf", "ETFs"), ("stock", "Stocks"), ("reit", "REITs")] %}
+          <optgroup label="{{ label }}">
+            {% for t in tickers if t.type == group %}<option value="{{ t.ticker }}" {% if values.ticker == t.ticker %}selected{% endif %}>{{ t.name }} ({{ t.ticker }})</option>{% endfor %}
+          </optgroup>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field"><label for="wi-amount">Every month (S$)</label>
+        <input id="wi-amount" name="amount" type="text" inputmode="decimal" autocomplete="off" value="{{ '%g'|format(values.amount) if values.amount is not none else '' }}" placeholder="{{ defaults.amount }}"></div>
+      <div class="field"><label for="wi-start">Starting</label>
+        <input id="wi-start" name="start" type="month" min="{{ earliest }}" max="{{ this_month }}" value="{{ values.start or '' }}"></div>
+      <div class="field"><label for="wi-rate">Fee (%)</label>
+        <input id="wi-rate" name="fee_rate" type="text" inputmode="decimal" autocomplete="off" value="{{ '%g'|format(values.fee_rate) if values.fee_rate is not none else '' }}" placeholder="{{ defaults.fee_rate }}"></div>
+      <div class="field"><label for="wi-min">Minimum fee (S$)</label>
+        <input id="wi-min" name="fee_min" type="text" inputmode="decimal" autocomplete="off" value="{{ '%g'|format(values.fee_min) if values.fee_min is not none else '' }}" placeholder="{{ defaults.fee_min }}"></div>
+      <div class="trade-actions"><button class="btn btn-primary" type="submit">Work it out</button></div>
+    </form>
+    <p class="whatif-fee-note">Use your own bank's fee (a minimum of 0 if it has none). It starts as OCBC's Blue Chip
+      Investment Plan: 0.3% or S$5, whichever is higher (0.88% if you're under 30), from OCBC's fees page in November
+      2026. Banks' fees differ and change.</p>
+  </section>
+
+  {% if history_note == "failed" %}
+  <p class="form-note" role="status">SGXray couldn't fetch {{ values.ticker }}'s older prices just now, so this starts from the prices it already has. It'll try again with the next daily update.</p>
+  {% elif history_note == "later" %}
+  <p class="form-note" role="status">That's a lot of new stocks to fetch in an hour, so {{ values.ticker }}'s older prices will come with the next daily update. Until then this starts from the prices SGXray already has.</p>
+  {% endif %}
+
+  {% if not problems %}
+  {% if r is none %}
+  <p class="form-note" role="status">{{ term("no-price") }}: SGXray has no closing prices for {{ values.ticker }} yet. Try again after the next daily update (about 5:45pm).</p>
+  {% elif not r.buys %}
+  <p class="form-note" role="status">No month bought anything: {% if r.skipped and r.skipped[-1][1] == "too-dear" %}one share of {{ values.ticker }} costs more than {{ r.amount|money }} after the fee. Try a bigger amount.{% else %}there are no closing prices from that month on yet.{% endif %}</p>
+  {% else %}
+  {% set first = r.buys[0].date %}
+  <section class="block" aria-labelledby="wi-result-title">
+    <div class="section-head">
+      <h2 id="wi-result-title">{{ r.amount|money }} a month into {{ name or r.ticker }}</h2>
+      {{ explain_buttons(ex.result, "wi-result", "The answer") }}
+    </div>
+    {% if first[:7] > values.start %}
+    <p class="form-note">SGXray's prices for {{ r.ticker }} start in {{ month(first[:7]) }}, so that's the first buy, not {{ month(values.start) }}.</p>
+    {% endif %}
+    <div class="panel figures" aria-label="The answer">
+      <div class="figure">
+        <span class="label">{{ term("money-in", "Money in") }}</span>
+        <span class="value">{{ r.money_in|money }}</span>
+        <span class="note">{{ r.buys|length }} monthly buy{{ "s" if r.buys|length != 1 }}, {{ first|shortdate }} to {{ r.buys[-1].date|shortdate }}, fees included</span>
+      </div>
+      <div class="figure">
+        <span class="label">{{ term("worth", "Worth now") }}</span>
+        <span class="value">{{ r.worth|money }}</span>
+        <span class="note">{{ "{:,}".format(r.shares) }} shares at {{ price(r.end_price) }}, the close on {{ r.end_date|shortdate }}</span>
+      </div>
+      <div class="figure">
+        <span class="label">{{ term("dividend", "Dividends") }}</span>
+        <span class="value">{{ r.dividends_total|money }}</span>
+        <span class="note">{% if r.dividends %}{{ r.dividends|length }} payout{{ "s" if r.dividends|length != 1 }}, paid as cash, not reinvested{% else %}none paid while the plan held it{% endif %}</span>
+      </div>
+      <div class="figure">
+        <span class="label">{{ term("total-profit", "Profit") }}</span>
+        <span class="value {{ r.profit|trend }}">{{ r.profit|arrow }} {{ r.profit|money(signed=True) }}</span>
+        {% if r.days >= 365 and r.yearly == r.yearly %}
+        <span class="note twr"><b class="{{ r.yearly|trend }}">{{ r.yearly|pct }}</b> {{ term("money-weighted", "a year") }}</span>
+        {% else %}
+        <span class="note twr"><b class="{{ r.total_return|trend }}">{{ r.total_return|pct }}</b> {{ term("a-year", "in total") }}, under a year</span>
+        {% endif %}
+        <span class="note">Fees took {{ r.fees|money }}</span>
+      </div>
+    </div>
+  </section>
+
+  {% if chart %}
+  <section class="block" aria-labelledby="wi-chart-title">
+    <div class="section-head">
+      <h2 id="wi-chart-title">Month by month</h2>
+      {{ explain_buttons(ex.chart, "wi-chart", "Month by month") }}
+    </div>
+    <div class="panel chart-card">
+      {{ wi_chart(chart, "wi-wide", "wi-svg-title") }}
+      {{ wi_chart(chart_phone, "wi-phone", "wi-svg-title-phone") }}
+      <ul class="chart-key">
+        <li><span class="mk wi-mk-money" aria-hidden="true"></span>{{ term("money-in", "Money in") }}</li>
+        <li><span class="mk wi-mk-worth" aria-hidden="true"></span>{{ term("worth", "Worth") }} + {{ term("dividend", "dividends") }} so far</li>
+      </ul>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="block" aria-labelledby="wi-buys-title">
+    <div class="section-head">
+      <h2 id="wi-buys-title">Every buy</h2>
+      {{ explain_buttons(ex.buys, "wi-buys", "Every buy") }}
+    </div>
+    <details class="panel wi-buys">
+      <summary>Show all {{ r.buys|length }} buys{% if r.skipped %} and {{ r.skipped|length }} month{{ "s" if r.skipped|length != 1 }} with no buy{% endif %}</summary>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th scope="col">Day</th><th scope="col">{{ term("closing-price", "Close") }}</th><th scope="col">{{ term("shares", "Shares") }}</th><th scope="col">{{ term("commission", "Fee") }}</th><th scope="col">Cost</th></tr></thead>
+          <tbody>
+            {% for b in r.buys %}
+            <tr><td>{{ b.date|shortdate }}</td><td data-label="Close">{{ price(b.price) }}</td><td data-label="Shares">{{ "{:,}".format(b.shares) }}</td><td data-label="Fee">{{ b.fee|money }}</td><td data-label="Cost">{{ b.cost|money }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if r.skipped %}
+      <p class="form-note">No buy in:
+        {% for m, why in r.skipped %}{{ month(m) }} ({{ {"no-price": "no price yet", "no-trading": "no trading within a week of the 1st", "too-dear": "one share cost more than the month's money"}[why] }}){{ "; " if not loop.last else "." }}{% endfor %}</p>
+      {% endif %}
+    </details>
+  </section>
+  {% endif %}
+  {% endif %}
+
+  <p class="muted whatif-note">Educational, not financial advice. Past returns don't predict future ones.</p>
+</div>
+{{ term_popups() }}
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/popups.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/reveal.js') }}" defer></script>{% endblock %}

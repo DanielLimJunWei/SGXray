@@ -48,7 +48,7 @@ def test_the_privacy_notice_and_terms_are_open_to_everyone_and_linked_from_every
     c = app.test_client()
     for path in ("/privacy", "/terms"):
         assert c.get(path).status_code == 200
-    for path in ("/", "/demo", "/learn", "/login", "/news"):
+    for path in ("/", "/demo", "/learn", "/login", "/news", "/what-if"):
         page = c.get(path).get_data(as_text=True)
         assert 'href="/privacy"' in page and 'href="/terms"' in page, path
 

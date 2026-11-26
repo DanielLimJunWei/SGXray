@@ -113,7 +113,7 @@ def test_behind_one_proxy_only_the_address_it_saw_is_used(db_path, monkeypatch):
 
 # ---------- Browser cache ----------
 
-@pytest.mark.parametrize("path", ["/learn", "/learn/dividends", "/demo", "/news", "/"])
+@pytest.mark.parametrize("path", ["/learn", "/learn/dividends", "/demo", "/news", "/", "/what-if"])
 def test_logged_in_every_page_is_kept_out_of_the_browser_cache(app, path):
     c = signed_up(app)
     assert "no-store" in c.get(path).headers.get("Cache-Control", "")

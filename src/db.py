@@ -190,6 +190,14 @@ CREATE TABLE IF NOT EXISTS watchlist (
     PRIMARY KEY (user_id, ticker)        -- each stock once per person
 );
 
+-- Stocks whose price history should reach further back than anyone's trades (s12, the "what if" calculator): the
+-- earliest day wanted. market._history_start reads it, so the older prices and dividends are fetched once and kept.
+-- Shared market data, not about any person.
+CREATE TABLE IF NOT EXISTS history_wanted (
+    ticker TEXT PRIMARY KEY REFERENCES instruments(ticker),
+    since  TEXT NOT NULL                 -- 'YYYY-MM-DD'
+);
+
 -- Which lessons on the Learn page (w313) each person has finished. Only the lesson's short name and
 -- when: nothing about how they answered. Deleted with the account.
 CREATE TABLE IF NOT EXISTS lesson_reads (
@@ -888,6 +896,31 @@ def set_watch_note(conn, user_id, ticker, note):
 def watched_tickers(conn):
     """Every stock on anyone's watchlist, for the daily price update."""
     return [r[0] for r in conn.execute("SELECT DISTINCT ticker FROM watchlist ORDER BY ticker").fetchall()]
+
+
+# ---------- Longer price history (s12) ----------
+
+def history_since(conn, ticker):
+    """The earliest day of history wanted for this ticker ('YYYY-MM-DD'), or None."""
+    row = conn.execute("SELECT since FROM history_wanted WHERE ticker = ?", (ticker,)).fetchone()
+    return row[0] if row else None
+
+
+def history_tickers(conn):
+    """Every stock with a longer history wanted, for the daily price update."""
+    return [r[0] for r in conn.execute("SELECT ticker FROM history_wanted ORDER BY ticker").fetchall()]
+
+
+def want_history(conn, ticker, since):
+    """Asks for this ticker's history to reach back to `since`. Only ever moves the date earlier. True if it did
+    (so a download is worth trying), False if that much was already asked for."""
+    old = history_since(conn, ticker)
+    if old is not None and old <= since:
+        return False
+    with conn:
+        conn.execute("INSERT INTO history_wanted (ticker, since) VALUES (?, ?) "
+                     "ON CONFLICT (ticker) DO UPDATE SET since = excluded.since", (ticker, since))
+    return True
 
 
 # ---------- Prices ----------

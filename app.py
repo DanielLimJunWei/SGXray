@@ -57,6 +57,7 @@ from portfolio import positions, summary  # noqa: E402
 from stocks import stock_history  # noqa: E402
 import trades  # noqa: E402
 import updater  # noqa: E402
+import whatif  # noqa: E402
 
 
 def create_app(db_path=None):
@@ -465,6 +466,35 @@ def create_app(db_path=None):
         # fetched (often none), and only from Yahoo, for a stock already in SGXray's list.
         current_app.config["MARKET_DOWNLOAD"](conn, [ticker])
         return redirect(url_for("watchlist_page", watched=ticker))
+
+    # The "what if" calculator (s12): open to everyone, saves nothing about you. A plain GET form, so a result can be
+    # bookmarked or shared. The first time anyone tries a stock from before SGXray's saved prices, its older history
+    # is fetched from Yahoo once and kept (db.want_history); that's limited per person or network address.
+    @app.get("/what-if")
+    def what_if():
+        conn = get_db()
+        values, problems = whatif.from_args(conn, request.args)
+        result, history_note = None, None
+        if not problems:
+            ticker, start = values["ticker"], values["start"]
+            if whatif.needs_history(conn, ticker, start) and db.want_history(conn, ticker, f"{start}-01"):
+                user = g.get("user")
+                key = "history:" + (f"user:{user['id']}" if user else f"ip:{request.remote_addr or '?'}")
+                if auth.limited(conn, key, whatif.DOWNLOADS_PER_HOUR, 60):
+                    history_note = "later"          # the daily update will fetch it anyway (it's in history_wanted)
+                else:
+                    auth.count(conn, key)
+                    if not current_app.config["MARKET_DOWNLOAD"](conn, [ticker]):
+                        history_note = "failed"
+            result = whatif.simulate(conn, ticker, values["amount"], start, values["fee_rate"] / 100, values["fee_min"])
+        return render_template("what_if.html", values=values, problems=problems, r=result, history_note=history_note,
+                               tickers=db.get_instruments(conn), earliest=whatif.EARLIEST,
+                               this_month=sgtime.today().strftime("%Y-%m"), defaults=whatif.DEFAULT,
+                               ex=whatif.explain(result) if result and result.buys else None,
+                               chart=whatif.chart(result) if result and result.buys else None,
+                               chart_phone=whatif.chart(result, w=400, h=300, left=66, max_years=4)
+                               if result and result.buys else None,
+                               name={i["ticker"]: i["name"] for i in db.get_instruments(conn)}.get(values["ticker"], "")),             (422 if problems else 200)
 
     @app.post("/watchlist/<ticker>/remove")
     @login_required

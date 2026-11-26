@@ -655,3 +655,27 @@ A portfolio with nothing in it (yours, practice, or the demo before it's loaded)
 - **Checked:** every page 200 from the container on PostgreSQL; the demo matches ($21,511.40 worth, +$10,503.78 profit);
   `/data/sgxray.db`, `/.env`, `/app.py`, `/instance/secret_key`, `/gunicorn.conf.py` all 404; no console errors.
 
+
+## 26 Nov 2026: speed, and the "what if" calculator (s12)
+
+- **Speed:** every change tried, with before and after numbers, is in `docs/performance.md`. Kept: holdings,
+  dividends, value history and the STI comparisons worked out once per page view (`portfolio.once_per_page`, about
+  430 ms down to 140 ms per dashboard); the scroll glow's value set on its own layer, not on `<html>` (3.3 ms of style
+  work per scroll frame down to 0.02 ms); the home page's 3D scene limited to one drawing loop (each return to the tab
+  used to add another); explanation boxes fading the moment you close them (they used to stay fully visible for
+  200 ms, then vanish). Measured in real Chrome, scrolling the dashboard has no slow frames.
+- **What if (`/what-if`, `src/whatif.py`):** "$200 a month into the STI ETF since January 2015". Open to everyone,
+  saves nothing about you, a plain GET form so a result can be shared. Replays a monthly plan over saved real closing
+  prices with the same rules as monthly plans (`plans._buy_day`, `plans.buy`): the 1st or the next trading day within
+  a week, the fee first, whole shares only, leftover cash not invested. Splits and bonus issues on their ex-date before
+  that day's buy; dividends on shares held before the ex-date, paid as cash (not reinvested), as your real dividends
+  are counted. Money in = what the shares and fees cost (rounded half a cent up). XIRR from a year of history, the
+  plain total under a year. The fee starts as OCBC's Blue Chip Investment Plan, from OCBC's own fees page (26 Nov
+  2026): 0.3% or S$5, whichever is higher; 0.88% under 30. DBS's FAQ page still says 1.00% for the STI ETF on
+  Invest-Saver but looks old, so no POSB figure is stated as fact; people type their own bank's fee.
+- **Older prices:** a stock whose saved prices start after the chosen month gets them fetched once from Yahoo
+  (`db.history_wanted`, read by `market._history_start`), and the daily update keeps it current. 10 such downloads
+  an hour per person or address; over that, the date is still recorded and the daily update fetches it.
+- **Checked:** the default plan and DBS ($500 a month since 2015, through its 2024 bonus issue) recalculated by a
+  separate script that shares no code with SGXray: identical to the cent, except two months that cost exactly half
+  a cent (e.g. 75 x $2.573 + $5 = $197.975), which SGXray rounds up as everywhere else. Tests: `tests/test_whatif.py`.

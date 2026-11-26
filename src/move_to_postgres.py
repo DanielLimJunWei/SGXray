@@ -21,7 +21,8 @@ import db
 import lessons
 from updater import JOB_SQL
 
-SHARED = ["instruments", "prices", "dividends", "corporate_actions", "announced_dividends", "news", "news_tickers"]
+SHARED = ["instruments", "prices", "dividends", "corporate_actions", "announced_dividends", "news", "news_tickers",
+          "history_wanted"]
 ACCOUNTS = ["users", "plans", "trades", "lesson_reads", "watchlist"]   # in this order: each points at the one before
 NEVER = {"sessions", "login_attempts", "password_resets", "security_log", "jobs"}
 
