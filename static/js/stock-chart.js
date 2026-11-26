@@ -193,7 +193,7 @@
     buttons.forEach(b => b.setAttribute("aria-expanded", String(b.dataset.chart === id)));
     const section = document.getElementById(id);
     draw(section);
-    section.scrollIntoView({ behavior: motionOff() ? "auto" : "smooth", block: "nearest" });
+    section.scrollIntoView({ behavior: motionOff() ? "auto" : "smooth", block: "start" });   // title clear of the top bar (scroll-margin-top)
     section.querySelector("h3").setAttribute("tabindex", "-1");
     section.querySelector("h3").focus({ preventScroll: true });
     section.dataset.opener = from.dataset.chart;

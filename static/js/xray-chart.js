@@ -1,8 +1,9 @@
 // The X-ray chart: your portfolio's line, split into your money, price gains and dividends,
 // with the STI ETF (same money, same days) as a dashed line.
 //
-// The chart shows as it is, finished. The X-ray sweep (the plain line splitting into your money, gains and
-// dividends) runs only when you press Scan. With "reduce motion" on there's nothing to animate, so Scan stays hidden.
+// The chart shows as it is, finished. The X-ray (the plain line splitting into your money, gains and dividends)
+// runs only when you press Scan: the "X-ray in use" lamp lights, the chart tilts back a little in 3D like a film laid
+// on a lightbox, a glowing light tube sweeps across, and the chart settles flat as the layers' names come in. With "reduce motion" on there's nothing to animate, so Scan stays hidden.
 // (Before 26 Nov 2026 it played by itself on first view, with Animation on/off and Replay buttons.)
 (function () {
   const dataEl = document.getElementById("xray-data");
@@ -22,8 +23,20 @@
     return e;
   };
 
+  // ---------- Size ----------
+  // The drawing is 340 units tall and normally 800 wide. On a short window (a laptop at 150% scaling is 1280 x 665)
+  // its height is capped so the whole card fits on screen; instead of shrinking the drawing and leaving empty space
+  // either side, the drawing gets wider: longer lines, the same text size, nothing stretched. Worked out once, on load.
+  // RESERVED is the rest of what must fit, measured: the top bar (64), the section title and lead (78), the numbers
+  // row and the card's padding (138), and a little air.
+  const BASE_W = 800, BASE_H = 340, RESERVED = 296;
+  const boxW = svg.getBoundingClientRect().width || BASE_W;
+  const capH = Math.max(240, innerHeight - RESERVED);
+  const W = boxW * BASE_H / BASE_W > capH ? Math.round(BASE_H * boxW / capH) : BASE_W;
+  svg.setAttribute("viewBox", `0 0 ${W} ${BASE_H}`);
+
   // ---------- Geometry ----------
-  const H = 300, LEFT = 64, RIGHT = 690;
+  const H = 300, LEFT = 64, RIGHT = W - 110;            // 110 on the right for the layers' names
   const money = DATA.map(d => d.money);
   const gainsTop = DATA.map(d => d.money + d.gains);
   const total = DATA.map(d => d.money + d.gains + d.divs);
@@ -93,17 +106,17 @@
   // Layer names at the right edge, pushed apart so they never overlap.
   const last = DATA.length - 1, mid = (a, b) => y((a + b) / 2) + 4;
   const LABELS = [
-    { at: 0.62, text: "dividends", color: "#E3A35E", y: y(total[last]) - 6 },
-    hasSti && { at: 0.85, text: "STI ETF ---", color: "#EEE7DC", y: y(sti[last]) + 4 },
-    { at: 0.5, text: "price gains", color: "#9CC4FF", y: mid(money[last], gainsTop[last]) },
-    { at: 0.3, text: "your money", color: "#9AA3B5", y: mid(0, money[last]) },
+    { at: 0.82, text: "dividends", color: "#E3A35E", y: y(total[last]) - 6 },
+    hasSti && { at: 0.9, text: "STI ETF ---", color: "#EEE7DC", y: y(sti[last]) + 4 },
+    { at: 0.78, text: "price gains", color: "#9CC4FF", y: mid(money[last], gainsTop[last]) },
+    { at: 0.74, text: "your money", color: "#9AA3B5", y: mid(0, money[last]) },
   ].filter(Boolean).sort((a, b) => a.y - b.y);
   LABELS.forEach((l, i) => { if (i && l.y < LABELS[i - 1].y + 16) l.y = LABELS[i - 1].y + 16; });
   LABELS.forEach(l => { l.node = el("text", { x: RIGHT + 10, y: l.y, fill: l.color, opacity: 0 }, l.text); $("xray-labels").append(l.node); });
 
   // Keep chart text about 12px on screen however small the chart gets; on phones the steps act as the key.
   function fitText() {
-    const scale = svg.clientWidth / 800;
+    const scale = svg.clientWidth / W;
     svg.style.setProperty("--svg-text", `${Math.min(20, 12 / scale)}px`);
     card.classList.toggle("narrow", scale < 0.6);
   }
@@ -112,17 +125,22 @@
 
   // ---------- The reveal: p goes 0 -> 1 ----------
   const steps = [...document.querySelectorAll("#xray-steps .step")];
+  const lamp = $("xray-lamp");
   function render(p) {
-    const reveal = Math.min(1, Math.max(0, (p - 0.12) / 0.6));      // the scan sweeps from 12% to 72%
+    // The beam sweeps from 12% to 72% of the time, easing in and out (like a scanner arm starting and stopping)
+    // rather than jumping to full speed.
+    const t = Math.min(1, Math.max(0, (p - 0.12) / 0.6));
+    const reveal = 0.5 - Math.cos(Math.PI * t) / 2;
     const sx = LEFT + (RIGHT - LEFT + 10) * reveal;
-    $("xray-reveal-rect").setAttribute("width", reveal >= 1 ? 800 : sx);
+    $("xray-reveal-rect").setAttribute("width", t >= 1 ? W : sx);
     $("xray-scanline").setAttribute("transform", `translate(${sx} 0)`);
     $("xray-scanline").setAttribute("opacity", reveal > 0 && reveal < 1 ? 1 : 0);
+    if (lamp) lamp.classList.toggle("on", p > 0.02 && p < 0.8);
     $("xray-plain").setAttribute("opacity", 1 - reveal * 0.85);
-    const stiOn = hasSti ? Math.min(1, Math.max(0, (p - 0.78) / 0.12)) : 0;
+    const stiOn = hasSti ? Math.min(1, Math.max(0, (p - 0.84) / 0.1)) : 0;       // the market comes in last
     $("xray-sti").setAttribute("opacity", stiOn);
     $("xray-sti-halo").setAttribute("opacity", stiOn * 0.8);
-    LABELS.forEach(l => l.node.setAttribute("opacity", p >= l.at ? 1 : 0));
+    LABELS.forEach(l => l.node.setAttribute("opacity", Math.min(1, Math.max(0, (p - l.at) / 0.05))));   // fade in
     steps.forEach(s => s.classList.toggle("on", p >= +s.dataset.at));
   }
 
@@ -131,14 +149,23 @@
   const scanBtn = $("xray-scan");
   let frame = null;
 
+  const scanLabel = scanBtn && scanBtn.querySelector("[data-scan-label]");
   function play() {
     cancelAnimationFrame(frame);
-    const start = performance.now(), ms = 4200;
+    const start = performance.now(), ms = 5200;
     scanBtn.disabled = true;
+    if (scanLabel) scanLabel.textContent = "Scanning";
+    // If any of the chart is off screen, bring it into view first, so the whole scan can be seen.
+    const box = card.getBoundingClientRect();
+    if (box.top < 56 || box.bottom > innerHeight) card.scrollIntoView({ block: "center", behavior: "smooth" });
+    card.classList.remove("scanning");
+    void card.offsetWidth;                          // restart the tilt if Scan is pressed again
+    card.classList.add("scanning");
     const tick = now => {
       const p = Math.min(1, (now - start) / ms);
       render(p);
-      if (p < 1) frame = requestAnimationFrame(tick); else scanBtn.disabled = false;
+      if (p < 1) frame = requestAnimationFrame(tick);
+      else { scanBtn.disabled = false; card.classList.remove("scanning"); if (scanLabel) scanLabel.textContent = "Scan"; }
     };
     frame = requestAnimationFrame(tick);
   }

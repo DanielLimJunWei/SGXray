@@ -187,14 +187,16 @@
   <section class="block xray-block" aria-labelledby="xray-title">
     <div class="section-head">
       <h2 id="xray-title">Your portfolio, X-rayed</h2>
-      {#- The chart shows as it is; Scan runs the X-ray sweep on demand (shown only when its script runs and motion is
-          allowed). The icon: a scanner's viewfinder with a heartbeat line, drawn on a 16 grid (draw-svg defaults). -#}
-      <button class="icon-btn scan-btn" type="button" id="xray-scan" hidden><svg viewBox="0 0 16 16" fill="none" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><g class="scan-frame"><polyline points="1.5,5 1.5,1.5 5,1.5"/><polyline points="11,1.5 14.5,1.5 14.5,5"/><polyline points="14.5,11 14.5,14.5 11,14.5"/><polyline points="5,14.5 1.5,14.5 1.5,11"/></g><polyline class="scan-pulse" points="3.5,8 5.75,8 7,5 8.75,11 10,8 12.5,8"/></svg>Scan</button>
+      {#- The chart shows as it is; Scan runs the X-ray exposure on demand (shown only when its script runs and motion
+          is allowed). The icon: a heart with a heartbeat line, drawn on a 16 grid (draw-svg defaults). -#}
+      <button class="icon-btn scan-btn" type="button" id="xray-scan" hidden><svg viewBox="0 0 16 16" fill="none" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path class="scan-heart" d="M8 13.5C5.6 11.9 1.75 9.2 1.75 5.9C1.75 4 3.15 2.5 4.95 2.5C6.3 2.5 7.4 3.3 8 4.45C8.6 3.3 9.7 2.5 11.05 2.5C12.85 2.5 14.25 4 14.25 5.9C14.25 9.2 10.4 11.9 8 13.5Z"/><polyline class="scan-pulse" points="0.75,8.25 4.25,8.25 5.5,6 7,10.75 8.75,4.75 10,8.25 15.25,8.25"/></svg><span data-scan-label>Scan</span></button>
       {% if chart_ex %}{{ explain_buttons(chart_ex, "xray", "X-ray chart") }}{% endif %}
     </div>
     {% set unit = "day" if last.unit == "day" else "month" %}
     <p class="muted lead">One line, split into what's really inside it. Point at any {{ unit }} for its numbers.</p>
     <div class="panel chart-card">
+      {#- Lit while Scan runs, like the "X-ray in use" lamp over a radiology room's door. -#}
+      <p class="xray-lamp" id="xray-lamp" aria-hidden="true"><span class="xray-lamp-dot"></span>X-ray in use</p>
       <div class="chart-tip" id="xray-tip" role="status" aria-live="polite"><b>Latest: {{ last.date|longdate }}</b><div><span>All together</span><span>{{ (last.money + last.gains + last.divs)|money }}</span></div></div>
       <svg id="xray-chart" viewBox="0 0 800 340" role="img" tabindex="0" aria-labelledby="xray-svg-title xray-svg-desc">
         <title id="xray-svg-title">Your portfolio, X-rayed into its layers</title>
@@ -202,8 +204,10 @@
         <defs>
           <pattern id="ht-gains" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1.35" fill="#3A73FF"/></pattern>
           <pattern id="ht-divs" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1.6" fill="#E3A35E"/></pattern>
-          <clipPath id="xray-reveal"><rect id="xray-reveal-rect" x="0" y="0" width="800" height="340"/></clipPath>
-          <linearGradient id="xray-scan" x1="0" x2="1"><stop offset="0" stop-color="#9CC4FF" stop-opacity="0"/><stop offset="1" stop-color="#9CC4FF" stop-opacity="0.35"/></linearGradient>
+          <clipPath id="xray-reveal"><rect id="xray-reveal-rect" x="0" y="0" width="4000" height="340"/></clipPath>
+          <linearGradient id="xray-trail" x1="0" x2="1"><stop offset="0" stop-color="#9CC4FF" stop-opacity="0"/><stop offset="1" stop-color="#9CC4FF" stop-opacity="0.16"/></linearGradient>
+          <linearGradient id="xray-bloom" x1="0" x2="1"><stop offset="0" stop-color="#9CC4FF" stop-opacity="0"/><stop offset="0.5" stop-color="#BFD6FF" stop-opacity="0.38"/><stop offset="1" stop-color="#9CC4FF" stop-opacity="0"/></linearGradient>
+          <linearGradient id="xray-tube" x1="0" x2="1"><stop offset="0" stop-color="#5B86D6"/><stop offset="0.5" stop-color="#F6F9FF"/><stop offset="1" stop-color="#5B86D6"/></linearGradient>
         </defs>
         <g class="axis" id="xray-axis"></g>
         <path id="xray-plain" fill="none" stroke="#EEE7DC" stroke-width="2" stroke-linejoin="round" opacity="0"/>
@@ -216,9 +220,12 @@
         <path id="xray-sti-halo" fill="none" stroke="#0A0F1E" stroke-width="5" stroke-linejoin="round"/>
         <path id="xray-sti" fill="none" stroke="#EEE7DC" stroke-width="1.75" stroke-dasharray="6 5" stroke-linejoin="round"/>
         <g id="xray-labels" class="layer-label"></g>
-        <g id="xray-scanline" opacity="0">
-          <rect x="-40" y="0" width="40" height="300" fill="url(#xray-scan)"/>
-          <line x1="0" x2="0" y1="0" y2="300" stroke="#9CC4FF" stroke-width="1.5"/>
+        <g id="xray-scanline" opacity="0" pointer-events="none">
+          <rect x="-140" y="0" width="140" height="300" fill="url(#xray-trail)"/>
+          <rect x="-26" y="0" width="52" height="300" fill="url(#xray-bloom)"/>
+          <rect x="-3" y="-4" width="6" height="308" rx="3" fill="url(#xray-tube)"/>
+          <ellipse cx="0" cy="-4" rx="10" ry="3" fill="#DCE8FF" opacity="0.5"/>
+          <ellipse cx="0" cy="304" rx="10" ry="3" fill="#DCE8FF" opacity="0.5"/>
         </g>
         <g id="xray-cursor" opacity="0" pointer-events="none">
           <line id="xray-cursor-line" y1="0" y2="300" stroke="#9AA3B5" stroke-width="1"/>
@@ -229,9 +236,9 @@
     </div>
     <ol class="steps" id="xray-steps">
       <li class="step" data-at="0"><b><span class="key key-line"></span>{{ term("all-together", "Your total") }}</b><span class="muted">The light-blue line: shares + dividends, {{ (last.money + last.gains + last.divs)|money }}. On its own it doesn't say why.</span></li>
-      <li class="step" data-at="0.2"><b><span class="key key-money"></span>{{ term("money-in", "Your own money") }}</b><span class="muted">{{ last.money|money }} put in. Not profit.</span></li>
-      <li class="step" data-at="0.45"><b><span class="key key-gains"></span>{{ term("price-gains", "Price gains") }} · <span class="key key-divs"></span>{{ term("dividend", "dividends") }}</b><span class="muted">{{ last.gains|money(signed=True) }} from prices, {{ last.divs|money }} paid in cash.</span></li>
-      {% if last.sti is not none %}<li class="step" data-at="0.8"><b><span class="key key-dash"></span>The market: {{ term("sti-etf", "STI ETF") }}</b><span class="muted">Same money in the STI ETF: {{ last.sti|money }}.</span></li>{% endif %}
+      <li class="step" data-at="0.74"><b><span class="key key-money"></span>{{ term("money-in", "Your own money") }}</b><span class="muted">{{ last.money|money }} put in. Not profit.</span></li>
+      <li class="step" data-at="0.78"><b><span class="key key-gains"></span>{{ term("price-gains", "Price gains") }} · <span class="key key-divs"></span>{{ term("dividend", "dividends") }}</b><span class="muted">{{ last.gains|money(signed=True) }} from prices, {{ last.divs|money }} paid in cash.</span></li>
+      {% if last.sti is not none %}<li class="step" data-at="0.9"><b><span class="key key-dash"></span>The market: {{ term("sti-etf", "STI ETF") }}</b><span class="muted">Same money in the STI ETF: {{ last.sti|money }}.</span></li>{% endif %}
     </ol>
     {% if periods %}
     <div class="periods" aria-labelledby="periods-title" data-detail>

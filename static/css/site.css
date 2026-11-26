@@ -333,6 +333,11 @@ footer.site p + p { margin-top: var(--space-2); }
 /* ---------- The X-ray chart ---------- */
 .chart-card { position: relative; padding: var(--space-6) var(--space-6) var(--space-4); }
 .chart-card svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
+/* The X-ray chart's height on a short window is handled in xray-chart.js: it widens its drawing to fill the card. */
+/* The same for a stock's price chart (viewBox 800 x 320): measured, its title (32), the 52-week range (20), the card's
+   price row and padding (125), the top bar (64) and gaps. */
+.stock-svg { max-width: max(320px, calc((100vh - 290px) * 800 / 320)); margin-inline: auto; }
+.stock-chart { scroll-margin-top: 4rem; }       /* opening a chart scrolls to it: its title lands clear of the top bar */
 /* No outline round a chart when it's clicked: the cursor line and the readout above show where you are. */
 .chart-card svg:focus, .chart-card svg:focus-visible { outline: none; }
 .axis text { font-family: var(--font-mono); font-size: var(--svg-text, 12px); fill: var(--color-text-faint); }
@@ -1129,9 +1134,29 @@ details[open]::details-content { block-size: auto; }
 
 /* ---------- Scan (the X-ray chart's sweep, on demand) ---------- */
 .scan-btn { display: inline-flex; align-items: center; gap: var(--space-2); }
-.scan-btn svg { width: 14px; height: 14px; }
-.scan-btn .scan-frame { stroke: var(--color-glow-soft); }       /* a scanner's viewfinder */
-.scan-btn .scan-pulse { stroke: var(--color-lamp); }            /* a heartbeat line: the one warm accent */
+.scan-btn svg { width: 16px; height: 16px; }
+.scan-btn .scan-heart { stroke: var(--color-glow-soft); }       /* a heart */
+.scan-btn .scan-pulse { stroke: var(--color-text); }            /* its heartbeat, as on a hospital monitor */
+/* While Scan runs the chart leans back a little, like a film laid on a lightbox, and settles flat at the end.
+   Only transform changes, so the browser moves it without repainting. */
+.chart-card { transform-origin: 50% 100%; }
+.chart-card.scanning { animation: xray-tilt 5.2s cubic-bezier(0.33, 0, 0.2, 1) both; }
+@keyframes xray-tilt {
+  0% { transform: none; }
+  14% { transform: perspective(1600px) rotateX(9deg) translateY(-6px) scale(0.985); }
+  70% { transform: perspective(1600px) rotateX(9deg) translateY(-6px) scale(0.985); }
+  88% { transform: perspective(1600px) rotateX(-1deg) translateY(1px) scale(1.002); }
+  100% { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .chart-card.scanning { animation: none; } }
+/* The "X-ray in use" lamp: off (hidden) at rest; lit amber with a soft glow while Scan runs. */
+.xray-lamp { position: absolute; top: -10px; right: var(--space-6); z-index: 2;   /* on the frame edge, like a sign over a door */
+  margin: 0; display: inline-flex;
+  align-items: center; gap: var(--space-2); padding: 3px var(--space-2); border: 1px solid rgba(227, 163, 94, 0.45);
+  border-radius: 3px; font: 500 10px/1 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--color-lamp); background: rgba(10, 15, 30, 0.85); opacity: 0; transition: opacity var(--duration-fast) var(--ease-out); }
+.xray-lamp.on { opacity: 1; box-shadow: 0 0 14px rgba(227, 163, 94, 0.28); }
+.xray-lamp-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-lamp); box-shadow: 0 0 6px var(--color-lamp); }
 .scan-btn:disabled { opacity: 0.6; cursor: progress; }
 
 /* REIT health (s17): one card per REIT; the bar runs 0-60% with MAS's 50% limit marked and 45-50% tinted. */

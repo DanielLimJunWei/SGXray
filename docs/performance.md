@@ -18,3 +18,11 @@ database, 10 views after one warm-up, the median taken, old and new code run in 
 | Only write the glossary popups a page uses | 0.6 ms of the dashboard's ~210 ms server time; 33 of 84 popups unused, about 4 KB after compression | not done | Too small to matter. Closed popups cost the browser nothing to lay out or draw, and live price updates would then need to add popups the fresh page brings. |
 | Minified Three.js | 2.1 MB uncompressed locally | not done | three 0.186.1's official package has no minified build, and minifying it ourselves would break the "official files, unchanged" check (`tests/test_vendor.py`). Render compresses every response with Brotli or gzip, which shrinks it most of the way. |
 | Nav bar without its background blur, and without the grain, glow and lamp layers | no slow frames with or without them, in real Chrome | not done | They cost nothing measurable, so they stay. |
+
+## 26 Nov 2026: the X-ray scan, redone
+
+| Idea | Baseline -> Result | Verdict | Why |
+|---|---|---|---|
+| Film grain (an SVG noise filter), dimming and a flash while scanning | first scan: one 316 ms frame | reverted | Chrome draws the noise the first time it's shown, and it looked murky |
+| Warm the grain while idle | first scan's worst frame 316 -> 83 ms | reverted with the grain | not needed once the grain went |
+| A 3D tilt of the chart card (CSS transform only) and a glowing light tube | two scans: median 16.7 ms (60 fps), worst 49 and 33 ms, one frame over 20 ms each (real Chrome, demo) | kept | transform is moved by the graphics card without repainting |
