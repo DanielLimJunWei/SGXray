@@ -61,7 +61,9 @@ def copy(src_path, accounts=False):
                             [tuple(r[c] for c in cols) for r in rows])
             counts[table] = len(rows)
         # New rows must get ids after the copied ones: move each auto-numbered id past the highest copied.
-        for table in ("users", "trades", "plans", "news"):
+        # Every copied table with an auto-numbered id (26 Nov 2026: this was a fixed list, and goals and feedback,
+        # added later, were missing from it: their first new row would have clashed with a copied id).
+        for table in [t for t in SHARED + ACCOUNTS if "id" in db.columns(dst, t)]:
             dst.execute(f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), "
                         f"COALESCE((SELECT MAX(id) FROM {table}), 0) + 1, false)")
     src.close()

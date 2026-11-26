@@ -60,6 +60,12 @@ def old_sqlite(tmp_path, monkeypatch):
     real = db.create_user(conn, "ann@example.com", "scrypt:x")
     db.add_trade(conn, real, "D05.SI", "2025-01-02", "BUY", 1, 30.0, 0.0)
     db.log_security_event(conn, "login", real, "1.2.3.4")
+    db.add_goal(conn, real, "worth", 5000, None, "2026-11-01")
+    db.add_feedback(conn, real, "/learn", "Nice", None)
+    # A table from an older version (the watchlist, removed 26 Nov 2026), still in the file with a row.
+    conn.execute("CREATE TABLE watchlist (user_id INTEGER, ticker TEXT, added_on TEXT, note TEXT)")
+    conn.execute("INSERT INTO watchlist VALUES (?, 'D05.SI', '2026-11-26', 'old')", (real,))
+    conn.commit()
     conn.close()
     return path
 
@@ -100,6 +106,11 @@ def test_moving_with_accounts_keeps_each_trade_with_its_owner(old_sqlite, monkey
     conn = db.get_connection()
     ann = db.get_user_by_email(conn, "ann@example.com")["id"]
     assert [tuple(r) for r in conn.execute("SELECT ticker, quantity FROM trades WHERE user_id = ?", (ann,))] == [("D05.SI", 1)]
+    assert counts["goals"] == 1 and counts["feedback"] == 1 and "watchlist" not in counts
+    # New goals and feedback get ids after the copied ones (the id counters moved on for every table, not a fixed list).
+    db.add_goal(conn, ann, "dividends", 300, None, "2026-11-26")
+    db.add_feedback(conn, ann, "/", "Again", None)
+    assert len(db.get_goals(conn, ann)) == 2 and len(db.get_feedback(conn)) == 2
     conn.close()
 
 
