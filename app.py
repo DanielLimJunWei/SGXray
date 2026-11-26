@@ -57,6 +57,7 @@ from portfolio import positions, summary  # noqa: E402
 from stocks import stock_history  # noqa: E402
 import trades  # noqa: E402
 import checkin  # noqa: E402
+import feedback as feedback_mod  # noqa: E402
 import goals as goals_mod  # noqa: E402
 import updater  # noqa: E402
 import whatif  # noqa: E402
@@ -468,6 +469,25 @@ def create_app(db_path=None):
         # fetched (often none), and only from Yahoo, for a stock already in SGXray's list.
         current_app.config["MARKET_DOWNLOAD"](conn, [ticker])
         return redirect(url_for("watchlist_page", watched=ticker))
+
+    # Feedback (s06): open to everyone, linked from every page's footer. Form token, and PER_HOUR messages an hour per
+    # person or network address. Only ever saved, never emailed or shown to anyone else.
+    @app.route("/feedback", methods=["GET", "POST"])
+    def feedback_page():
+        user = g.get("user")
+        if request.method == "GET":
+            return render_template("feedback.html", values={"page": feedback_mod.clean_page(request.args.get("from"))},
+                                   problems=[], sent=request.args.get("sent") == "1")
+        conn = get_db()
+        values, problems = feedback_mod.from_form(request.form, logged_in=user is not None)
+        key = "feedback:" + (f"user:{user['id']}" if user else f"ip:{request.remote_addr or '?'}")
+        if not problems and auth.limited(conn, key, feedback_mod.PER_HOUR, 60):
+            problems = ["That's a lot of feedback in an hour. Thank you! Try again a little later."]
+        if problems:
+            return render_template("feedback.html", values=values, problems=problems, sent=False), 422
+        auth.count(conn, key)
+        db.add_feedback(conn, user["id"] if user else None, values["page"], values["message"], values["reply_to"])
+        return redirect(url_for("feedback_page", sent=1))
 
     # The monthly check-in (s11): one calm look at a month, from your own portfolio. ?month=YYYY-MM picks another
     # month; anything not in your history falls back to the latest complete one.

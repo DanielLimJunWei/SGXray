@@ -81,7 +81,7 @@
     {% block footer_extra %}{% endblock %}
     <p>SGX closing prices and dividends from {{ price_source }}, checked after each day's close and re-checked for a week. End of day, not live.</p>
     <p>SGXray is educational, not financial advice. Past returns don't predict future ones. Not affiliated with Singapore Exchange Limited; company, fund and index names belong to their owners.</p>
-    <p><a href="{{ url_for('privacy') }}">Privacy</a> · <a href="{{ url_for('terms') }}">Terms</a></p>
+    <p><a href="{{ url_for('privacy') }}">Privacy</a> · <a href="{{ url_for('terms') }}">Terms</a> · <a href="{{ url_for('feedback_page', **({'from': request.path} if request.endpoint != 'feedback_page' else {})) }}">Feedback</a></p>
   </div>
 </footer>
 <script src="{{ url_for('static', filename='js/ambient.js') }}" defer></script>

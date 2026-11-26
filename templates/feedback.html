@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Feedback · SGXray{% endblock %}
+
+{#- Feedback (s06): one box, saved for the person who runs SGXray to read. -#}
+{% block content %}
+<div class="page wrap feedback">
+  <header class="page-head">
+    <p class="eyebrow">Feedback</p>
+    <h1>Tell us what you think</h1>
+    <p class="muted">Something confusing, a number that looks wrong, or something you'd like SGXray to do? Every note is
+      read. Please don't include passwords, account numbers or anything you wouldn't put on a postcard.</p>
+  </header>
+
+  {% if sent %}
+  <p class="form-ok" role="status">Thank you: your note was sent.</p>
+  {% endif %}
+
+  <section class="panel trade-add" aria-labelledby="fb-title">
+    <h2 id="fb-title">Your note</h2>
+    {% if problems %}<div class="form-error" role="alert">{% for p in problems %}<p>{{ p }}</p>{% endfor %}</div>{% endif %}
+    <form method="post" action="{{ url_for('feedback_page') }}" class="trade-form feedback-form" novalidate>
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      {% if values.page %}<input type="hidden" name="page" value="{{ values.page }}">{% endif %}
+      <div class="field field-note"><label for="fb-message">What's on your mind <span class="optional">up to 2,000 characters</span></label>
+        <textarea id="fb-message" name="message" rows="6" maxlength="2000" required>{{ values.get("message", "") }}</textarea></div>
+      {% if not current_user %}
+      <div class="field field-note"><label for="fb-reply">Your email <span class="optional">optional, only if you'd like a reply</span></label>
+        <input id="fb-reply" name="reply_to" type="email" autocomplete="email" maxlength="254" value="{{ values.get('reply_to') or '' }}"></div>
+      {% endif %}
+      <div class="trade-actions"><button class="btn btn-primary" type="submit">Send</button></div>
+    </form>
+    <p class="whatif-fee-note">{% if current_user %}It's saved with your account, so a reply can go to your account's email.
+      {% else %}It's saved with the email you give, if any.{% endif %}{% if values.page %} It also notes the page you came
+      from ({{ values.page }}).{% endif %} Feedback is kept a year, then deleted. <a href="{{ url_for('privacy') }}">Privacy notice</a></p>
+  </section>
+</div>
+{% endblock %}

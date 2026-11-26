@@ -703,3 +703,12 @@ A portfolio with nothing in it (yours, practice, or the demo before it's loaded)
   service (w417). Checked on the demo for October 2026: $24,720.00 to $23,543.30 (210 DBS, 1,200 CICT, 1,000 STI
   ETF, recalculated from the raw trades and closes), -4.76% against the STI ETF's -5.53%, DBS the biggest move
   ($77.50 to $73.13, -5.64%). Tests: `tests/test_checkin.py`.
+
+## 26 Nov 2026: feedback (s06)
+
+- **`/feedback` (`src/feedback.py`), linked from every page's footer as "Feedback":** one text box (up to 2,000
+  characters), plus an optional reply email when you're not logged in (logged in, your account is the reply
+  address). Saved in `feedback` with the page it came from (only a path on this site is ever recorded). Read it with
+  `python src/feedback.py` (times in UTC), remove one with `python src/feedback.py delete <number>`. Not emailed until
+  the email service (w417). Five notes an hour per person or network address; kept a year (`db.prune`); in "Download
+  my data" and deleted with the account. Tests: `tests/test_feedback.py`.

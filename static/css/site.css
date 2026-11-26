@@ -475,7 +475,7 @@ table.data .sub { display: block; font-size: var(--text-xs); }
 .trade-form legend { float: left; width: 100%; }   /* a legend otherwise sits lower than the labels beside it */
 .trade-form legend + * { clear: both; }
 .trade-form .optional { color: var(--color-text-faint); font-size: var(--text-xs); }
-.trade-form input[type="text"], .trade-form input[type="date"], .trade-form input[type="month"], .trade-form select {
+.trade-form input[type="text"], .trade-form input[type="date"], .trade-form input[type="month"], .trade-form input[type="email"], .trade-form textarea, .trade-form select {
   width: 100%; font: var(--text-base)/1.4 var(--font-sans); color: var(--color-text); color-scheme: dark;
   background: rgba(5, 8, 16, 0.72); border: 1px solid rgba(156, 196, 255, 0.18); border-radius: 4px; padding: var(--space-3); }
 .trade-form input[inputmode] { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
@@ -1141,3 +1141,7 @@ details[open]::details-content { block-size: auto; }
 .checkin-more h2 { margin-bottom: var(--space-4); }
 .checkin-list { margin: 0; padding-left: var(--space-5); display: grid; gap: var(--space-3); color: var(--color-text-muted); }
 .checkin-list b { font-family: var(--font-mono); font-weight: 500; }
+
+/* ---------- Feedback (s06) ---------- */
+.feedback-form textarea { resize: vertical; min-height: 8rem; line-height: 1.55; }
+.feedback-form .trade-actions { grid-column: span 12; max-width: 16rem; }

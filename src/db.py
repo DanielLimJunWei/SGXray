@@ -202,6 +202,17 @@ CREATE TABLE IF NOT EXISTS goals (
 );
 CREATE INDEX IF NOT EXISTS idx_goals_user ON goals (user_id);
 
+-- Feedback (s06): what a visitor typed in the feedback form, the page they came from, and their account if they were
+-- logged in (or an email they chose to give, if not). Kept a year, then deleted; deleted with the account.
+CREATE TABLE IF NOT EXISTS feedback (
+    id         {ID},
+    user_id    INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    page       TEXT CHECK (page IS NULL OR length(page) <= 200),
+    message    TEXT NOT NULL CHECK (length(message) BETWEEN 1 AND 2000),
+    reply_to   TEXT CHECK (reply_to IS NULL OR length(reply_to) <= 254),
+    created_at TEXT NOT NULL DEFAULT {NOW}
+);
+
 -- Stocks whose price history should reach further back than anyone's trades (s12, the "what if" calculator): the
 -- earliest day wanted. market._history_start reads it, so the older prices and dividends are fetched once and kept.
 -- Shared market data, not about any person.
@@ -536,6 +547,7 @@ def clear_login_attempts(conn, key):
 
 SESSION_DAYS = 7               # a session ends 7 days after login, however active it is
 SECURITY_LOG_DAYS = 180        # security events are kept for 6 months, then deleted (they hold network addresses)
+FEEDBACK_DAYS = 365            # feedback is kept a year, then deleted
 ATTEMPT_DAYS = 1               # failed-login counts only matter for minutes; keep them a day at most
 
 
@@ -624,12 +636,13 @@ def use_password_reset(conn, token, user_id, password_hash):
 
 def prune(conn):
     """Deletes what SGXray no longer needs: expired sessions, old failed-login counts, old security
-    events, and reset links a day after they expire."""
+    events, feedback over a year old, and reset links a day after they expire."""
     with conn:
         conn.execute("DELETE FROM password_resets WHERE expires_at < ?", (utc_text(days=-1),))
         conn.execute("DELETE FROM sessions WHERE created_at < ?", (utc_text(days=-SESSION_DAYS),))
         conn.execute("DELETE FROM login_attempts WHERE attempted_at < ?", (utc_text(days=-ATTEMPT_DAYS),))
         conn.execute("DELETE FROM security_log WHERE at < ?", (utc_text(days=-SECURITY_LOG_DAYS),))
+        conn.execute("DELETE FROM feedback WHERE created_at < ?", (utc_text(days=-FEEDBACK_DAYS),))
 
 
 def log_security_event(conn, event, user_id=None, ip=None):
@@ -851,6 +864,8 @@ def export_data(conn, user_id):
         "lessons_read": rows("SELECT lesson, read_at AS read_at_utc FROM lesson_reads WHERE user_id = ? ORDER BY read_at",
                              user_id),
         "goals": rows("SELECT kind, target, by_month, created_on FROM goals WHERE user_id = ? ORDER BY id", user_id),
+        "feedback": rows("SELECT page, message, created_at AS sent_at_utc FROM feedback WHERE user_id = ? ORDER BY id",
+                         user_id),
         "watchlist": rows("SELECT ticker, added_on, note FROM watchlist WHERE user_id = ? ORDER BY added_on, ticker",
                           user_id),
         "security_log": rows("SELECT event, ip AS network_address, at AS at_utc FROM security_log WHERE user_id = ? "
@@ -860,7 +875,7 @@ def export_data(conn, user_id):
 
 def delete_user(conn, user_id):
     """Deletes an account and everything in it, at once and for good: its trades, notes, monthly plans, practice
-    portfolio (the hidden twin and its trades), lessons read, watchlist, goals, sessions, reset links and security log entries
+    portfolio (the hidden twin and its trades), lessons read, watchlist, goals, feedback, sessions, reset links and security log entries
     (all ON DELETE CASCADE), plus the failed-login counts kept under its email. True if an account was deleted."""
     with conn:
         user = conn.execute("SELECT email FROM users WHERE id = ? AND practice_of IS NULL", (user_id,)).fetchone()
@@ -931,6 +946,29 @@ def remove_goal(conn, user_id, goal_id):
     """Removes one of this person's own goals only. True if it was there."""
     with conn:
         cur = conn.execute("DELETE FROM goals WHERE id = ? AND user_id = ?", (goal_id, user_id))
+    return cur.rowcount > 0
+
+
+# ---------- Feedback (s06) ----------
+
+FEEDBACK_MAX = 2000
+
+
+def add_feedback(conn, user_id, page, message, reply_to=None):
+    with conn:
+        conn.execute("INSERT INTO feedback (user_id, page, message, reply_to) VALUES (?, ?, ?, ?)",
+                     (user_id, page, message, reply_to))
+
+
+def get_feedback(conn, limit=50):
+    """The newest feedback first, with the sender's account email if they were logged in."""
+    return conn.execute("SELECT f.id, f.page, f.message, f.reply_to, f.created_at, u.email AS account FROM feedback f "
+                        "LEFT JOIN users u ON u.id = f.user_id ORDER BY f.id DESC LIMIT ?", (limit,)).fetchall()
+
+
+def delete_feedback(conn, feedback_id):
+    with conn:
+        cur = conn.execute("DELETE FROM feedback WHERE id = ?", (feedback_id,))
     return cur.rowcount > 0
 
 
