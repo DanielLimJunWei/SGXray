@@ -1132,3 +1132,12 @@ details[open]::details-content { block-size: auto; }
 .goal-form .trade-actions { grid-column: span 12; max-width: 16rem; }
 @media (max-width: 860px) { .goal-form .field, .goal-form .field-stock { grid-column: span 12; } }
 .dash-goals { margin-bottom: var(--space-12); }
+
+/* ---------- Monthly check-in (s11) ---------- */
+.checkin-pick { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin: 0 0 var(--space-8); font-size: var(--text-sm); color: var(--color-text-muted); }
+.checkin-pick select { font: var(--text-sm)/1.4 var(--font-sans); color: var(--color-text); color-scheme: dark; background: rgba(5, 8, 16, 0.72);
+  border: 1px solid rgba(156, 196, 255, 0.18); border-radius: 4px; padding: var(--space-2) var(--space-3); }
+.checkin-more { margin-top: var(--space-12); }
+.checkin-more h2 { margin-bottom: var(--space-4); }
+.checkin-list { margin: 0; padding-left: var(--space-5); display: grid; gap: var(--space-3); color: var(--color-text-muted); }
+.checkin-list b { font-family: var(--font-mono); font-weight: 500; }

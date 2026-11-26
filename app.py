@@ -56,6 +56,7 @@ from performance import compare, per_stock  # noqa: E402
 from portfolio import positions, summary  # noqa: E402
 from stocks import stock_history  # noqa: E402
 import trades  # noqa: E402
+import checkin  # noqa: E402
 import goals as goals_mod  # noqa: E402
 import updater  # noqa: E402
 import whatif  # noqa: E402
@@ -467,6 +468,25 @@ def create_app(db_path=None):
         # fetched (often none), and only from Yahoo, for a stock already in SGXray's list.
         current_app.config["MARKET_DOWNLOAD"](conn, [ticker])
         return redirect(url_for("watchlist_page", watched=ticker))
+
+    # The monthly check-in (s11): one calm look at a month, from your own portfolio. ?month=YYYY-MM picks another
+    # month; anything not in your history falls back to the latest complete one.
+    @app.get("/check-in")
+    @login_required
+    def check_in():
+        conn, uid = get_db(), g.user["id"]
+        all_months = checkin.months(conn, uid)
+        if not all_months:
+            return render_template("checkin.html", r=None, months=[], month=None)
+        latest = value_history(conn, uid).index[-1].date().isoformat()
+        month = request.args.get("month", "")[:7]
+        if month not in all_months:
+            month = checkin.default_month(all_months, latest)
+        r = checkin.summary(conn, uid, month)
+        names = {i["ticker"]: i["name"] for i in db.get_instruments(conn)}
+        return render_template("checkin.html", r=r, months=all_months, month=month, names=names,
+                               ex=checkin.explain(r) if r else None, upcoming=checkin.coming_up(conn, uid),
+                               goals=goals_mod.progress(conn, uid), latest=latest)
 
     # Goals (s16): your own goals only. Every query has your user id in it; a goal number in the address that isn't
     # yours is a 404.

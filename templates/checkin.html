@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% from "_explain.html" import explain_buttons, explain_hint %}
+{% from "_term.html" import term, term_popups %}
+{% from "_goals.html" import goal_list with context %}
+{% block title %}Monthly check-in · SGXray{% endblock %}
+
+{#- The monthly check-in (s11): one calm look a month. Every figure is a number or a reason in words. -#}
+{% macro month_name(m) %}{{ (m ~ "-01")|longdate|replace("1 ", "", 1) }}{% endmacro %}
+{% block content %}
+<div class="page wrap checkin">
+  <header class="page-head">
+    <p class="eyebrow">Monthly check-in</p>
+    {% if r %}
+    <h1>{{ month_name(r.month) }}{% if r.so_far %}, so far{% endif %}</h1>
+    <p class="muted">How your portfolio did over the month, in one look. Once a month is enough: daily moves mostly
+      mean nothing for a long-term investor.</p>
+    {{ explain_hint() }}
+    {% else %}
+    <h1>Your month</h1>
+    {% endif %}
+  </header>
+
+  {% if not r %}
+  <p class="panel goal-empty">There's nothing to check in on yet: add your first trade and your first month shows here.
+    <a href="{{ url_for('trades_page') }}">Add a trade</a></p>
+  {% else %}
+  {% if months|length > 1 %}
+  <form method="get" action="{{ url_for('check_in') }}" class="checkin-pick">
+    <label for="ci-month">Another month</label>
+    <select id="ci-month" name="month">
+      {% for m in months %}<option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ month_name(m) }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-ghost compact" type="submit">Show</button>
+  </form>
+  {% endif %}
+
+  <section class="block" aria-labelledby="ci-title">
+    <div class="section-head">
+      <h2 id="ci-title">{% if r.from_day %}From {{ r.from_day|shortdate }} to {{ r.to_day|shortdate }}{% else %}From your first trade to {{ r.to_day|shortdate }}{% endif %}</h2>
+      {{ explain_buttons(ex, "ci", "Your month") }}
+    </div>
+    <div class="panel figures" aria-label="Your month">
+      <div class="figure">
+        <span class="label">{{ term("worth", "Worth") }} at the end</span>
+        {% if r.missing_price %}<span class="value">{{ term("no-price", "No price yet") }}</span>
+        {% else %}<span class="value">{{ r.worth_end|money }}</span>{% endif %}
+        <span class="note">{% if r.from_day %}From {{ r.worth_start|money }} at the last close before the month{% else %}You started this month{% endif %}</span>
+      </div>
+      <div class="figure">
+        <span class="label">{{ term("money-in", "Money you added") }}</span>
+        <span class="value">{{ r.added|money(signed=True) }}</span>
+        <span class="note">{% if r.buys or r.sells %}{{ r.buys }} buy{{ "s" if r.buys != 1 }}, {{ r.sells }} sale{{ "s" if r.sells != 1 }}{% else %}No trades this month{% endif %}</span>
+      </div>
+      <div class="figure">
+        <span class="label">The market's move</span>
+        {% if r.missing_price %}<span class="value">{{ term("no-price", "No price yet") }}</span>
+        {% else %}<span class="value {{ r.market|trend }}">{{ r.market|arrow }} {{ r.market|money(signed=True) }}</span>{% endif %}
+        <span class="note">The change in worth that wasn't your own money</span>
+      </div>
+      <div class="figure">
+        <span class="label">{{ term("time-weighted", "Your investments") }}</span>
+        {% if r.you == r.you %}
+        <span class="value {{ r.you|trend }}">{{ r.you|pct }}</span>
+        <span class="note twr">{{ term("sti-etf", "STI ETF") }} <b class="{{ r.sti|trend }}">{{ r.sti|pct }}</b> over the same days</span>
+        {% else %}
+        <span class="value">{{ term("no-price", "No price yet") }}</span>
+        <span class="note">Fills in with the next closing prices</span>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <section class="block checkin-more" aria-labelledby="ci-more-title">
+    <h2 id="ci-more-title">What happened</h2>
+    <ul class="checkin-list">
+      <li>{{ term("dividend", "Dividends") }}: {% if r.paid %}{{ r.dividends|money }}, from {% for p in r.paid %}{{ p.ticker }} ({{ p.total|money }}, {{ term("ex-date", "ex-date") }} {{ p.ex_date|shortdate }}){{ ", " if not loop.last else "." }}{% endfor %}{% else %}none with an ex-date this month.{% endif %}</li>
+      <li>Biggest price move: {% if r.mover %}{{ names.get(r.mover[0], r.mover[0]) }} ({{ r.mover[0] }}) <b class="{{ r.mover[1]|trend }}">{{ r.mover[1]|pct }}</b>, from close to close.{% else %}none to compare yet.{% endif %}</li>
+    </ul>
+  </section>
+
+  <section class="block checkin-more" aria-labelledby="ci-next-title">
+    <h2 id="ci-next-title">In the next month</h2>
+    {% if upcoming %}
+    <ul class="checkin-list">
+      {% for u in upcoming %}
+      <li>{{ names.get(u.ticker, u.ticker) }} ({{ u.ticker }}): {{ term("ex-date", "ex-date") }} {{ u.expected|shortdate }}, {% if u.total == u.total %}about {{ u.total|money }}{% else %}{{ term("not-announced", "amount not announced yet") }}{% endif %} · {{ term(u.status) }}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">No dividends expected in the 31 days after {{ latest|shortdate }}.</p>
+    {% endif %}
+  </section>
+
+  {% if goals %}
+  <section class="block checkin-more" aria-labelledby="ci-goals-title">
+    <h2 id="ci-goals-title">Your goals, now</h2>
+    {{ goal_list(goals) }}
+  </section>
+  {% endif %}
+  {% endif %}
+
+  <p class="muted whatif-note">Educational, not financial advice. Past returns don't predict future ones.</p>
+</div>
+{{ term_popups() }}
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/popups.js') }}" defer></script>{% endblock %}

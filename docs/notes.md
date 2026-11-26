@@ -691,3 +691,15 @@ A portfolio with nothing in it (yours, practice, or the demo before it's loaded)
   the dashboard's $106.30 a year ÷ 12; worth $2,300.00 = Worth now. Tests: `tests/test_goals.py`.
 - **Prices read from your own first day only:** the calculator saves years of prices, and every portfolio page used
   to read all of them (`docs/performance.md`).
+
+## 26 Nov 2026: monthly check-in (s11)
+
+- **`/check-in` (`src/checkin.py`), linked from your dashboard:** one calendar month in one look, from the dashboard's
+  own day-by-day history: worth at the last close before the month and at the month's last close, split into money
+  you added (buys minus sales) and the market's move (the rest); dividends with an ex-date in the month; how the
+  investments did that month time-weighted, next to the STI ETF over the same days; the biggest price move among
+  what you held (allowing for splits); dividends expected in the 31 days after the latest close; goals now. Opens on
+  the latest complete month; any month since your first trade can be picked. Email delivery waits for the email
+  service (w417). Checked on the demo for October 2026: $24,720.00 to $23,543.30 (210 DBS, 1,200 CICT, 1,000 STI
+  ETF, recalculated from the raw trades and closes), -4.76% against the STI ETF's -5.53%, DBS the biggest move
+  ($77.50 to $73.13, -5.64%). Tests: `tests/test_checkin.py`.
