@@ -34,3 +34,12 @@ def test_the_home_scene_never_runs_two_drawing_loops():
     src = (SCRIPTS[0].parent / "home-scene.js").read_text(encoding="utf-8")
     assert src.count("requestAnimationFrame(") == 1
     assert "function drawSoon() { if (!booked) booked = requestAnimationFrame(frame); }" in src
+
+
+def test_a_box_starts_closing_the_moment_you_close_it():
+    """A closed box needs a look to fade to (see-through), or it stays fully there for the whole transition and
+    then vanishes: 217 ms of nothing after Close, measured 26 Nov 2026. Closing is also quicker than opening."""
+    css = (SCRIPTS[0].parent.parent / "css" / "site.css").read_text(encoding="utf-8")
+    assert ".pop { opacity: 0; scale: 0.97;" in css
+    assert ".pop:popover-open { opacity: 1; scale: 1; transition-duration: var(--duration-fast); }" in css
+    assert "opacity calc(var(--duration-fast) * 0.6)" in css

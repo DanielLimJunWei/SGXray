@@ -125,3 +125,23 @@ def test_a_new_trade_shows_on_the_next_page_view(conn, user_id):
     trade(conn, user_id, "D05.SI", "2024-04-15", "BUY", 50, 32.00)
     with portfolio.shared_results():
         assert positions(conn, user_id)["shares"].tolist() == [150]  # nothing kept between page views
+
+
+def test_the_comparison_and_history_are_shared_as_copies_too(conn, user_id, monkeypatch):
+    import history
+    import performance
+    import portfolio
+    trade(conn, user_id, "D05.SI", "2024-03-15", "BUY", 100, 31.47)
+    for t, a, b in [("D05.SI", 31.47, 36.0), ("ES3.SI", 3.20, 3.50)]:
+        db.save_prices(conn, t, [("2024-03-15", a), ("2025-03-14", b)])
+    calls = []
+    real = performance._compare
+    monkeypatch.setattr(performance, "_compare", lambda *a: calls.append(a) or real(*a))
+    with portfolio.shared_results():
+        first = performance.compare(conn, user_id)
+        first["you"] = 99.0                                          # a section scribbling on its copy...
+        again = performance.compare(conn, user_id)
+        history.value_history(conn, user_id)
+        h = history.value_history(conn, user_id)
+    assert len(calls) == 1 and again["you"] != 99.0                 # ...once, and nobody else sees it
+    assert "sti_withdrawals" in h.attrs                               # the copy keeps the table's notes

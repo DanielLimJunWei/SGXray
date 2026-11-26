@@ -20,7 +20,7 @@ from adjust import shares_after
 from fmt import money
 from market import BENCHMARK
 from performance import benchmark, valuation_date
-from portfolio import dividends_received, trades_frame
+from portfolio import dividends_received, once_per_page, trades_frame
 
 COLUMNS = ["value", "net_invested", "dividends", "profit", "sti_value", "sti_dividends", "sti_profit"]
 
@@ -99,6 +99,11 @@ def _running_total(amounts_by_day, days):
 
 
 def value_history(conn, user_id, as_of=None):
+    """Your value day by day (see _value_history), worked out once per page view."""
+    return once_per_page("value_history", conn, user_id, as_of, lambda: _value_history(conn, user_id, as_of))
+
+
+def _value_history(conn, user_id, as_of=None):
     """One row per trading day from your first trade: value, money in, dividends, profit,
     and the same for the STI ETF version. A day where a held stock has no price yet is NaN."""
     trades = trades_frame(conn, user_id, as_of)

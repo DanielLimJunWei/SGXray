@@ -394,9 +394,14 @@ code { font: 0.92em/1.5 var(--font-mono); color: var(--color-glow-soft); }
   border-radius: var(--radius-lg); font-size: var(--text-sm); line-height: 1.65;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45); }
 .pop:popover-open { display: flex; }
-/* Opening: from 97% and see-through to full size, never from nothing. */
-.pop { transition: opacity var(--duration-fast) var(--ease-out), scale var(--duration-fast) var(--ease-out),
-  display var(--duration-fast) allow-discrete, overlay var(--duration-fast) allow-discrete; }
+/* Opening: from 97% and see-through to full size, never from nothing (200 ms).
+   Closing: starts fading the moment you close it, and quicker (120 ms). Before 26 Nov 2026 there was no closed
+   look to fade to, so a closed box stayed fully there for 200 ms and then vanished: the "slight delay".
+   With "reduce motion" on, --duration-fast is 0, so both are instant. */
+.pop { opacity: 0; scale: 0.97;
+  transition: opacity calc(var(--duration-fast) * 0.6) var(--ease-out), scale calc(var(--duration-fast) * 0.6) var(--ease-out),
+    display calc(var(--duration-fast) * 0.6) allow-discrete, overlay calc(var(--duration-fast) * 0.6) allow-discrete; }
+.pop:popover-open { opacity: 1; scale: 1; transition-duration: var(--duration-fast); }
 @starting-style { .pop:popover-open { opacity: 0; scale: 0.97; } }
 .pops-js .pop { position: fixed; inset: auto; margin: 0; }                  /* placed and moved by popups.js */
 .pop::backdrop { background: transparent; }

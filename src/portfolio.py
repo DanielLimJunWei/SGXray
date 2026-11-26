@@ -13,6 +13,7 @@ Uses the AVERAGE COST method, which Singapore brokers use:
 """
 
 import contextvars
+import copy
 import sys
 from contextlib import contextmanager
 
@@ -48,14 +49,17 @@ def shared_results():
         _shared.reset(token)
 
 
-def _once(name, conn, user_id, as_of, work):
+def once_per_page(name, conn, user_id, as_of, work):
+    """`work()`'s answer, worked out once per page view for this user and date (see shared_results). Every caller
+    gets its own copy: a table's copy, or a full copy of anything else (a dict of numbers, say)."""
     memo = _shared.get()
     if memo is None:
         return work()
     key = (name, id(conn), user_id, as_of)
     if key not in memo:
         memo[key] = work()
-    return memo[key].copy()
+    answer = memo[key]
+    return answer.copy() if isinstance(answer, pd.DataFrame) else copy.deepcopy(answer)
 
 
 def trades_frame(conn, user_id, as_of=None):
@@ -105,7 +109,7 @@ def _average_cost(trades, actions=()):
 
 def dividends_received(conn, user_id, as_of=None):
     """Every dividend you were entitled to (see _dividends_received), worked out once per page view."""
-    return _once("dividends", conn, user_id, as_of, lambda: _dividends_received(conn, user_id, as_of))
+    return once_per_page("dividends", conn, user_id, as_of, lambda: _dividends_received(conn, user_id, as_of))
 
 
 def _dividends_received(conn, user_id, as_of=None):
@@ -153,7 +157,7 @@ def _dividends_received(conn, user_id, as_of=None):
 
 def positions(conn, user_id, as_of=None):
     """Your holdings, one row per stock (see _positions), worked out once per page view."""
-    return _once("positions", conn, user_id, as_of, lambda: _positions(conn, user_id, as_of))
+    return once_per_page("positions", conn, user_id, as_of, lambda: _positions(conn, user_id, as_of))
 
 
 def _positions(conn, user_id, as_of=None):

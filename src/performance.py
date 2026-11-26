@@ -24,7 +24,7 @@ import pandas as pd
 
 import db
 from market import BENCHMARK
-from portfolio import dividends_received, positions, summary, trades_frame
+from portfolio import dividends_received, once_per_page, positions, summary, trades_frame
 
 DAYS_PER_YEAR = 365.0      # Excel's XIRR uses 365-day years too
 MIN_DAYS = 30              # under this much history, no comparison is shown: a few weeks is mostly noise
@@ -264,6 +264,11 @@ def _price_on(conn, ticker, day):
 # ---------- Both together ----------
 
 def compare(conn, user_id, as_of=None):
+    """Your XIRR against the benchmark's (see _compare), worked out once per page view."""
+    return once_per_page("compare", conn, user_id, as_of, lambda: _compare(conn, user_id, as_of))
+
+
+def _compare(conn, user_id, as_of=None):
     """Your XIRR and the benchmark's XIRR for the same cash flows, over the same dates.
 
     Under MIN_DAYS of history there's no yearly rate (too_short): turning a week into a
@@ -302,6 +307,11 @@ def compare(conn, user_id, as_of=None):
 
 
 def per_stock(conn, user_id, as_of=None):
+    """Each stock against the STI ETF (see _per_stock), worked out once per page view."""
+    return once_per_page("per_stock", conn, user_id, as_of, lambda: _per_stock(conn, user_id, as_of))
+
+
+def _per_stock(conn, user_id, as_of=None):
     """Which stock helped or held back your result: each one against the STI ETF.
 
     For each stock, its own money in and out is replayed into the STI ETF, exactly like the
