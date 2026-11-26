@@ -151,6 +151,19 @@ nav.site ul a:hover, nav.site ul a[aria-current="page"] { color: var(--color-tex
 .film::after { content: ""; position: absolute; top: -1px; right: -1px; width: 14px; height: 14px; pointer-events: none;
   background: linear-gradient(225deg, #0d1528 50%, rgba(156, 196, 255, 0.22) 50%, rgba(156, 196, 255, 0.22) calc(50% + 1px), transparent calc(50% + 1px)); }   /* the film's notched corner */
 .lightbox.dim .film-image { opacity: 0.35; }
+/* The golden button goes down with the light while a password is typed, so nothing on screen draws the eye; once
+   something is typed, pointing at it lets a little of its gold back, as dim as it can be and still be found. A dark
+   layer over the gold (under the text) fades in and out; gradients can't fade, a layer's opacity can. */
+.lightbox .auth-form .btn-primary { position: relative; isolation: isolate;
+  transition: color 450ms var(--ease-out), box-shadow 450ms var(--ease-out); }
+.lightbox .auth-form .btn-primary::after { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit;
+  background: #0B1224; opacity: 0; transition: opacity 450ms var(--ease-out); }
+.lightbox.dim .auth-form .btn-primary { color: rgba(238, 231, 220, 0.55); box-shadow: inset 0 0 0 1px rgba(227, 163, 94, 0.22); }
+.lightbox.dim .auth-form .btn-primary::after { opacity: 0.86; }
+.lightbox.dim.typed .auth-form .btn-primary:hover { color: rgba(238, 231, 220, 0.85);
+  box-shadow: inset 0 0 0 1px rgba(227, 163, 94, 0.4), 0 0 14px rgba(227, 163, 94, 0.14); }
+.lightbox.dim.typed .auth-form .btn-primary:hover::after { opacity: 0.62; }
+@media (prefers-reduced-motion: reduce) { .lightbox .auth-form .btn-primary, .lightbox .auth-form .btn-primary::after { transition: none; } }
 .film-body { padding: var(--space-6) var(--space-6) var(--space-6); display: grid; gap: var(--space-4); }
 .film-body h1 { font-size: var(--text-2xl); }
 .film-lede { color: var(--color-text-muted); font-size: var(--text-sm); margin-top: calc(-1 * var(--space-2)); }
@@ -170,6 +183,15 @@ nav.site ul a:hover, nav.site ul a[aria-current="page"] { color: var(--color-tex
   .film-scan { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .lightbox::before, .film-image { transition: none; } }
+/* A short window (a laptop at 150% scaling is 1280 x 665): the button sat below the screen's edge (Log in at 668,
+   Create account at 762). Less room above the box, a shorter film picture and slightly tighter spacing inside put the
+   whole form on screen. Tall windows and phones keep the full size. */
+@media (max-height: 760px) {
+  .page.lightbox-page { padding-top: var(--space-24); padding-bottom: var(--space-6); }   /* beats the later .page rule */
+  .film-image { height: 60px; margin-top: var(--space-2); }
+  .film-body { padding: var(--space-4) var(--space-6) var(--space-5); gap: var(--space-3); }
+  .film .auth-form .btn { margin-top: var(--space-3); }
+}
 
 /* ---------- Buttons ---------- */
 .btn { display: inline-flex; align-items: center; gap: var(--space-2); font: 500 var(--text-sm)/1 var(--font-sans);
