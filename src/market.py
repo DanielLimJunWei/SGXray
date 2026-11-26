@@ -56,12 +56,16 @@ def last_complete_day(now=None):
 
 def _history_start(conn, ticker, end):
     """Where a ticker's history starts: its first trade, or for the benchmark, the first trade
-    in anything, so "you vs the STI" covers the whole portfolio."""
+    in anything, so "you vs the STI" covers the whole portfolio. A watched stock (s14) always has at least
+    a year, for its 52-week range and dividend yield, even if someone traded it only last week."""
     if ticker == BENCHMARK:
         first = db.get_first_trade_date(conn)
     else:
         first = db.get_first_trade_date(conn, ticker)
-    return date.fromisoformat(first) if first else end - timedelta(days=DEFAULT_HISTORY_DAYS)
+    start = date.fromisoformat(first) if first else end - timedelta(days=DEFAULT_HISTORY_DAYS)
+    if ticker in db.watched_tickers(conn):
+        start = min(start, end - timedelta(days=DEFAULT_HISTORY_DAYS))
+    return start
 
 
 def _next_weekday(day):

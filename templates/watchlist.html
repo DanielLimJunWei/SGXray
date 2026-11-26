@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% from "_explain.html" import explain_buttons %}
+{% from "_term.html" import term, term_popups %}
+{% block title %}Watchlist · SGXray{% endblock %}
+
+{#- The watchlist (s14): stocks you're researching. Facts to look at, never advice. Every cell is a number or a reason
+    in words (the page rule); an empty list says why in one full-width row. -#}
+{#- SGX prices: 3 decimals under $1 (penny stocks move in 0.1 cent steps), 2 from $1 up, as brokers show them. -#}
+{% macro price(x) %}{{ ("$%.3f" if x < 1 else "$%.2f")|format(x) }}{% endmacro %}
+{% block content %}
+<div class="page wrap watch">
+  <header class="page-head">
+    <p class="eyebrow">Your {{ term("watchlist", "watchlist") }}</p>
+    <h1>Stocks you're watching</h1>
+    <p class="muted">Keep an eye on a stock before deciding anything: SGXray follows its closing price, how it has moved
+      since you added it, its year's range and its dividends. Only you can see this list.</p>
+  </header>
+
+  {% if flash == "watched" %}<p class="form-ok" role="status">{{ flash_name }} is on your watchlist.</p>
+  {% elif flash == "already" %}<p class="form-note" role="status">{{ flash_name }} was already on your watchlist.</p>
+  {% elif flash == "removed" %}<p class="form-ok" role="status">{{ flash_name }} is off your watchlist.</p>{% endif %}
+  {% if note_flash == "saved" %}<p class="form-ok" role="status">Note saved.</p>
+  {% elif note_flash == "cleared" %}<p class="form-ok" role="status">Note removed.</p>
+  {% elif note_flash == "long" %}<p class="form-error" role="alert">That note is longer than 280 characters, so it wasn't saved. Shorten it a little and save again.</p>{% endif %}
+
+  <section class="block" aria-labelledby="watch-title">
+    <div class="section-head">
+      <h2 id="watch-title">Your watchlist</h2>
+      {{ explain_buttons(ex, "watch", "Your watchlist") }}
+    </div>
+    <div class="panel table-wrap">
+      <table class="data">
+        <thead>
+          <tr><th scope="col">{{ term("ticker", "Stock") }}</th><th scope="col">{{ term("closing-price", "Latest close") }}</th>
+              <th scope="col">{{ term("since-added", "Since you added it") }}</th><th scope="col">{{ term("week52", "52-week range") }}</th>
+              <th scope="col">{{ term("yield", "Dividend yield") }}</th></tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td><b>{{ r.ticker }}</b><span class="sub">{{ r.name }}</span>
+              <span class="sub">added {{ r.added_on|longdate }} · {% if r.owned %}you own {{ "{:,}".format(r.owned) }} shares{% else %}{{ term("not-owned", "you don't own any") }}{% endif %}</span>
+              {% if r.note %}<span class="watch-note">{{ r.note }}</span>{% endif %}
+              <details class="note-edit">
+                <summary>{{ "Edit note" if r.note else "Add a note" }}</summary>
+                <form method="post" action="{{ url_for('watch_note', ticker=r.ticker) }}" class="note-form">
+                  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+                  <label class="visually-hidden" for="wnote-{{ loop.index }}">Why I'm watching {{ r.ticker }}</label>
+                  <input id="wnote-{{ loop.index }}" name="note" type="text" maxlength="280" autocomplete="off" value="{{ r.note }}" placeholder="Why I'm watching it, in a line">
+                  <button class="btn btn-ghost compact" type="submit">Save note</button>
+                  {% if r.note %}<span class="note-hint">Empty the box and save to remove the note.</span>{% endif %}
+                </form>
+              </details>
+              <form method="post" action="{{ url_for('unwatch_stock', ticker=r.ticker) }}" class="watch-remove">
+                <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+                <button class="link-btn" type="submit" aria-label="Remove {{ r.ticker }} from your watchlist">Remove</button>
+              </form>
+            </td>
+            {% if r.close is none %}
+            <td data-label="Latest close">{{ term("no-price") }}</td>
+            {% else %}
+            <td data-label="Latest close">{{ price(r.close) }}<span class="sub">{{ r.close_date|longdate }}</span></td>
+            {% endif %}
+            {% if r.since is not none %}
+            <td data-label="Since you added it" class="{{ r.since|trend }}">{{ r.since|pct }}<span class="sub">from {{ r.since_from|longdate }}</span></td>
+            {% else %}
+            <td data-label="Since you added it">{{ term(r.since_reason) }}</td>
+            {% endif %}
+            {% if r.range %}
+            <td data-label="52-week range">
+              <span class="range-bar watch-range" role="img" aria-label="{{ price(r.range.now) }} is {{ (r.range.position * 100)|round|int }}% of the way from the 52-week low to the high"><svg class="range-mark" aria-hidden="true" focusable="false"><circle cx="{{ (r.range.position * 100)|round(1) }}%" cy="50%" r="4"/></svg></span>
+              {{ price(r.range.low) }} to {{ price(r.range.high) }}
+              <span class="sub">now {{ "{:.0%}".format(r.range.position) }} of the way up{% if not r.range.full_year %}, under a year of prices{% endif %}</span>
+            </td>
+            {% else %}
+            <td data-label="52-week range">{{ term(r.range_reason) }}</td>
+            {% endif %}
+            {% if r.close is none %}
+            <td data-label="Dividend yield">{{ term("no-price") }}</td>
+            {% elif r.payouts_12m %}
+            <td data-label="Dividend yield">{{ r.yield|pct(False) }}<span class="sub">${{ "%g"|format(r.per_share_12m) }} a share, {{ r.payouts_12m }} payout{{ "s" if r.payouts_12m != 1 }} in 12 months</span>
+              {% if r.next_ex %}<span class="sub">next {{ term("ex-date", "ex-date") }} {{ r.next_ex|longdate }}, {{ term("announced", "announced") }}</span>{% endif %}</td>
+            {% else %}
+            <td data-label="Dividend yield">0.00%<span class="sub">no dividend in the last 12 months</span>
+              {% if r.next_ex %}<span class="sub">next {{ term("ex-date", "ex-date") }} {{ r.next_ex|longdate }}, {{ term("announced", "announced") }}</span>{% endif %}</td>
+            {% endif %}
+          </tr>
+          {% else %}
+          <tr class="empty-row"><td colspan="5">Nothing on your watchlist yet. Add a stock below to start following it.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel trade-add" id="watch-add" aria-labelledby="watch-add-title">
+    <h2 id="watch-add-title">Add a stock to watch</h2>
+    {% if full %}
+    <p class="muted">Your watchlist has {{ watch_max }} stocks, the most it holds. Remove one you've finished researching to add another.</p>
+    {% else %}
+    {% if problem %}<p class="form-error" role="alert">{{ problem }}</p>{% endif %}
+    <form method="post" action="{{ url_for('watch_stock') }}" class="trade-form" novalidate>
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <div class="field field-stock">
+        <label for="w-ticker">Stock, REIT or ETF</label>
+        <select id="w-ticker" name="ticker" required>
+          <option value="" {% if not values.get("ticker") %}selected{% endif %} disabled>Choose one</option>
+          {% for group, label in [("stock", "Stocks"), ("reit", "REITs"), ("etf", "ETFs")] %}
+          <optgroup label="{{ label }}">
+            {% for t in tickers if t.type == group %}<option value="{{ t.ticker }}" {% if values.get("ticker") == t.ticker %}selected{% endif %}>{{ t.name }} ({{ t.ticker }})</option>{% endfor %}
+          </optgroup>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field field-note"><label for="w-note">Why I'm watching it <span class="optional">optional</span></label>
+        <input id="w-note" name="note" type="text" maxlength="280" autocomplete="off" value="{{ values.get('note', '') }}" placeholder="Steady dividends? Read their annual report first"></div>
+      <div class="trade-actions"><button class="btn btn-primary" type="submit">Add to watchlist</button></div>
+    </form>
+    <details class="lookup" id="lookup"{% if lookup_error or lookup_code %} open{% endif %}>
+      <summary>Can't find the stock in the list?</summary>
+      <form method="post" action="{{ url_for('lookup_ticker') }}#lookup" class="lookup-form">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <input type="hidden" name="then" value="watchlist">
+        <label for="lookup-code">SGX code <span class="optional">like C6L for Singapore Airlines. It's on SGX's site and in your broker's app</span></label>
+        <div class="lookup-row">
+          <input id="lookup-code" name="code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="16" value="{{ lookup_code or '' }}" placeholder="C6L">
+          <button class="btn btn-ghost" type="submit">Look it up</button>
+        </div>
+        {% if lookup_error %}<p class="form-error" role="alert">{{ lookup_error }}</p>{% endif %}
+      </form>
+    </details>
+    {% endif %}
+  </section>
+</div>
+{{ term_popups() }}
+<script src="{{ url_for('static', filename='js/lookup.js') }}" defer></script>
+{% endblock %}

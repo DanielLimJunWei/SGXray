@@ -22,7 +22,7 @@ import lessons
 from updater import JOB_SQL
 
 SHARED = ["instruments", "prices", "dividends", "corporate_actions", "announced_dividends", "news", "news_tickers"]
-ACCOUNTS = ["users", "plans", "trades", "lesson_reads"]          # in this order: each points at the one before
+ACCOUNTS = ["users", "plans", "trades", "lesson_reads", "watchlist"]   # in this order: each points at the one before
 NEVER = {"sessions", "login_attempts", "password_resets", "security_log", "jobs"}
 
 
@@ -43,6 +43,9 @@ def copy(src_path, accounts=False):
     with dst:                                                       # all of it, or none of it
         for table in SHARED + ACCOUNTS:
             cols = sorted(db.columns(dst, table) & {r["name"] for r in src.execute(f"PRAGMA table_info({table})")})
+            if not cols:                                            # an older file without this table: nothing to copy
+                counts[table] = 0
+                continue
             sql = f"SELECT {', '.join(cols)} FROM {table}"
             args = ()
             if table in ACCOUNTS and users is not None:             # shared data only: just the demo's rows

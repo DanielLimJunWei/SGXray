@@ -180,6 +180,16 @@ CREATE TABLE IF NOT EXISTS news_tickers (
 );
 CREATE INDEX IF NOT EXISTS idx_news_tickers_ticker ON news_tickers (ticker);
 
+-- Stocks you're researching but may not own (s14): the stock, the day you added it (so the page can say how it has
+-- moved since) and an optional line on why. Deleted with the account; included in "Download my data".
+CREATE TABLE IF NOT EXISTS watchlist (
+    user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    ticker   TEXT    NOT NULL REFERENCES instruments(ticker),
+    added_on TEXT    NOT NULL,           -- 'YYYY-MM-DD' Singapore date
+    note     TEXT CHECK (note IS NULL OR length(note) <= 280),
+    PRIMARY KEY (user_id, ticker)        -- each stock once per person
+);
+
 -- Which lessons on the Learn page (w313) each person has finished. Only the lesson's short name and
 -- when: nothing about how they answered. Deleted with the account.
 CREATE TABLE IF NOT EXISTS lesson_reads (
@@ -820,6 +830,8 @@ def export_data(conn, user_id):
                                  if twin and twin["fee_rate"] is not None else None)},
         "lessons_read": rows("SELECT lesson, read_at AS read_at_utc FROM lesson_reads WHERE user_id = ? ORDER BY read_at",
                              user_id),
+        "watchlist": rows("SELECT ticker, added_on, note FROM watchlist WHERE user_id = ? ORDER BY added_on, ticker",
+                          user_id),
         "security_log": rows("SELECT event, ip AS network_address, at AS at_utc FROM security_log WHERE user_id = ? "
                              "ORDER BY at", user_id),
     }
@@ -827,7 +839,7 @@ def export_data(conn, user_id):
 
 def delete_user(conn, user_id):
     """Deletes an account and everything in it, at once and for good: its trades, notes, monthly plans, practice
-    portfolio (the hidden twin and its trades), lessons read, sessions, reset links and security log entries
+    portfolio (the hidden twin and its trades), lessons read, watchlist, sessions, reset links and security log entries
     (all ON DELETE CASCADE), plus the failed-login counts kept under its email. True if an account was deleted."""
     with conn:
         user = conn.execute("SELECT email FROM users WHERE id = ? AND practice_of IS NULL", (user_id,)).fetchone()
@@ -837,6 +849,45 @@ def delete_user(conn, user_id):
         conn.execute("DELETE FROM users WHERE practice_of = ?", (user_id,))      # the practice twin, explicitly
         conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
     return True
+
+
+# ---------- Watchlist (s14) ----------
+
+WATCH_MAX = 50                               # stocks per person: plenty for research, and a cap on the daily download
+
+
+def get_watchlist(conn, user_id):
+    """This person's watched stocks, earliest added first. user_id comes from the session, never the form."""
+    return conn.execute("SELECT ticker, added_on, note FROM watchlist WHERE user_id = ? ORDER BY added_on, ticker",
+                        (user_id,)).fetchall()
+
+
+def watch(conn, user_id, ticker, added_on, note=None):
+    """Adds a stock to this person's watchlist. False if it's already there (it keeps its first date)."""
+    with conn:
+        cur = conn.execute("INSERT INTO watchlist (user_id, ticker, added_on, note) VALUES (?, ?, ?, ?) "
+                           "ON CONFLICT (user_id, ticker) DO NOTHING", (user_id, ticker, added_on, note or None))
+    return cur.rowcount == 1
+
+
+def unwatch(conn, user_id, ticker):
+    """Removes a stock from this person's watchlist only. True if it was there."""
+    with conn:
+        cur = conn.execute("DELETE FROM watchlist WHERE user_id = ? AND ticker = ?", (user_id, ticker))
+    return cur.rowcount == 1
+
+
+def set_watch_note(conn, user_id, ticker, note):
+    """Changes (or with "" removes) the note on one of this person's watched stocks. True if it was there."""
+    with conn:
+        cur = conn.execute("UPDATE watchlist SET note = ? WHERE user_id = ? AND ticker = ?",
+                           (note or None, user_id, ticker))
+    return cur.rowcount == 1
+
+
+def watched_tickers(conn):
+    """Every stock on anyone's watchlist, for the daily price update."""
+    return [r[0] for r in conn.execute("SELECT DISTINCT ticker FROM watchlist ORDER BY ticker").fetchall()]
 
 
 # ---------- Prices ----------

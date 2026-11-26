@@ -33,6 +33,7 @@
     {% if request.endpoint != "home" %}<a class="nav-link" href="{{ url_for('home') }}">Home</a>{% endif %}
     {% if current_user %}
     <a class="nav-link" href="{{ url_for('portfolio') }}">Your portfolio</a>
+    <a class="nav-link" href="{{ url_for('watchlist_page') }}">Watchlist</a>
     <a class="nav-link" href="{{ url_for('practice_page') }}">Practice</a>
     <a class="nav-link" href="{{ url_for('learn') }}">Learn</a>
     <a class="nav-link" href="{{ url_for('market_today') }}">News</a>
@@ -54,6 +55,7 @@
     <a href="{{ url_for('home') }}"{% if here == "home" %} aria-current="page"{% endif %}>Home</a>
     {% if current_user %}
     <a href="{{ url_for('portfolio') }}"{% if here in ("portfolio", "trades_page", "edit_trade", "delete_trade") %} aria-current="page"{% endif %}>Your portfolio</a>
+    <a href="{{ url_for('watchlist_page') }}"{% if here == "watchlist_page" %} aria-current="page"{% endif %}>Watchlist</a>
     <a href="{{ url_for('practice_page') }}"{% if here in ("practice_page", "practice_trades", "practice_reset") %} aria-current="page"{% endif %}>Practice</a>
     <a href="{{ url_for('learn') }}"{% if here in ("learn", "lesson", "ready") %} aria-current="page"{% endif %}>Learn</a>
     <a href="{{ url_for('market_today') }}"{% if here == "market_today" %} aria-current="page"{% endif %}>News</a>
