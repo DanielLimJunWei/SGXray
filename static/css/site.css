@@ -1052,28 +1052,6 @@ details[open]::details-content { block-size: auto; }
 @media (max-width: 900px) { .div-cal { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .div-cal { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
-/* Watchlist (s14): the same 52-week bar as the dashboard, on its own line in a table cell; your note under the name. */
-.watch-range { display: block; width: 8rem; margin: var(--space-2) 0 var(--space-2); }
-.watch .data td { vertical-align: top; }
-.watch .data td .sub { white-space: normal; max-width: 14rem; margin-left: auto; }   /* notes wrap, numbers don't */
-.watch .data td:first-child .sub { margin-left: 0; max-width: 22rem; }
-.watch .data td:first-child { white-space: normal; min-width: 16rem; }
-.watch-remove { display: inline-block; margin-left: var(--space-3); }
-.watch .note-edit { display: inline-block; }
-.watch-note { display: block; margin-top: var(--space-2); color: var(--color-text); font-size: var(--text-sm); max-width: 22rem; }
-/* Phones: each watched stock becomes a card, every number with its own label, instead of a table to scroll sideways. */
-@media (max-width: 560px) {
-  .watch .data thead { display: none; }
-  .watch .data, .watch .data tbody, .watch .data tr, .watch .data td { display: block; width: 100%; }
-  .watch .data tr { padding: var(--space-3) 0; border-bottom: 1px solid var(--color-line); }
-  .watch .data td { text-align: left; border: 0; padding: var(--space-1) var(--space-4); }
-  .watch .data td[data-label]::before { content: attr(data-label); display: block; font: 500 var(--text-xs)/1.4 var(--font-sans);
-    color: var(--color-text-faint); text-transform: none; }
-  .watch .data td .sub { margin-left: 0; max-width: none; }
-  .watch .data td:first-child { min-width: 0; }
-  .watch-range { width: 100%; max-width: 14rem; }
-}
-
 /* ⓘ on its own (no "What does this mean?" words beside it): a round button. An invisible margin around it makes the
    tap area 44px on a phone (32px + 6px each side; 28px + 8px when compact) without making it look bigger.
    The one-line hint at the top of each page says what it does. */

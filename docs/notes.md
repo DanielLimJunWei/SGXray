@@ -712,3 +712,14 @@ A portfolio with nothing in it (yours, practice, or the demo before it's loaded)
   `python src/feedback.py` (times in UTC), remove one with `python src/feedback.py delete <number>`. Not emailed until
   the email service (w417). Five notes an hour per person or network address; kept a year (`db.prune`); in "Download
   my data" and deleted with the account. Tests: `tests/test_feedback.py`.
+
+## 26 Nov 2026: charts shown as they are; the watchlist removed
+
+- **Charts:** the portfolio's charts (the X-ray chart, each stock's price chart, dividends by year) show as they are,
+  finished. The Animation on/off and Replay buttons are gone; the X-ray chart has one **Scan** button (SGXray's X mark)
+  that runs the sweep on demand. With "reduce motion" on there's nothing to animate, so Scan stays hidden.
+- **Watchlist removed (s14):** SGXray is used alongside broker apps (Tiger, moomoo), whose watchlists have live prices
+  and alerts; a separate one here invited the daily price-watching the monthly check-in is meant to replace, and cost a
+  daily download per watched stock. The page, nav link, code, glossary terms, styles and tests are gone; the table is
+  no longer created. An older database file keeps its `watchlist` table as it was (nothing reads or writes it): the
+  local `data/sgxray.db` has one row in it, left untouched.

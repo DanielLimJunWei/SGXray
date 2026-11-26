@@ -440,35 +440,6 @@ def create_app(db_path=None):
         db.log_security_event(conn, "plan_deleted", uid, request.remote_addr)
         return redirect(url_for("trades_page", plan_deleted=1) + "#plans")
 
-    # ---------- Watchlist (s14): stocks you're researching ----------
-    # Your own list only: the user id always comes from the session. A stock code in the address is checked against
-    # SGXray's list of stocks; anything else is a 404.
-
-    @app.get("/watchlist")
-    @login_required
-    def watchlist_page():
-        return _watchlist_page(get_db(), g.user["id"])
-
-    @app.post("/watchlist")
-    @login_required
-    def watch_stock():
-        conn, uid = get_db(), g.user["id"]
-        ticker = request.form.get("ticker", "")[:16]
-        note = trades.clean_note(request.form.get("note", ""))
-        if ticker not in {r["ticker"] for r in db.get_instruments(conn)}:
-            return _watchlist_page(conn, uid, problem="Choose a stock, REIT or ETF from the list."), 422
-        if len(note) > trades.NOTE_MAX:
-            return _watchlist_page(conn, uid, problem="That note is longer than 280 characters. Shorten it a little.",
-                                   values={"ticker": ticker, "note": note}), 422
-        if len(db.get_watchlist(conn, uid)) >= db.WATCH_MAX:
-            return _watchlist_page(conn, uid, problem=f"Your watchlist is full ({db.WATCH_MAX} stocks). Remove one "
-                                   "you've finished researching first."), 422
-        if not db.watch(conn, uid, ticker, sgtime.today().isoformat(), note):
-            return redirect(url_for("watchlist_page", already=ticker))
-        # Its year of prices and dividends now, so the page is complete straight away. Only the missing days are
-        # fetched (often none), and only from Yahoo, for a stock already in SGXray's list.
-        current_app.config["MARKET_DOWNLOAD"](conn, [ticker])
-        return redirect(url_for("watchlist_page", watched=ticker))
 
     # Feedback (s06): open to everyone, linked from every page's footer. Form token, and PER_HOUR messages an hour per
     # person or network address. Only ever saved, never emailed or shown to anyone else.
@@ -566,36 +537,8 @@ def create_app(db_path=None):
                                chart=whatif.chart(result) if result and result.buys else None,
                                chart_phone=whatif.chart(result, w=400, h=300, left=66, max_years=4)
                                if result and result.buys else None,
-                               name={i["ticker"]: i["name"] for i in db.get_instruments(conn)}.get(values["ticker"], "")),             (422 if problems else 200)
-
-    @app.post("/watchlist/<ticker>/remove")
-    @login_required
-    def unwatch_stock(ticker):
-        db.unwatch(get_db(), g.user["id"], ticker[:16]) or abort(404)
-        return redirect(url_for("watchlist_page", removed=ticker[:16]))
-
-    @app.post("/watchlist/<ticker>/note")
-    @login_required
-    def watch_note(ticker):
-        note = trades.clean_note(request.form.get("note", ""))
-        if len(note) > trades.NOTE_MAX:
-            return redirect(url_for("watchlist_page", note="long"))
-        db.set_watch_note(get_db(), g.user["id"], ticker[:16], note) or abort(404)
-        return redirect(url_for("watchlist_page", note="saved" if note else "cleared"))
-
-    def _watchlist_page(conn, uid, problem=None, values=None, lookup_error=None, lookup_code=None):
-        import watchlist
-        rows = watchlist.rows(conn, uid)
-        names = {r["ticker"]: r["name"] for r in db.get_instruments(conn)}
-        flash_ticker = request.args.get("watched") or request.args.get("already") or request.args.get("removed")
-        watched = {r["ticker"] for r in rows}
-        return render_template("watchlist.html", rows=rows, ex=watchlist.explain(rows), problem=problem,
-                               values=values or {"ticker": request.args.get("added", "")},
-                               tickers=[t for t in db.get_instruments(conn) if t["ticker"] not in watched],
-                               flash=next((k for k in ("watched", "already", "removed") if request.args.get(k)), None),
-                               flash_name=names.get(flash_ticker, flash_ticker), note_flash=request.args.get("note"),
-                               added=request.args.get("added"), full=len(rows) >= db.WATCH_MAX,
-                               lookup_error=lookup_error, lookup_code=lookup_code, watch_max=db.WATCH_MAX)
+                               name={i["ticker"]: i["name"] for i in db.get_instruments(conn)}.get(values["ticker"], "")), \
+            (422 if problems else 200)
 
     @app.post("/trades/lookup")
     @login_required
@@ -603,8 +546,7 @@ def create_app(db_path=None):
         """Adds any SGX stock, REIT or ETF to the picker, after checking it on Yahoo (w309)."""
         conn, uid = get_db(), g.user["id"]
         typed = request.form.get("code", "")[:16]
-        back = {"practice": "practice_trades", "watchlist": "watchlist_page"}.get(request.form.get("then"),
-                                                                                  "trades_page")   # only these three
+        back = "practice_trades" if request.form.get("then") == "practice" else "trades_page"   # only these two
         ticker = lookup.normalise(typed)
         if ticker is None:
             return _lookup_failed(conn, uid, typed, "An SGX code is up to 6 letters and numbers, like C6L or D05.")
@@ -627,8 +569,6 @@ def create_app(db_path=None):
         return redirect(url_for(back, added=ticker))
 
     def _lookup_failed(conn, uid, typed, message, status=422):
-        if request.form.get("then") == "watchlist":
-            return _watchlist_page(conn, uid, lookup_error=message, lookup_code=typed), status
         if request.form.get("then") == "practice":
             return _practice_trades_page(conn, _twin(), {"side": "BUY"}, None, lookup_error=message,
                                          lookup_code=typed), status
@@ -1238,7 +1178,7 @@ def _load_user_and_check_csrf():
 # Saved changes counted against ratelimit.CHANGES_PER_HOUR (logins, sign-ups and lookups have their own limits).
 CHANGE_ENDPOINTS = {"trades_page", "add_existing", "edit_trade", "delete_trade", "add_plan", "stop_plan", "delete_plan",
                     "trade_note", "practice_note", "practice_trades", "practice_undo", "practice_fees", "practice_reset",
-                    "lesson_done", "watch_stock", "unwatch_stock", "watch_note", "add_goal", "remove_goal"}
+                    "lesson_done", "add_goal", "remove_goal"}
 
 
 def _rate_limit():

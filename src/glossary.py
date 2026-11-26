@@ -107,19 +107,6 @@ TERMS = {
                       "12 months (a new or special dividend), and SGXray's price source doesn't give the amount. "
                       "It's added to your income once it's paid.",
                       "A one-off special dividend announced for March: the date shows, the amount waits."),
-    "watchlist": ("Watchlist",
-                  "Stocks you're researching but may not own. SGXray keeps their prices up to date so you can follow "
-                  "them for a while, learn how they behave and read about the company before deciding anything. "
-                  "Only you can see your watchlist.",
-                  "Watching Singapore Airlines for a few months before deciding whether to buy any."),
-    "since-added": ("Since you added it",
-                    "How the closing price has moved from the day you added the stock to the latest close. A split or "
-                    "bonus issue in between is allowed for, so it compares like with like. Short moves say little.",
-                    "Added at $5.20, closed at $5.46 yesterday: +5.0% since you added it."),
-    "no-move-yet": ("No move yet",
-                    "The latest closing price is still the one from the day you added the stock, so there's no move "
-                    "to show yet. It fills in after the next close, at about 5:45pm on a trading day.",
-                    "Added OCBC this morning: the change since you added it appears this evening."),
     "dividend-calendar": ("Dividend calendar",
                           "The next 12 months, month by month: which stocks you hold are expected to go ex-dividend "
                           "and about how much that's worth to you. The cash usually arrives a few weeks after "

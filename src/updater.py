@@ -158,10 +158,9 @@ def download_all(conn):
     seed_instruments(conn)
     import news
     # Companies in the last week's headlines too, so Market today can show how they moved.
-    # And every watched stock (s14), so the watchlist shows the latest close too, and every stock tried in the
-    # "what if" calculator (s12), so its answer runs up to the latest close.
+    # And every stock tried in the "what if" calculator (s12), so its answer runs up to the latest close.
     tickers = sorted(set(db.get_traded_tickers(conn)) | {market.BENCHMARK} | set(news.recent_tickers(conn))
-                     | set(db.watched_tickers(conn)) | set(db.history_tickers(conn)))
+                     | set(db.history_tickers(conn)))
     actions = market.update_actions(conn, tickers)          # splits first: prices are un-adjusted with them
     prices = market.update_prices(conn, tickers)
     results = actions + prices + market.update_dividends(conn, tickers)
