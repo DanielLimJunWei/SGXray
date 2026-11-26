@@ -1,8 +1,8 @@
 // The X-ray chart: your portfolio's line, split into your money, price gains and dividends,
 // with the STI ETF (same money, same days) as a dashed line.
 //
-// The chart shows as it is, finished. The X-ray (the plain line splitting into your money, gains and dividends)
-// runs only when you press Scan: the "X-ray in use" lamp lights, the chart tilts back a little in 3D like a film laid
+// The chart starts unscanned: one plain line. The X-ray (that line splitting into your money, gains and dividends)
+// runs only when you press Scan, and the same button then says Reverse, which plays it back to the plain line. Scan: the "X-ray in use" lamp lights, the chart tilts back a little in 3D like a film laid
 // on a lightbox, a glowing light tube sweeps across, and the chart settles flat as the layers' names come in. With "reduce motion" on there's nothing to animate, so Scan stays hidden.
 // (Before 26 Nov 2026 it played by itself on first view, with Animation on/off and Replay buttons.)
 (function () {
@@ -150,27 +150,39 @@
   let frame = null;
 
   const scanLabel = scanBtn && scanBtn.querySelector("[data-scan-label]");
+  let scanned = false;
   function play() {
+    const back = scanned;                          // after a scan, the same button reverses it
     cancelAnimationFrame(frame);
-    const start = performance.now(), ms = 5200;
+    const start = performance.now(), ms = back ? 3600 : 5200;     // going back is a little quicker
     scanBtn.disabled = true;
-    if (scanLabel) scanLabel.textContent = "Scanning";
+    if (scanLabel) scanLabel.textContent = back ? "Reversing" : "Scanning";
     // If any of the chart is off screen, bring it into view first, so the whole scan can be seen.
     const box = card.getBoundingClientRect();
     if (box.top < 56 || box.bottom > innerHeight) card.scrollIntoView({ block: "center", behavior: "smooth" });
-    card.classList.remove("scanning");
+    card.classList.remove("scanning", "reverse");
     void card.offsetWidth;                          // restart the tilt if Scan is pressed again
     card.classList.add("scanning");
+    card.classList.toggle("reverse", back);
     const tick = now => {
-      const p = Math.min(1, (now - start) / ms);
-      render(p);
-      if (p < 1) frame = requestAnimationFrame(tick);
-      else { scanBtn.disabled = false; card.classList.remove("scanning"); if (scanLabel) scanLabel.textContent = "Scan"; }
+      const k = Math.min(1, (now - start) / ms);
+      render(back ? 1 - k : k);                    // backwards: the names fade first, then the beam returns
+      if (k < 1) frame = requestAnimationFrame(tick);
+      else {
+        scanned = !back;
+        scanBtn.disabled = false;
+        card.classList.remove("scanning", "reverse");
+        if (scanLabel) scanLabel.textContent = scanned ? "Reverse" : "Scan";
+      }
     };
     frame = requestAnimationFrame(tick);
   }
-  render(1);                                  // as it is
+  // Unscanned to start, so Scan has something to show. Two exceptions start scanned: "reduce motion" (no animation,
+  // so no Scan button: the layers just show) and a lesson's spotlight, which points at the layers.
+  scanned = reduce || !scanBtn || !!spot;
+  render(scanned ? 1 : 0);
   if (scanBtn && !reduce) {
+    if (scanLabel) scanLabel.textContent = scanned ? "Reverse" : "Scan";
     scanBtn.hidden = false;
     scanBtn.addEventListener("click", play);
   }

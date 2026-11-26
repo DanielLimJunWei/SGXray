@@ -3,7 +3,7 @@
 {% block title %}Delete your account · SGXray{% endblock %}
 {% block content %}
 <div class="page wrap lightbox-page">
-  {% call lightbox(current_user.email, "Details") %}
+  {% call lightbox(current_user.email, "Details", shape="fade") %}
     <h1>Delete your account?</h1>
     {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
     <p class="muted">This deletes your account and everything in it, straight away and for good: your trades and

@@ -8,8 +8,6 @@
     // The lightbox AND the desk lamp in the corner go down while you type something private.
     field.addEventListener("focus", () => { box.classList.add("dim"); document.documentElement.classList.add("lamp-off"); });
     field.addEventListener("blur", () => { box.classList.remove("dim"); document.documentElement.classList.remove("lamp-off"); });
-    // Once something is typed, pointing at the button lets a little of its golden light back (site.css).
-    field.addEventListener("input", () => box.classList.toggle("typed", field.value.length > 0));
   });
   // "Show" / "Hide" on every password box, like other sites have, so you can check what you typed.
   // The button is added here (not in the page) so it only appears when it works. Before the form is

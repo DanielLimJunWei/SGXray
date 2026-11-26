@@ -3,7 +3,7 @@
 {% block title %}Create an account · SGXray{% endblock %}
 {% block content %}
 <div class="page wrap lightbox-page">
-  {% call lightbox("new", "First scan") %}
+  {% call lightbox("new", "First scan", shape="pulse") %}
     <h1>Ready for your first scan?</h1>
     {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
     <form method="post" action="{{ url_for('signup') }}" class="auth-form" data-login-form>
@@ -15,7 +15,7 @@
       <label for="password2">Type it again</label>
       <input id="password2" name="password2" type="password" autocomplete="new-password" required minlength="12" maxlength="128" data-private>
       <p class="consent">By creating an account you agree to the <a href="{{ url_for('terms') }}">terms of use</a>. The <a href="{{ url_for('privacy') }}">privacy notice</a> says what SGXray keeps and why.</p>
-      <button class="btn btn-primary" type="submit">Create account</button>
+      <button class="btn btn-ghost" type="submit">Create account</button>
     </form>
     <p class="film-foot">Already have an account? <a href="{{ url_for('login') }}">Log in instead</a></p>
   {% endcall %}

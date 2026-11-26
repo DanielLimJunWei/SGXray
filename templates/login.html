@@ -22,7 +22,7 @@
       <label for="password">Password</label>
       <input id="password" name="password" type="password" autocomplete="current-password" required maxlength="128" data-private{% if error and not lock %} class="field-wrong" aria-invalid="true" aria-describedby="login-error"{% endif %}>
       <a class="form-aside" href="{{ url_for('forgot') }}">Forgot your password?</a>
-      <button class="btn btn-primary" type="submit">Log in</button>
+      <button class="btn btn-ghost" type="submit">Log in</button>
       </fieldset>
     </form>
     <p class="tries-note">You get {{ tries }} tries, then logging in pauses for 15 minutes (longer if it keeps happening).</p>

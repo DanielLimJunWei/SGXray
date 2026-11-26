@@ -60,6 +60,7 @@ import checkin  # noqa: E402
 import feedback as feedback_mod  # noqa: E402
 import goals as goals_mod  # noqa: E402
 import reits  # noqa: E402
+import film  # noqa: E402
 import updater  # noqa: E402
 import whatif  # noqa: E402
 
@@ -96,6 +97,7 @@ def create_app(db_path=None):
     conn.close()
 
     _add_filters(app)
+    app.jinja_env.globals.update(film_shape=film.shape)      # each login board's little chart
     app.jinja_env.globals.update(glossary=glossary.TERMS, glossary_entry=glossary.entry,
                                  term_button=glossary.button)   # tap-a-term
     app.teardown_appcontext(_close_db)
