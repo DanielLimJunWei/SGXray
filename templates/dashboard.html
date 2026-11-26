@@ -176,8 +176,8 @@
     <div class="section-head">
       <h2 id="xray-title">Your portfolio, X-rayed</h2>
       {#- The chart shows as it is; Scan runs the X-ray sweep on demand (shown only when its script runs and motion is
-          allowed). The icon is SGXray's own X mark. -#}
-      <button class="icon-btn scan-btn" type="button" id="xray-scan" hidden><svg viewBox="0 0 7 7" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><g class="scan-x"><rect x="0" y="0" width="1" height="1"/><rect x="6" y="0" width="1" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="5" y="1" width="1" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="4" y="2" width="1" height="1"/><rect x="2" y="4" width="1" height="1"/><rect x="4" y="4" width="1" height="1"/><rect x="1" y="5" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/><rect x="0" y="6" width="1" height="1"/><rect x="6" y="6" width="1" height="1"/></g><rect class="scan-core" x="3" y="3" width="1" height="1"/></svg>Scan</button>
+          allowed). The icon: a scanner's viewfinder with a heartbeat line, drawn on a 16 grid (draw-svg defaults). -#}
+      <button class="icon-btn scan-btn" type="button" id="xray-scan" hidden><svg viewBox="0 0 16 16" fill="none" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><g class="scan-frame"><polyline points="1.5,5 1.5,1.5 5,1.5"/><polyline points="11,1.5 14.5,1.5 14.5,5"/><polyline points="14.5,11 14.5,14.5 11,14.5"/><polyline points="5,14.5 1.5,14.5 1.5,11"/></g><polyline class="scan-pulse" points="3.5,8 5.75,8 7,5 8.75,11 10,8 12.5,8"/></svg>Scan</button>
       {% if chart_ex %}{{ explain_buttons(chart_ex, "xray", "X-ray chart") }}{% endif %}
     </div>
     {% set unit = "day" if last.unit == "day" else "month" %}

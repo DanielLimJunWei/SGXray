@@ -1066,18 +1066,18 @@ details[open]::details-content { block-size: auto; }
 /* ---------- What if (s12) ---------- */
 .whatif .trade-add { margin-bottom: var(--space-8); }
 .whatif-form .field { grid-column: span 2; }
-.whatif-form .field-stock { grid-column: span 4; }
-@media (max-width: 860px) { .whatif-form .field { grid-column: span 6; } .whatif-form .field-stock { grid-column: span 12; } }
+.whatif-form .field-stock, .whatif-form .field-month { grid-column: span 3; }   /* the month needs room for "January 2015" */
+@media (max-width: 860px) { .whatif-form .field, .whatif-form .field-month { grid-column: span 6; } .whatif-form .field-stock { grid-column: span 12; } }
 @media (max-width: 560px) { .whatif-form .field { grid-column: span 12; } }
 .whatif-form input[type="month"] { min-width: 0; }
 .whatif-fee-note { margin: var(--space-4) 0 0; max-width: 46rem; font-size: var(--text-sm); color: var(--color-text-faint); }
 .whatif-chart { display: block; width: 100%; height: auto; }
 .whatif-chart.wi-phone { display: none; }
 @media (max-width: 560px) { .whatif-chart.wi-wide { display: none; } .whatif-chart.wi-phone { display: block; } }
-.wi-money { fill: none; stroke: #7F93C4; stroke-width: 1.5; }                    /* your money: quiet steps */
+.wi-money { fill: none; stroke: #E3A35E; stroke-width: 1.75; stroke-dasharray: 5 4; }   /* your own money: amber steps, dashed, like "your average cost" */
 .wi-worth { fill: none; stroke: #9CC4FF; stroke-width: 2; stroke-linejoin: round; filter: drop-shadow(0 0 1px rgba(120, 170, 255, 0.22)); }
 .wi-end { fill: #9CC4FF; }
-.wi-mk-money { width: 18px; border-top: 2px solid #7F93C4; }
+.wi-mk-money { width: 18px; border-top: 2px dashed #E3A35E; }
 .wi-mk-worth { width: 18px; border-top: 2px solid #9CC4FF; }
 .wi-buys { padding: var(--space-4) var(--space-6); }
 .wi-buys summary { cursor: pointer; font-size: var(--text-sm); color: var(--color-glow-soft); width: fit-content; }
@@ -1120,6 +1120,6 @@ details[open]::details-content { block-size: auto; }
 /* ---------- Scan (the X-ray chart's sweep, on demand) ---------- */
 .scan-btn { display: inline-flex; align-items: center; gap: var(--space-2); }
 .scan-btn svg { width: 14px; height: 14px; }
-.scan-btn .scan-x { fill: #9CC4FF; }
-.scan-btn .scan-core { fill: #E3A35E; }
+.scan-btn .scan-frame { stroke: var(--color-glow-soft); }       /* a scanner's viewfinder */
+.scan-btn .scan-pulse { stroke: var(--color-lamp); }            /* a heartbeat line: the one warm accent */
 .scan-btn:disabled { opacity: 0.6; cursor: progress; }

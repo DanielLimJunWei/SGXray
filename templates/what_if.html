@@ -47,7 +47,7 @@
       </div>
       <div class="field"><label for="wi-amount">Every month (S$)</label>
         <input id="wi-amount" name="amount" type="text" inputmode="decimal" autocomplete="off" value="{{ '%g'|format(values.amount) if values.amount is not none else '' }}" placeholder="{{ defaults.amount }}"></div>
-      <div class="field"><label for="wi-start">Starting</label>
+      <div class="field field-month"><label for="wi-start">Starting</label>
         <input id="wi-start" name="start" type="month" min="{{ earliest }}" max="{{ this_month }}" value="{{ values.start or '' }}"></div>
       <div class="field"><label for="wi-rate">Fee (%)</label>
         <input id="wi-rate" name="fee_rate" type="text" inputmode="decimal" autocomplete="off" value="{{ '%g'|format(values.fee_rate) if values.fee_rate is not none else '' }}" placeholder="{{ defaults.fee_rate }}"></div>
