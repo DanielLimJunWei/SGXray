@@ -5,8 +5,8 @@
 (function () {
   const KEY = "sgxray-view";
   const NOTE = {
-    simple: "Simple: the main figures, the X-ray, your holdings and where your money is. Switch to Detailed for the rest.",
-    detailed: "Detailed: everything, adding ups and downs, returns over time, each stock vs the STI ETF, yields, dividends by year, the forecast and sold stocks.",
+    simple: "Just the essentials. Detailed adds the rest.",
+    detailed: "Everything. Simple keeps just the essentials.",
   };
   const page = () => document.querySelector("[data-live-prices]");
   const read = () => { try { return localStorage.getItem(KEY) === "simple" ? "simple" : "detailed"; } catch (e) { return "detailed"; } };
