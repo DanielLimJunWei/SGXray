@@ -1,9 +1,9 @@
 // The X-ray chart: your portfolio's line, split into your money, price gains and dividends,
 // with the STI ETF (same money, same days) as a dashed line.
 //
-// Motion rules: the reveal plays ONCE when the chart first comes into view, then everything
-// stays still (these are real daily closes, not live prices). People can replay it, or turn the
-// animation off; that choice is remembered on this device. "Reduce motion" turns it off by default.
+// The chart shows as it is, finished. The X-ray sweep (the plain line splitting into your money, gains and
+// dividends) runs only when you press Scan. With "reduce motion" on there's nothing to animate, so Scan stays hidden.
+// (Before 26 Nov 2026 it played by itself on first view, with Animation on/off and Replay buttons.)
 (function () {
   const dataEl = document.getElementById("xray-data");
   if (!dataEl) return;
@@ -126,51 +126,26 @@
     steps.forEach(s => s.classList.toggle("on", p >= +s.dataset.at));
   }
 
-  // ---------- Animation on/off, remembered on this device ----------
-  const KEY = "sgxray-motion";
+  // ---------- Scan: the sweep, on demand ----------
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let saved = null;
-  try { saved = localStorage.getItem(KEY); } catch (e) { /* private mode: just use the default */ }
-  let motionOn = saved ? saved === "on" : !reduce;
-  const motionBtn = $("xray-motion"), replayBtn = $("xray-replay");
+  const scanBtn = $("xray-scan");
   let frame = null;
 
   function play() {
     cancelAnimationFrame(frame);
-    if (!motionOn) { render(1); return; }
     const start = performance.now(), ms = 4200;
+    scanBtn.disabled = true;
     const tick = now => {
       const p = Math.min(1, (now - start) / ms);
       render(p);
-      if (p < 1) frame = requestAnimationFrame(tick);
+      if (p < 1) frame = requestAnimationFrame(tick); else scanBtn.disabled = false;
     };
     frame = requestAnimationFrame(tick);
   }
-  function showMotionState() {
-    motionBtn.setAttribute("aria-pressed", String(motionOn));
-    motionBtn.textContent = "Animation: " + (motionOn ? "on" : "off");
-    replayBtn.hidden = !motionOn;
-  }
-  motionBtn.hidden = false;
-  showMotionState();
-  motionBtn.addEventListener("click", () => {
-    motionOn = !motionOn;
-    try { localStorage.setItem(KEY, motionOn ? "on" : "off"); } catch (e) { /* not saved; still works now */ }
-    document.documentElement.classList.toggle("motion-off", !motionOn);    // other charts follow the same choice
-    showMotionState();
-    if (!motionOn) { cancelAnimationFrame(frame); render(1); }
-  });
-  replayBtn.addEventListener("click", play);
-
-  // Play once, the first time at least 40% of the chart is on screen.
-  if (motionOn && "IntersectionObserver" in window) {
-    render(0);
-    const io = new IntersectionObserver(entries => {
-      if (entries.some(e => e.isIntersecting)) { io.disconnect(); play(); }
-    }, { threshold: 0.4 });
-    io.observe(svg);
-  } else {
-    render(1);
+  render(1);                                  // as it is
+  if (scanBtn && !reduce) {
+    scanBtn.hidden = false;
+    scanBtn.addEventListener("click", play);
   }
 
   // ---------- Point at a month (mouse, touch or arrow keys) to see its numbers ----------

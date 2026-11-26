@@ -17,8 +17,7 @@
   const day = iso => new Date(iso + "T00:00:00").getTime();
   const fmt = v => "$" + v.toLocaleString("en-SG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const longDate = iso => new Date(iso + "T00:00:00").toLocaleDateString("en-SG", { day: "numeric", month: "long", year: "numeric" });
-  const motionOff = () => document.documentElement.classList.contains("motion-off")
-    || matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const motionOff = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   function draw(section) {
     if (section.dataset.drawn) return;
@@ -112,16 +111,7 @@
     const fit = () => svg.style.setProperty("--svg-text", `${Math.min(26, 12 / (svg.clientWidth / 800 || 1))}px`);
     addEventListener("resize", fit); fit();
 
-    // Draw in once: the line traces left to right, then the markers fade in.
-    if (!motionOff()) {
-      const len = line.getTotalLength();
-      line.style.strokeDasharray = len; line.style.strokeDashoffset = len;
-      marks.style.opacity = 0;
-      line.getBoundingClientRect();                       // start from the hidden state
-      line.style.transition = "stroke-dashoffset 1200ms cubic-bezier(.22,1,.36,1)";
-      marks.style.transition = "opacity 400ms ease-out 1000ms";
-      requestAnimationFrame(() => { line.style.strokeDashoffset = 0; marks.style.opacity = 1; });
-    }
+    // The chart shows as it is, finished: no draw-in (changed 26 Nov 2026: the portfolio shows as it is).
 
     // Point, tap or use the arrow keys to read a day: its price, and anything you did that day.
     let current = null;

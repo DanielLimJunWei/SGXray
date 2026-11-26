@@ -175,8 +175,9 @@
   <section class="block xray-block" aria-labelledby="xray-title">
     <div class="section-head">
       <h2 id="xray-title">Your portfolio, X-rayed</h2>
-      <button class="icon-btn" type="button" id="xray-replay" hidden>↺ Replay</button>
-      <button class="icon-btn" type="button" id="xray-motion" aria-pressed="true" hidden>Animation: on</button>
+      {#- The chart shows as it is; Scan runs the X-ray sweep on demand (shown only when its script runs and motion is
+          allowed). The icon is SGXray's own X mark. -#}
+      <button class="icon-btn scan-btn" type="button" id="xray-scan" hidden><svg viewBox="0 0 7 7" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><g class="scan-x"><rect x="0" y="0" width="1" height="1"/><rect x="6" y="0" width="1" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="5" y="1" width="1" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="4" y="2" width="1" height="1"/><rect x="2" y="4" width="1" height="1"/><rect x="4" y="4" width="1" height="1"/><rect x="1" y="5" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/><rect x="0" y="6" width="1" height="1"/><rect x="6" y="6" width="1" height="1"/></g><rect class="scan-core" x="3" y="3" width="1" height="1"/></svg>Scan</button>
       {% if chart_ex %}{{ explain_buttons(chart_ex, "xray", "X-ray chart") }}{% endif %}
     </div>
     {% set unit = "day" if last.unit == "day" else "month" %}
@@ -530,7 +531,7 @@
     </div>
     <p class="muted lead">What was paid to you each calendar year. Lighter bars are part-years.</p>
     <div class="panel chart-card">
-      <svg class="bars-chart" data-reveal viewBox="0 0 800 250" role="img" aria-labelledby="years-svg-title">
+      <svg class="bars-chart" viewBox="0 0 800 250" role="img" aria-labelledby="years-svg-title">
         <title id="years-svg-title">Dividends received each year: {% for r in years %}{{ r.year }}{% if r.part == "so far" %} (so far){% elif r.part == "first" %} (from {{ r.from_month }}){% endif %} {{ r.total|money }}{{ "; " if not loop.last else "." }}{% endfor %}</title>
         <defs><pattern id="ht-bars" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1.6" fill="#E3A35E"/></pattern></defs>
         <line x1="64" x2="760" y1="196" y2="196" stroke="rgba(156,196,255,.24)"/>
