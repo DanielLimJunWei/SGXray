@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_trade_form.html" import trade_form, problems_box with context %}
-{% from "_explain.html" import explain_buttons %}
+{% from "_explain.html" import explain_buttons, explain_hint %}
 {% from "_notes.html" import note_edit with context %}
 {% from "_term.html" import term, term_popups %}
 {% from "_decor.html" import empty_trace %}
@@ -12,6 +12,7 @@
     <p class="eyebrow"><a href="{{ url_for('portfolio') }}">Your portfolio</a> · trades</p>
     <h1>Your trades</h1>
     <p class="muted">Every buy and sell you've made. SGXray works out everything else from these: what you hold, what you've made, and your dividends.</p>
+    {{ explain_hint() }}
   </header>
 
   {% if saved %}{% set st = trades|selectattr("id", "equalto", saved)|first %}

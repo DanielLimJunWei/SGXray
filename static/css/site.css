@@ -1075,3 +1075,14 @@ details[open]::details-content { block-size: auto; }
   .watch .data td:first-child { min-width: 0; }
   .watch-range { width: 100%; max-width: 14rem; }
 }
+
+/* ⓘ on its own (no "What does this mean?" words beside it): a round button. An invisible margin around it makes the
+   tap area 44px on a phone (32px + 6px each side; 28px + 8px when compact) without making it look bigger.
+   The one-line hint at the top of each page says what it does. */
+.icon-btn.info { position: relative; width: 2rem; padding: 0; justify-content: center; border-radius: 999px; font-size: var(--text-base); }
+.icon-btn.info::after { content: ""; position: absolute; inset: -6px; }
+.icon-btn.info.compact { width: 1.75rem; }
+.icon-btn.info.compact::after { inset: -8px; }
+.explain-hint { font-size: var(--text-sm); color: var(--color-text-muted); margin-top: var(--space-3); }
+.explain-hint-icon { display: inline-grid; place-items: center; width: 1.4rem; height: 1.4rem; border: 1px solid var(--color-line-strong);
+  border-radius: 999px; font-size: var(--text-xs); color: var(--color-text); vertical-align: 0.05em; }

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_explain.html" import explain_buttons, pop_head, pop_resize %}
+{% from "_explain.html" import explain_buttons, explain_hint, pop_head, pop_resize %}
 {% from "_term.html" import term, term_popups %}
 {% from "_notes.html" import note_edit with context %}
 {% from "_decor.html" import empty_trace %}
@@ -74,6 +74,7 @@
     {% if s %}
     <p class="as-of" data-live-as-of>{% if s.prices_as_of %}Prices as of {{ s.prices_as_of|longdate }}{% elif waiting %}Prices: waiting for today's close{% else %}No prices downloaded yet{% endif %} · {{ term("closing-price", "closing prices") }}{% set behind = not s.prices_as_of or s.prices_as_of < next_close %} <span class="as-of-next">· {% if behind %}catching up: newer prices within about 15 minutes{% else %}next update {{ next_update }}{% endif %}</span></p>
     {% endif %}
+    {% if s %}{{ explain_hint() }}{% endif %}
     {% if s and mode == "own" %}<p><a class="btn btn-well" href="{{ url_for('trades_page') }}">Add or change trades</a></p>{% endif %}
     {% if mode == "practice" %}<p><a class="btn btn-well" href="{{ url_for('practice_trades') }}">Make a practice trade</a></p>{% endif %}
     {% if note_flash == "saved" %}<p class="form-ok" role="status">Note saved.</p>

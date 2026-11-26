@@ -20,8 +20,16 @@
   <button class="resize" type="button" data-resize aria-label="Resize this box: arrow keys make it wider, narrower, taller or shorter" title="Drag to resize"></button>
 {% endmacro %}
 
+{#- The ⓘ button shows only the symbol (less clutter; one explain_hint() per page says what it does). Its full name,
+    like "What does this mean? Holdings", is still its accessible name for screen readers, and the box it opens keeps
+    the words as its title. -#}
+{#- Once near the top of every page with ⓘ buttons, so nobody has to guess what the symbol does. -#}
+{% macro explain_hint() %}
+  <p class="explain-hint"><span aria-hidden="true">Tap <span class="explain-hint-icon">ⓘ</span></span><span class="visually-hidden">Tap a "What does this mean?" button</span> next to any number or table to see what it means, in plain English.</p>
+{% endmacro %}
+
 {% macro explain_buttons(ex, id, title, compact=False, label="What does this mean?") %}
-  <button class="icon-btn{{ ' compact' if compact }}" type="button" popovertarget="{{ id }}-what" aria-label="{{ label }} {{ title }}">ⓘ{{ "" if compact else " " ~ label }}</button>
+  <button class="icon-btn info{{ ' compact' if compact }}" type="button" popovertarget="{{ id }}-what" aria-label="{{ label }} {{ title }}">ⓘ</button>
   {% if ex.watch_out %}
   <button class="icon-btn warn{{ ' compact' if compact }}" type="button" popovertarget="{{ id }}-watch" aria-label="Watch out: {{ ex.watch_out|length }} thing{{ 's' if ex.watch_out|length != 1 }} to check in {{ title }}">⚠ {{ ex.watch_out|length }}</button>
   {% endif %}

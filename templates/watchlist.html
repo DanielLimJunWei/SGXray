@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_explain.html" import explain_buttons %}
+{% from "_explain.html" import explain_buttons, explain_hint %}
 {% from "_term.html" import term, term_popups %}
 {% block title %}Watchlist · SGXray{% endblock %}
 
@@ -14,6 +14,7 @@
     <h1>Stocks you're watching</h1>
     <p class="muted">Keep an eye on a stock before deciding anything: SGXray follows its closing price, how it has moved
       since you added it, its year's range and its dividends. Only you can see this list.</p>
+    {{ explain_hint() }}
   </header>
 
   {% if flash == "watched" %}<p class="form-ok" role="status">{{ flash_name }} is on your watchlist.</p>

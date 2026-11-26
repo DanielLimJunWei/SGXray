@@ -5,7 +5,7 @@
 #}
 {% extends "base.html" %}
 {% from "_trade_form.html" import problems_box with context %}
-{% from "_explain.html" import explain_buttons %}
+{% from "_explain.html" import explain_buttons, explain_hint %}
 {% from "_term.html" import term, term_popups %}
 {% from "_notes.html" import note_edit with context %}
 {% from "_decor.html" import empty_trace %}
@@ -18,6 +18,7 @@
     <h1>Practice trades</h1>
     <p class="muted">Pretend money, real SGX prices. Each trade happens at the stock's latest closing price, with a real broker's fees, so it feels like the real thing without risking a dollar.</p>
     <p class="practice-cash">{{ term("practice-cash", "Pretend cash") }} <b>{{ cash|money }}</b> <span class="muted">of {{ start_cash|money }} to start</span></p>
+    {{ explain_hint() }}
   </header>
 
   {% if saved %}<p class="form-ok" role="status">Practice trade saved. <a href="{{ url_for('practice_page') }}">See your practice portfolio</a></p>{% endif %}
