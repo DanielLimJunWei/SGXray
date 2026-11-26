@@ -97,3 +97,31 @@ def test_no_price_yet_means_no_value(conn, user_id):
 
 def test_no_trades_gives_an_empty_table(conn, user_id):
     assert positions(conn, user_id).empty
+
+
+# ---------- Worked out once per page view (the speed fix) ----------
+
+def test_one_page_view_works_your_holdings_out_once(conn, user_id, monkeypatch):
+    import portfolio
+    trade(conn, user_id, "D05.SI", "2024-03-15", "BUY", 100, 31.47)
+    calls = []
+    real = portfolio._positions
+    monkeypatch.setattr(portfolio, "_positions", lambda *a: calls.append(a) or real(*a))
+    with portfolio.shared_results():
+        first = positions(conn, user_id)
+        first.loc[:, "shares"] = 0                                   # a page changing its copy...
+        again = positions(conn, user_id)
+    assert len(calls) == 1                                          # worked out once, not again
+    assert again["shares"].tolist() == [100]                        # ...doesn't change anyone else's
+    positions(conn, user_id)
+    assert len(calls) == 2                                          # outside a page view: fresh every time
+
+
+def test_a_new_trade_shows_on_the_next_page_view(conn, user_id):
+    import portfolio
+    trade(conn, user_id, "D05.SI", "2024-03-15", "BUY", 100, 31.47)
+    with portfolio.shared_results():
+        assert positions(conn, user_id)["shares"].tolist() == [100]
+    trade(conn, user_id, "D05.SI", "2024-04-15", "BUY", 50, 32.00)
+    with portfolio.shared_results():
+        assert positions(conn, user_id)["shares"].tolist() == [150]  # nothing kept between page views

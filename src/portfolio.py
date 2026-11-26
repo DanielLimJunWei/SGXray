@@ -12,7 +12,9 @@ Uses the AVERAGE COST method, which Singapore brokers use:
     python src/portfolio.py
 """
 
+import contextvars
 import sys
+from contextlib import contextmanager
 
 import pandas as pd
 
@@ -25,6 +27,35 @@ COLUMNS = [
     "unrealised", "unrealised_pct", "realised", "dividends", "fees",
 ]
 DIVIDEND_COLUMNS = ["ticker", "ex_date", "shares", "amount", "total"]
+
+
+# ---------- Working each thing out once per page ----------
+# One portfolio page asks for your holdings about 24 times and your dividends about 37 times (each section and its
+# explanation asks for itself), and every time they were recalculated from the database: about 0.4s per page. Inside
+# `shared_results()` (one page view), each answer is worked out once and handed out as a copy, so no section can
+# change another's. Outside it (tests, scripts, saving a trade) nothing is kept. A ContextVar keeps each request's
+# results to itself, even with several requests running at once on different threads.
+
+_shared = contextvars.ContextVar("portfolio_shared", default=None)
+
+
+@contextmanager
+def shared_results():
+    token = _shared.set({})
+    try:
+        yield
+    finally:
+        _shared.reset(token)
+
+
+def _once(name, conn, user_id, as_of, work):
+    memo = _shared.get()
+    if memo is None:
+        return work()
+    key = (name, id(conn), user_id, as_of)
+    if key not in memo:
+        memo[key] = work()
+    return memo[key].copy()
 
 
 def trades_frame(conn, user_id, as_of=None):
@@ -73,6 +104,11 @@ def _average_cost(trades, actions=()):
 
 
 def dividends_received(conn, user_id, as_of=None):
+    """Every dividend you were entitled to (see _dividends_received), worked out once per page view."""
+    return _once("dividends", conn, user_id, as_of, lambda: _dividends_received(conn, user_id, as_of))
+
+
+def _dividends_received(conn, user_id, as_of=None):
     """Every dividend the user was entitled to: one row per ticker and ex-date.
 
     Shares held = trades BEFORE the ex-date (buying on the ex-date is too late), with any
@@ -116,6 +152,11 @@ def dividends_received(conn, user_id, as_of=None):
 
 
 def positions(conn, user_id, as_of=None):
+    """Your holdings, one row per stock (see _positions), worked out once per page view."""
+    return _once("positions", conn, user_id, as_of, lambda: _positions(conn, user_id, as_of))
+
+
+def _positions(conn, user_id, as_of=None):
     """One row per ticker ever traded: holdings, average cost, value and profit, as of a date.
 
     Prices are the newest saved close on or before as_of. A ticker with no saved price yet

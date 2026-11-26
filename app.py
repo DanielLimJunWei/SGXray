@@ -827,7 +827,13 @@ def create_app(db_path=None):
         return render_template("terms.html", contact=_contact_email())
 
     def _portfolio_page(uid, mode, **extra):
-        """extra: anything else the page needs (the practice portfolio passes its pretend cash)."""
+        """extra: anything else the page needs (the practice portfolio passes its pretend cash). Holdings and
+        dividends are worked out once for the whole page (portfolio.shared_results), not once per section."""
+        import portfolio
+        with portfolio.shared_results():
+            return _portfolio_page_once(uid, mode, **extra)
+
+    def _portfolio_page_once(uid, mode, **extra):
         conn = get_db()
         extra.setdefault("prices_version", updater.prices_version(conn))          # for live.js to notice new prices
         extra.setdefault("next_close", updater.last_trading_day().isoformat())  # the close it should have by now
