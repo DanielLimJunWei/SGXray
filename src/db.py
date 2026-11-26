@@ -190,6 +190,18 @@ CREATE TABLE IF NOT EXISTS watchlist (
     PRIMARY KEY (user_id, ticker)        -- each stock once per person
 );
 
+-- Your goals (s16): "$300 of dividends a month" or "$50,000 worth by 2030". Only the goal itself: progress is
+-- worked out from your trades each time. Deleted with the account; included in "Download my data".
+CREATE TABLE IF NOT EXISTS goals (
+    id         {ID},
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind       TEXT    NOT NULL CHECK (kind IN ('dividends', 'worth')),
+    target     REAL    NOT NULL CHECK (target > 0 AND target <= 100000000),
+    by_month   TEXT,                     -- 'YYYY-MM' for a worth goal with a date; NULL otherwise
+    created_on TEXT    NOT NULL          -- 'YYYY-MM-DD' Singapore date
+);
+CREATE INDEX IF NOT EXISTS idx_goals_user ON goals (user_id);
+
 -- Stocks whose price history should reach further back than anyone's trades (s12, the "what if" calculator): the
 -- earliest day wanted. market._history_start reads it, so the older prices and dividends are fetched once and kept.
 -- Shared market data, not about any person.
@@ -838,6 +850,7 @@ def export_data(conn, user_id):
                                  if twin and twin["fee_rate"] is not None else None)},
         "lessons_read": rows("SELECT lesson, read_at AS read_at_utc FROM lesson_reads WHERE user_id = ? ORDER BY read_at",
                              user_id),
+        "goals": rows("SELECT kind, target, by_month, created_on FROM goals WHERE user_id = ? ORDER BY id", user_id),
         "watchlist": rows("SELECT ticker, added_on, note FROM watchlist WHERE user_id = ? ORDER BY added_on, ticker",
                           user_id),
         "security_log": rows("SELECT event, ip AS network_address, at AS at_utc FROM security_log WHERE user_id = ? "
@@ -847,7 +860,7 @@ def export_data(conn, user_id):
 
 def delete_user(conn, user_id):
     """Deletes an account and everything in it, at once and for good: its trades, notes, monthly plans, practice
-    portfolio (the hidden twin and its trades), lessons read, watchlist, sessions, reset links and security log entries
+    portfolio (the hidden twin and its trades), lessons read, watchlist, goals, sessions, reset links and security log entries
     (all ON DELETE CASCADE), plus the failed-login counts kept under its email. True if an account was deleted."""
     with conn:
         user = conn.execute("SELECT email FROM users WHERE id = ? AND practice_of IS NULL", (user_id,)).fetchone()
@@ -896,6 +909,29 @@ def set_watch_note(conn, user_id, ticker, note):
 def watched_tickers(conn):
     """Every stock on anyone's watchlist, for the daily price update."""
     return [r[0] for r in conn.execute("SELECT DISTINCT ticker FROM watchlist ORDER BY ticker").fetchall()]
+
+
+# ---------- Goals (s16) ----------
+
+GOALS_MAX = 10
+
+
+def get_goals(conn, user_id):
+    return conn.execute("SELECT id, kind, target, by_month, created_on FROM goals WHERE user_id = ? ORDER BY id",
+                        (user_id,)).fetchall()
+
+
+def add_goal(conn, user_id, kind, target, by_month, created_on):
+    with conn:
+        conn.execute("INSERT INTO goals (user_id, kind, target, by_month, created_on) VALUES (?, ?, ?, ?, ?)",
+                     (user_id, kind, target, by_month, created_on))
+
+
+def remove_goal(conn, user_id, goal_id):
+    """Removes one of this person's own goals only. True if it was there."""
+    with conn:
+        cur = conn.execute("DELETE FROM goals WHERE id = ? AND user_id = ?", (goal_id, user_id))
+    return cur.rowcount > 0
 
 
 # ---------- Longer price history (s12) ----------

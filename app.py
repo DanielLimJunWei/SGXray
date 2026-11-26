@@ -56,6 +56,7 @@ from performance import compare, per_stock  # noqa: E402
 from portfolio import positions, summary  # noqa: E402
 from stocks import stock_history  # noqa: E402
 import trades  # noqa: E402
+import goals as goals_mod  # noqa: E402
 import updater  # noqa: E402
 import whatif  # noqa: E402
 
@@ -466,6 +467,37 @@ def create_app(db_path=None):
         # fetched (often none), and only from Yahoo, for a stock already in SGXray's list.
         current_app.config["MARKET_DOWNLOAD"](conn, [ticker])
         return redirect(url_for("watchlist_page", watched=ticker))
+
+    # Goals (s16): your own goals only. Every query has your user id in it; a goal number in the address that isn't
+    # yours is a 404.
+    def _goals_page(conn, uid, problems=None, values=None, status=200):
+        rows = goals_mod.progress(conn, uid)
+        return render_template("goals.html", goals=rows, goals_ex=goals_mod.explain(rows), problems=problems or [],
+                               values=values or {}, full=len(rows) >= db.GOALS_MAX, goals_max=db.GOALS_MAX,
+                               next_month=goals_mod.next_month(sgtime.today()), flash=request.args.get("done")), status
+
+    @app.get("/goals")
+    @login_required
+    def goals_page():
+        return _goals_page(get_db(), g.user["id"])
+
+    @app.post("/goals")
+    @login_required
+    def add_goal():
+        conn, uid = get_db(), g.user["id"]
+        values, problems = goals_mod.from_form(request.form)
+        if not problems and len(db.get_goals(conn, uid)) >= db.GOALS_MAX:
+            problems = [f"You have {db.GOALS_MAX} goals, the most SGXray keeps. Remove one first."]
+        if problems:
+            return _goals_page(conn, uid, problems, request.form, 422)
+        db.add_goal(conn, uid, values["kind"], values["target"], values["by_month"], sgtime.today().isoformat())
+        return redirect(url_for("goals_page", done="added"))
+
+    @app.post("/goals/<int:goal_id>/remove")
+    @login_required
+    def remove_goal(goal_id):
+        db.remove_goal(get_db(), g.user["id"], goal_id) or abort(404)
+        return redirect(url_for("goals_page", done="removed"))
 
     # The "what if" calculator (s12): open to everyone, saves nothing about you. A plain GET form, so a result can be
     # bookmarked or shared. The first time anyone tries a stock from before SGXray's saved prices, its older history
@@ -936,6 +968,8 @@ def create_app(db_path=None):
             periods=periods, periods_ex=explain_periods(periods) if periods else None,
             sold=sold, sold_ex=explain_sold(sold) if sold else None,
             chart_ex=explain_value_chart(conn, uid, h) if h is not None else None,
+            goals=(my_goals := goals_mod.progress(conn, uid) if mode == "own" else []),
+            goals_ex=goals_mod.explain(my_goals) if my_goals else None,
             **extra,
         )
 
@@ -1164,7 +1198,7 @@ def _load_user_and_check_csrf():
 # Saved changes counted against ratelimit.CHANGES_PER_HOUR (logins, sign-ups and lookups have their own limits).
 CHANGE_ENDPOINTS = {"trades_page", "add_existing", "edit_trade", "delete_trade", "add_plan", "stop_plan", "delete_plan",
                     "trade_note", "practice_note", "practice_trades", "practice_undo", "practice_fees", "practice_reset",
-                    "lesson_done", "watch_stock", "unwatch_stock", "watch_note"}
+                    "lesson_done", "watch_stock", "unwatch_stock", "watch_note", "add_goal", "remove_goal"}
 
 
 def _rate_limit():

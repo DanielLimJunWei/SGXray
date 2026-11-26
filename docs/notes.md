@@ -679,3 +679,15 @@ A portfolio with nothing in it (yours, practice, or the demo before it's loaded)
 - **Checked:** the default plan and DBS ($500 a month since 2015, through its 2024 bonus issue) recalculated by a
   separate script that shares no code with SGXray: identical to the cent, except two months that cost exactly half
   a cent (e.g. 75 x $2.573 + $5 = $197.975), which SGXray rounds up as everywhere else. Tests: `tests/test_whatif.py`.
+
+## 26 Nov 2026: goals (s16)
+
+- **Goals (`/goals`, `src/goals.py`, shown on your own dashboard after the key figures):** "$300 of dividends a month"
+  or "$50,000 worth", optionally by a month. Only the goal is saved (table `goals`, at most 10 a person); progress
+  is worked out each time from the dashboard's own numbers. A dividend goal compares with a year's income ÷ 12 (the
+  last 12 months of dividends on the shares you hold now); a worth goal with Worth now. With a date, "about $X a
+  month" = the gap ÷ the months left, if prices didn't move: arithmetic, never a forecast. A stock without a closing
+  price yet makes a worth goal say "No price yet" instead of a number. Checked on a scratch account: $8.86 a month =
+  the dashboard's $106.30 a year ÷ 12; worth $2,300.00 = Worth now. Tests: `tests/test_goals.py`.
+- **Prices read from your own first day only:** the calculator saves years of prices, and every portfolio page used
+  to read all of them (`docs/performance.md`).

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_explain.html" import explain_buttons, explain_hint, pop_head, pop_resize %}
+{% from "_goals.html" import goal_list with context %}
 {% from "_term.html" import term, term_popups %}
 {% from "_notes.html" import note_edit with context %}
 {% from "_decor.html" import empty_trace %}
@@ -75,7 +76,7 @@
     <p class="as-of" data-live-as-of>{% if s.prices_as_of %}Prices as of {{ s.prices_as_of|longdate }}{% elif waiting %}Prices: waiting for today's close{% else %}No prices downloaded yet{% endif %} · {{ term("closing-price", "closing prices") }}{% set behind = not s.prices_as_of or s.prices_as_of < next_close %} <span class="as-of-next">· {% if behind %}catching up: newer prices within about 15 minutes{% else %}next update {{ next_update }}{% endif %}</span></p>
     {% endif %}
     {% if s %}{{ explain_hint() }}{% endif %}
-    {% if s and mode == "own" %}<p><a class="btn btn-well" href="{{ url_for('trades_page') }}">Add or change trades</a></p>{% endif %}
+    {% if s and mode == "own" %}<p><a class="btn btn-well" href="{{ url_for('trades_page') }}">Add or change trades</a>{% if not goals %} <a class="btn btn-ghost" href="{{ url_for('goals_page') }}">Set a goal</a>{% endif %}</p>{% endif %}
     {% if mode == "practice" %}<p><a class="btn btn-well" href="{{ url_for('practice_trades') }}">Make a practice trade</a></p>{% endif %}
     {% if note_flash == "saved" %}<p class="form-ok" role="status">Note saved.</p>
     {% elif note_flash == "cleared" %}<p class="form-ok" role="status">Note removed.</p>
@@ -149,6 +150,17 @@
       <span class="figure-explain">{{ explain_buttons(twr_ex, "returns", "You vs the STI", compact=True) }}</span>
     </div>
   </section>
+
+  {% if goals %}
+  <section class="block dash-goals" aria-labelledby="dash-goals-title">
+    <div class="section-head">
+      <h2 id="dash-goals-title">Your goals</h2>
+      {{ explain_buttons(goals_ex, "dash-goals", "Your goals") }}
+    </div>
+    {{ goal_list(goals) }}
+    <p class="muted"><a href="{{ url_for('goals_page') }}">Add or change goals</a></p>
+  </section>
+  {% endif %}
 
   {% if s.missing_prices or s.stale_prices %}
   <p class="muted gap-below" role="status">

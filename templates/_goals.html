@@ -1,0 +1,32 @@
+{#- Goals (s16), shown the same way on the Goals page and the dashboard. Every goal shows a number or a reason in
+    words (the page rule). The bar is an SVG with its width as an attribute: the CSP allows no inline styles. -#}
+{% from "_term.html" import term %}
+
+{% macro goal_month(m) %}{{ (m ~ "-01")|shortdate|replace("1 ", "", 1) }}{% endmacro %}
+
+{% macro goal_list(goals, removable=False) %}
+<ul class="goal-list">
+  {% for g in goals %}
+  {% set pct = ((g.share or 0) * 100)|round(0, "floor")|int %}
+  <li class="goal">
+    <p class="goal-what">{% if g.kind == "dividends" %}{{ g.target|money }} of {{ term("dividend", "dividends") }} a month{% else %}{{ g.target|money }} {{ term("worth", "worth") }}{% if g.by_month %} by {{ goal_month(g.by_month) }}{% endif %}{% endif %}</p>
+    {% if g.now is none %}
+    <p class="goal-now">{{ term(g.reason) }}: it fills in with the next closing prices.</p>
+    {% else %}
+    <svg class="goal-bar" viewBox="0 0 100 6" preserveAspectRatio="none" role="img" aria-label="{{ pct }}% of the way">
+      <rect class="goal-track" width="100" height="6" rx="3"/>
+      <rect class="goal-fill{{ ' reached' if g.reached }}" width="{{ [g.share, 1]|min * 100 }}" height="6" rx="3"/>
+    </svg>
+    <p class="goal-now"><b>{{ g.now|money }}</b>{% if g.kind == "dividends" %} a month now: {{ term("income-12m", "a year's income") }} ÷ 12{% else %} now{% endif %} · {{ pct }}% of the way</p>
+    <p class="goal-gap">{% if g.reached %}Reached.{% else %}{{ g.gap|money }} to go{% if g.per_month %}: about {{ g.per_month|money }} a month for {{ g.months_left }} month{{ "s" if g.months_left != 1 }}, if prices didn't move{% elif g.by_month %}, and its month has come{% endif %}.{% endif %}</p>
+    {% endif %}
+    {% if removable %}
+    <form method="post" action="{{ url_for('remove_goal', goal_id=g.id) }}" class="goal-remove">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <button class="link-btn" type="submit" aria-label="Remove the {{ g.target|money }} {{ 'dividends a month' if g.kind == 'dividends' else 'worth' }} goal">Remove</button>
+    </form>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% endmacro %}

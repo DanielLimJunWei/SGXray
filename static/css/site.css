@@ -1112,3 +1112,23 @@ details[open]::details-content { block-size: auto; }
 .wi-buys summary { cursor: pointer; font-size: var(--text-sm); color: var(--color-glow-soft); width: fit-content; }
 .wi-buys[open] summary { margin-bottom: var(--space-4); }
 .whatif-note { margin-top: var(--space-12); font-size: var(--text-sm); }
+
+/* ---------- Goals (s16) ---------- */
+.goal-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); }
+.goal { background: rgba(18, 28, 51, 0.92); border: 1px solid var(--color-line); border-radius: var(--radius-lg); padding: var(--space-6);
+  display: grid; gap: var(--space-3); align-content: start; }
+.goal-what { margin: 0; font: 500 var(--text-lg)/1.3 var(--font-display); }
+.goal-bar { display: block; width: 100%; height: 8px; }
+.goal-track { fill: rgba(156, 196, 255, 0.12); }
+.goal-fill { fill: #9CC4FF; }
+.goal-fill.reached { fill: var(--color-up); }
+.goal-now, .goal-gap { margin: 0; font-size: var(--text-sm); color: var(--color-text-muted); }
+.goal-now b { font: 500 var(--text-base)/1.2 var(--font-mono); color: var(--color-text); }
+.goal-remove { margin-top: var(--space-1); }
+.goal-empty { color: var(--color-text-muted); }
+.goals .trade-add { margin-top: var(--space-8); }
+.goal-form .field-stock { grid-column: span 5; }
+.goal-form .field { grid-column: span 3; }
+.goal-form .trade-actions { grid-column: span 12; max-width: 16rem; }
+@media (max-width: 860px) { .goal-form .field, .goal-form .field-stock { grid-column: span 12; } }
+.dash-goals { margin-bottom: var(--space-12); }
