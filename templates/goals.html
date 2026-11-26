@@ -10,8 +10,8 @@
   <header class="page-head">
     <p class="eyebrow">Goals</p>
     <h1>What you're working towards</h1>
-    <p class="muted">Set a goal for your dividends or for what your portfolio is worth, and SGXray shows how far along
-      you are from your own trades. Only you can see your goals.</p>
+    <p class="muted">Set a goal for the money you put in or for what your portfolio is worth, and SGXray shows how
+      far along you are from your own trades. Only you can see your goals.</p>
     {% if goals %}{{ explain_hint() }}{% endif %}
   </header>
 
@@ -26,7 +26,7 @@
     {% if goals %}
     {{ goal_list(goals, removable=True) }}
     {% else %}
-    <p class="panel goal-empty">No goals yet. Add one below: a monthly dividend income you'd like, or what you'd like
+    <p class="panel goal-empty">No goals yet. Add one below: how much you'd like to have put in, or what you'd like
       your portfolio to be worth.</p>
     {% endif %}
   </section>
@@ -42,13 +42,13 @@
       <fieldset class="field field-stock">
         <legend>The goal</legend>
         <div class="side-toggle">
-          <input type="radio" id="goal-divs" name="kind" value="dividends" {% if values.get("kind", "dividends") != "worth" %}checked{% endif %}><label for="goal-divs">Dividends a month</label>
-          <input type="radio" id="goal-worth" name="kind" value="worth" {% if values.get("kind") == "worth" %}checked{% endif %}><label for="goal-worth">Portfolio worth</label>
+          <input type="radio" id="goal-in" name="kind" value="money_in" {% if values.get("kind", "money_in") != "worth" %}checked{% endif %}><label for="goal-in">Money in</label>
+          <input type="radio" id="goal-worth" name="kind" value="worth" {% if values.get("kind") == "worth" %}checked{% endif %}><label for="goal-worth">Worth</label>
         </div>
       </fieldset>
       <div class="field"><label for="goal-target">Amount (S$)</label>
-        <input id="goal-target" name="target" type="text" inputmode="decimal" autocomplete="off" value="{{ values.get('target', '') }}" placeholder="300" required></div>
-      <div class="field"><label for="goal-by">By <span class="optional">worth goals, optional</span></label>
+        <input id="goal-target" name="target" type="text" inputmode="decimal" autocomplete="off" value="{{ values.get('target', '') }}" placeholder="10,000" required></div>
+      <div class="field"><label for="goal-by">By <span class="optional">optional</span></label>
         <input id="goal-by" name="by_month" type="month" min="{{ next_month }}" value="{{ values.get('by_month', '') }}"></div>
       <div class="trade-actions"><button class="btn btn-primary" type="submit">Add goal</button></div>
     </form>

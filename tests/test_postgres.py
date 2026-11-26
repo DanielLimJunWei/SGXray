@@ -108,7 +108,7 @@ def test_moving_with_accounts_keeps_each_trade_with_its_owner(old_sqlite, monkey
     assert [tuple(r) for r in conn.execute("SELECT ticker, quantity FROM trades WHERE user_id = ?", (ann,))] == [("D05.SI", 1)]
     assert counts["goals"] == 1 and counts["feedback"] == 1 and "watchlist" not in counts
     # New goals and feedback get ids after the copied ones (the id counters moved on for every table, not a fixed list).
-    db.add_goal(conn, ann, "dividends", 300, None, "2026-11-26")
+    db.add_goal(conn, ann, "money_in", 300, None, "2026-11-26")
     db.add_feedback(conn, ann, "/", "Again", None)
     assert len(db.get_goals(conn, ann)) == 2 and len(db.get_feedback(conn)) == 2
     conn.close()

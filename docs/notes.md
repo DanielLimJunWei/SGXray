@@ -723,3 +723,13 @@ A portfolio with nothing in it (yours, practice, or the demo before it's loaded)
   daily download per watched stock. The page, nav link, code, glossary terms, styles and tests are gone; the table is
   no longer created. An older database file keeps its `watchlist` table as it was (nothing reads or writes it): the
   local `data/sgxray.db` has one row in it, left untouched.
+- **Dividend goals replaced by money-in goals (s16):** a dividend goal is mostly up to the companies (they set the
+  payout), so the only quick way to "work towards" one is buying higher-yield stocks, and a very high yield often
+  means a cut is expected. A money-in goal ("Put in $10,000 by Dec 2027") is fully in your hands: it compares with
+  your own money in, buys (fees included) minus what sales paid back, the X-ray chart's "Your own money", never below
+  $0. Both kinds can have a month; only a worth goal adds "if prices didn't move". Dividends still show on the
+  dashboard as a fact, not a target. An older database switches once when the app starts (`db._goal_kinds`):
+  PostgreSQL swaps the table's check, SQLite rebuilds the table, worth goals keep their ids, and any dividend goals are
+  removed (the real database had none). Checked on a scratch copy of `data/sgxray.db`: it switched on start-up, and a
+  scratch account showed $4,265.00 put in (= $3,310 + $1,910 - $955 by hand), 42% of $10,000, about $441.15 a month
+  for 13 months.

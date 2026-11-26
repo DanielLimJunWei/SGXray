@@ -9,7 +9,7 @@
   {% for g in goals %}
   {% set pct = ((g.share or 0) * 100)|round(0, "floor")|int %}
   <li class="goal">
-    <p class="goal-what">{% if g.kind == "dividends" %}{{ g.target|money }} of {{ term("dividend", "dividends") }} a month{% else %}{{ g.target|money }} {{ term("worth", "worth") }}{% if g.by_month %} by {{ goal_month(g.by_month) }}{% endif %}{% endif %}</p>
+    <p class="goal-what">{% if g.kind == "money_in" %}Put in {{ g.target|money }}{% else %}{{ g.target|money }} {{ term("worth", "worth") }}{% endif %}{% if g.by_month %} by {{ goal_month(g.by_month) }}{% endif %}</p>
     {% if g.now is none %}
     <p class="goal-now">{{ term(g.reason) }}: it fills in with the next closing prices.</p>
     {% else %}
@@ -17,13 +17,13 @@
       <rect class="goal-track" width="100" height="6" rx="3"/>
       <rect class="goal-fill{{ ' reached' if g.reached }}" width="{{ [g.share, 1]|min * 100 }}" height="6" rx="3"/>
     </svg>
-    <p class="goal-now"><b>{{ g.now|money }}</b>{% if g.kind == "dividends" %} a month now: {{ term("income-12m", "a year's income") }} ÷ 12{% else %} now{% endif %} · {{ pct }}% of the way</p>
-    <p class="goal-gap">{% if g.reached %}Reached.{% else %}{{ g.gap|money }} to go{% if g.per_month %}: about {{ g.per_month|money }} a month for {{ g.months_left }} month{{ "s" if g.months_left != 1 }}, if prices didn't move{% elif g.by_month %}, and its month has come{% endif %}.{% endif %}</p>
+    <p class="goal-now"><b>{{ g.now|money }}</b>{% if g.kind == "money_in" %} {{ term("money-in", "put in so far") }}{% else %} now{% endif %} · {{ pct }}% of the way</p>
+    <p class="goal-gap">{% if g.reached %}Reached.{% else %}{{ g.gap|money }} to go{% if g.per_month %}: about {{ g.per_month|money }} a month for {{ g.months_left }} month{{ "s" if g.months_left != 1 }}{% if g.kind == "worth" %}, if prices didn't move{% endif %}{% elif g.by_month %}, and its month has come{% endif %}.{% endif %}</p>
     {% endif %}
     {% if removable %}
     <form method="post" action="{{ url_for('remove_goal', goal_id=g.id) }}" class="goal-remove">
       <input type="hidden" name="csrf" value="{{ csrf_token() }}">
-      <button class="link-btn" type="submit" aria-label="Remove the {{ g.target|money }} {{ 'dividends a month' if g.kind == 'dividends' else 'worth' }} goal">Remove</button>
+      <button class="link-btn" type="submit" aria-label="Remove the {{ g.target|money }} {{ 'money in' if g.kind == 'money_in' else 'worth' }} goal">Remove</button>
     </form>
     {% endif %}
   </li>

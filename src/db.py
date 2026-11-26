@@ -183,14 +183,15 @@ CREATE INDEX IF NOT EXISTS idx_news_tickers_ticker ON news_tickers (ticker);
 -- (The watchlist, s14, was removed on 26 Nov 2026: SGXray is used alongside broker apps, which watch prices better.
 -- Older database files may still have a `watchlist` table; nothing reads or writes it, and it's left as it is.)
 
--- Your goals (s16): "$300 of dividends a month" or "$50,000 worth by 2030". Only the goal itself: progress is
+-- Your goals (s16): "put in $10,000 by 2027" or "$50,000 worth by 2030". Only the goal itself: progress is
 -- worked out from your trades each time. Deleted with the account; included in "Download my data".
+-- (Dividend goals were replaced by money-in goals on 26 Nov 2026: see _goal_kinds.)
 CREATE TABLE IF NOT EXISTS goals (
     id         {ID},
     user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    kind       TEXT    NOT NULL CHECK (kind IN ('dividends', 'worth')),
+    kind       TEXT    NOT NULL CHECK (kind IN ('money_in', 'worth')),
     target     REAL    NOT NULL CHECK (target > 0 AND target <= 100000000),
-    by_month   TEXT,                     -- 'YYYY-MM' for a worth goal with a date; NULL otherwise
+    by_month   TEXT,                     -- 'YYYY-MM' for a goal with a date; NULL otherwise
     created_on TEXT    NOT NULL          -- 'YYYY-MM-DD' Singapore date
 );
 CREATE INDEX IF NOT EXISTS idx_goals_user ON goals (user_id);
@@ -473,6 +474,33 @@ def _migrate(conn):
     for table, column, sql in MIGRATIONS:
         if column not in columns(conn, table):
             conn.execute(re.sub(r"\bREAL\b", "DOUBLE PRECISION", sql) if is_postgres(conn) else sql)
+    _goal_kinds(conn)
+
+
+def _goal_kinds(conn):
+    """Goals made before 26 Nov 2026 allowed 'dividends' and not 'money_in'. A table's CHECK can't be changed with
+    ADD COLUMN, so this swaps it once: PostgreSQL replaces the check; SQLite (which can't) rebuilds the table, keeping
+    every worth goal and its id. Old dividend goals are removed, since SGXray no longer measures them (there were none
+    in the real database when this ran)."""
+    if is_postgres(conn):
+        old = conn.execute("SELECT conname FROM pg_constraint WHERE conrelid = to_regclass('goals') AND contype = 'c' "
+                           "AND pg_get_constraintdef(oid) LIKE '%dividends%'").fetchall()
+        for (name,) in old:
+            conn.execute("DELETE FROM goals WHERE kind = 'dividends'")
+            conn.execute(f'ALTER TABLE goals DROP CONSTRAINT "{name}"')   # name: from the database's own catalogue
+            conn.execute("ALTER TABLE goals ADD CONSTRAINT goals_kind_check CHECK (kind IN ('money_in', 'worth'))")
+        return
+    row = conn.execute("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'goals'").fetchone()
+    if row is None or "'dividends'" not in row[0]:
+        return
+    create = re.search(r"CREATE TABLE IF NOT EXISTS goals \(.*?\n\);", schema_sql("sqlite"), re.S).group(0)
+    with conn:
+        conn.execute("ALTER TABLE goals RENAME TO goals_before_money_in")
+        conn.execute(create)
+        conn.execute("INSERT INTO goals (id, user_id, kind, target, by_month, created_on) SELECT id, user_id, kind, "
+                     "target, by_month, created_on FROM goals_before_money_in WHERE kind = 'worth'")
+        conn.execute("DROP TABLE goals_before_money_in")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_goals_user ON goals (user_id)")
 
 
 # ---------- Users ----------
